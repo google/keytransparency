@@ -17,16 +17,20 @@ spec:
       labels:
         io.kompose.service: monitor
     spec:
+      volumes:
+       - name: secrets
+         secret:
+           secretName: kt-secrets
       containers:
       - command:
-        - /go/bin/keytransparency-monitor
+        - /keytransparency-monitor
         - --addr=0.0.0.0:8099
         - --kt-url=server:8080
         - --insecure
         - --directoryid=default
-        - --tls-key=/kt/server.key
-        - --tls-cert=/kt/server.crt
-        - --sign-key=/kt/monitor_sign-key.pem
+        - --tls-key=/run/secrets/server.key
+        - --tls-cert=/run/secrets/server.crt
+        - --sign-key=/run/secrets/monitor_sign-key.pem
         - --password=towel
         - --alsologtostderr
         - --v=3
@@ -35,5 +39,9 @@ spec:
         ports:
         - containerPort: 8099
         resources: {}
+        volumeMounts:
+        - name: secrets
+          mountPath: "/run/secrets"
+          readOnly: true
       restartPolicy: Always
 status: {}

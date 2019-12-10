@@ -27,6 +27,7 @@ import (
 	"github.com/google/keytransparency/core/directory"
 	"github.com/google/keytransparency/core/fake"
 	"github.com/google/trillian/testonly"
+	"github.com/google/trillian/testonly/matchers"
 	"github.com/google/trillian/types"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -123,11 +124,12 @@ func TestLatestRevision(t *testing.T) {
 				}, err)
 			if tc.wantErr == codes.OK {
 				e.s.Map.EXPECT().GetLeafByRevision(gomock.Any(),
-					&tpb.GetMapLeafByRevisionRequest{
-						MapId:    mapID,
-						Index:    make([]byte, 32),
-						Revision: tc.treeSize - 1,
-					}).
+					matchers.ProtoEqual(
+						&tpb.GetMapLeafByRevisionRequest{
+							MapId:    mapID,
+							Index:    make([]byte, 32),
+							Revision: tc.treeSize - 1,
+						})).
 					Return(&tpb.GetMapLeafResponse{
 						MapLeafInclusion: &tpb.MapLeafInclusion{
 							Leaf: &tpb.MapLeaf{
@@ -156,11 +158,11 @@ func TestLatestRevision(t *testing.T) {
 				}, err).Times(2)
 			for i := int64(0); i < tc.treeSize; i++ {
 				e.s.Map.EXPECT().GetLeafByRevision(gomock.Any(),
-					&tpb.GetMapLeafByRevisionRequest{
+					matchers.ProtoEqual(&tpb.GetMapLeafByRevisionRequest{
 						MapId:    mapID,
 						Index:    make([]byte, 32),
 						Revision: i,
-					}).
+					})).
 					Return(&tpb.GetMapLeafResponse{
 						MapLeafInclusion: &tpb.MapLeafInclusion{
 							Leaf: &tpb.MapLeaf{

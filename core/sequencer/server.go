@@ -32,6 +32,7 @@ import (
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/mutator/entry"
 	"github.com/google/keytransparency/core/sequencer/mapper"
+	"github.com/google/keytransparency/core/sequencer/metadata"
 	"github.com/google/keytransparency/core/sequencer/runner"
 
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
@@ -61,6 +62,13 @@ var (
 	logRootTrail       monitoring.Gauge
 	unappliedRevisions monitoring.Gauge
 )
+
+// zero is the time to use for the beginning edge of new watermarks.
+// When getting the watermark for a new log that is not in the lastMeta set,
+// we need to pick a lower bound starting point for reading.  time.Time{} is
+// not a valid choice here because it is too low to represent with metadata.New()
+// so we need to pick a different, low sentinel value that the tests know about.
+var zero = time.Unix(0, 0)
 
 func createMetrics(mf monitoring.MetricFactory) {
 	knownDirectories = mf.NewGauge(
@@ -124,17 +132,15 @@ type Watermarks map[int64]int64
 type LogsReader interface {
 	// HighWatermark returns the number of items and the highest primary
 	// key up to batchSize items after start (exclusive).
-	HighWatermark(ctx context.Context, directoryID string, logID, start int64,
-		batchSize int32) (count int32, watermark int64, err error)
+	HighWatermark(ctx context.Context, directoryID string, logID int64, start time.Time,
+		batchSize int32) (count int32, watermark time.Time, err error)
 
 	// ListLogs returns the logIDs associated with directoryID that have their write bits set,
 	// or all logIDs associated with directoryID if writable is false.
 	ListLogs(ctx context.Context, directoryID string, writable bool) ([]int64, error)
 
-	// ReadLog returns the lowest messages in the (low, high] range stored in the
-	// specified log, up to batchSize.  Paginate by setting low to the
-	// highest LogMessage returned in the previous page.
-	ReadLog(ctx context.Context, directoryID string, logID, low, high int64,
+	// ReadLog returns the lowest messages in the [low, high) range stored in the specified log, up to batchSize.
+	ReadLog(ctx context.Context, directoryID string, logID int64, low, high time.Time,
 		batchSize int32) ([]*mutator.LogMessage, error)
 }
 
@@ -347,23 +353,25 @@ func (s *Server) ApplyRevisions(ctx context.Context, in *spb.ApplyRevisionsReque
 func (s *Server) readMessages(ctx context.Context, source *spb.MapMetadata_SourceSlice,
 	directoryID string, chunkSize int32,
 	emit func(*mutator.LogMessage)) error {
-	low := source.LowestInclusive
-	high := source.HighestExclusive
-	// Loop until less than chunkSize items are returned.
-	for count := chunkSize; count == chunkSize; {
-		batch, err := s.logs.ReadLog(ctx, directoryID, source.LogId, low, high, chunkSize)
+	ss := metadata.FromProto(source)
+	low := ss.StartTime()
+	high := ss.EndTime()
+	for moreToRead := true; moreToRead; {
+		// Request one more item than chunkSize so we can find the next page token.
+		batch, err := s.logs.ReadLog(ctx, directoryID, source.LogId, low, high, chunkSize+1)
 		if err != nil {
 			return fmt.Errorf("logs.ReadLog(): %v", err)
 		}
-		count = int32(len(batch))
 		glog.Infof("ReadLog(dir: %v log: %v, (%v, %v], %v) count: %v",
-			directoryID, source.LogId, low, high, chunkSize, count)
+			directoryID, source.LogId, low, high, chunkSize, len(batch))
+		moreToRead = int32(len(batch)) == (chunkSize + 1)
+		if moreToRead {
+			low = batch[chunkSize].ID // Use the last row as the start of the next read.
+			batch = batch[:chunkSize] // Don't emit the next page token.
+		}
 		logEntryCount.Add(float64(len(batch)), directoryID, fmt.Sprintf("%v", source.LogId))
 		for _, m := range batch {
 			emit(m)
-			if m.ID > low {
-				low = m.ID
-			}
 		}
 	}
 	return nil
@@ -385,7 +393,6 @@ func (s *Server) ApplyRevision(ctx context.Context, in *spb.ApplyRevisionRequest
 	logSlices := runner.DoMapMetaFn(mapper.MapMetaFn, meta, incMetricFn)
 	logItems, err := runner.DoReadFn(ctx, s.readMessages, logSlices, in.DirectoryId, s.BatchSize, incMetricFn)
 	if err != nil {
-		mutationFailures.Inc(err.Error())
 		return nil, err
 	}
 
@@ -509,6 +516,7 @@ func (s *Server) PublishRevisions(ctx context.Context,
 		leaves[int64(mapRoot.Revision)] = rawMapRoot.GetMapRoot()
 		revs = append(revs, int64(mapRoot.Revision))
 	}
+	glog.Infof("Publishing revisions %d-%d", logRoot.TreeSize-1, end)
 	if err := logClient.AddSequencedLeaves(ctx, leaves); err != nil {
 		glog.Errorf("AddSequencedLeaves(revs: %v): %v", revs, err)
 		return nil, err
@@ -535,12 +543,13 @@ func (s *Server) HighWatermarks(ctx context.Context, directoryID string, lastMet
 	// revision.
 	// TODO(gbelvin): Separate end watermarks for the sequencer's needs
 	// from ranges of watermarks for the verifier's needs.
-	ends := map[int64]int64{}
-	starts := map[int64]int64{}
+	ends := make(map[int64]time.Time)
+	starts := make(map[int64]time.Time)
 	for _, source := range lastMeta.GetSources() {
-		if ends[source.LogId] < source.HighestExclusive {
-			ends[source.LogId] = source.HighestExclusive
-			starts[source.LogId] = source.HighestExclusive
+		highest := metadata.FromProto(source).EndTime()
+		if ends[source.LogId].Before(highest) {
+			ends[source.LogId] = highest
+			starts[source.LogId] = highest
 		}
 	}
 
@@ -551,7 +560,10 @@ func (s *Server) HighWatermarks(ctx context.Context, directoryID string, lastMet
 	}
 	// TODO(gbelvin): Get HighWatermarks in parallel.
 	for _, logID := range logIDs {
-		low := ends[logID]
+		low, ok := ends[logID]
+		if !ok {
+			low = zero // Here be dragons. See comment on zero.
+		}
 		count, high, err := s.logs.HighWatermark(ctx, directoryID, logID, low, batchSize)
 		if err != nil {
 			return 0, nil, status.Errorf(codes.Internal,
@@ -565,11 +577,11 @@ func (s *Server) HighWatermarks(ctx context.Context, directoryID string, lastMet
 
 	meta := &spb.MapMetadata{}
 	for logID, end := range ends {
-		meta.Sources = append(meta.Sources, &spb.MapMetadata_SourceSlice{
-			LogId:            logID,
-			LowestInclusive:  starts[logID],
-			HighestExclusive: end,
-		})
+		src, err := metadata.New(logID, starts[logID], end)
+		if err != nil {
+			return 0, nil, err
+		}
+		meta.Sources = append(meta.Sources, src.Proto())
 	}
 	// Deterministic results are nice.
 	sort.Slice(meta.Sources, func(a, b int) bool {

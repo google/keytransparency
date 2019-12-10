@@ -17,12 +17,10 @@ package mutationstorage
 import (
 	"context"
 	"database/sql"
-	"math/rand"
 	"time"
 
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
-	"github.com/google/keytransparency/core/keyserver"
 	"github.com/google/keytransparency/core/mutator"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -30,9 +28,12 @@ import (
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 )
 
+// quantum is the fidelity of the Timestamp column.
+// See https://dev.mysql.com/doc/refman/8.0/en/fractional-seconds.html
+const quantum = time.Microsecond
+
 // SetWritable enables or disables new writes from going to logID.
 func (m *Mutations) SetWritable(ctx context.Context, directoryID string, logID int64, enabled bool) error {
-	glog.Errorf("mutationstorage: SetWritable(%v, %v, enabled: %v)", directoryID, logID, enabled)
 	result, err := m.db.ExecContext(ctx,
 		`UPDATE Logs SET Enabled = ? WHERE DirectoryID = ? AND LogID = ?;`,
 		enabled, directoryID, logID)
@@ -68,30 +69,26 @@ func (m *Mutations) AddLogs(ctx context.Context, directoryID string, logIDs ...i
 // Send writes mutations to the leading edge (by sequence number) of the mutations table.
 // Returns the logID/watermark pair that was written, or nil if nothing was written.
 // TODO(gbelvin): Make updates a slice.
-func (m *Mutations) Send(ctx context.Context, directoryID string, updates ...*pb.EntryUpdate) (*keyserver.WriteWatermark, error) {
+func (m *Mutations) Send(ctx context.Context, directoryID string, logID int64, updates ...*pb.EntryUpdate) (time.Time, error) {
 	glog.Infof("mutationstorage: Send(%v, <mutation>)", directoryID)
 	if len(updates) == 0 {
-		return nil, nil
-	}
-	logID, err := m.randLog(ctx, directoryID)
-	if err != nil {
-		return nil, err
+		return time.Time{}, nil
 	}
 	updateData := make([][]byte, 0, len(updates))
 	for _, u := range updates {
 		data, err := proto.Marshal(u)
 		if err != nil {
-			return nil, err
+			return time.Time{}, err
 		}
 		updateData = append(updateData, data)
 	}
 	// TODO(gbelvin): Implement retry with backoff for retryable errors if
 	// we get timestamp contention.
-	ts := time.Now()
+	ts := time.Now().Truncate(quantum)
 	if err := m.send(ctx, ts, directoryID, logID, updateData...); err != nil {
-		return nil, err
+		return time.Time{}, err
 	}
-	return &keyserver.WriteWatermark{LogID: logID, Watermark: ts.UnixNano()}, nil
+	return ts, nil
 }
 
 // ListLogs returns a list of all logs for directoryID, optionally filtered for writable logs.
@@ -125,19 +122,6 @@ func (m *Mutations) ListLogs(ctx context.Context, directoryID string, writable b
 	return logIDs, nil
 }
 
-// randLog returns a random, enabled log for directoryID.
-func (m *Mutations) randLog(ctx context.Context, directoryID string) (int64, error) {
-	// TODO(gbelvin): Cache these results.
-	writable := true
-	logIDs, err := m.ListLogs(ctx, directoryID, writable)
-	if err != nil {
-		return 0, err
-	}
-
-	// Return a random log.
-	return logIDs[rand.Intn(len(logIDs))], nil
-}
-
 // ts must be greater than all other timestamps currently recorded for directoryID.
 func (m *Mutations) send(ctx context.Context, ts time.Time, directoryID string,
 	logID int64, mData ...[]byte) (ret error) {
@@ -154,23 +138,22 @@ func (m *Mutations) send(ctx context.Context, ts time.Time, directoryID string,
 		}
 	}()
 
-	var maxTime int64
+	var maxTime sql.NullTime
 	if err := tx.QueryRowContext(ctx,
-		`SELECT COALESCE(MAX(Time), 0) FROM Queue WHERE DirectoryID = ? AND LogID = ?;`,
+		`SELECT MAX(Time) FROM Queue WHERE DirectoryID = ? AND LogID = ?;`,
 		directoryID, logID).Scan(&maxTime); err != nil {
 		return status.Errorf(codes.Internal, "could not find max timestamp: %v", err)
 	}
-	tsTime := ts.UnixNano()
-	if tsTime <= maxTime {
+
+	if !ts.After(maxTime.Time) {
 		return status.Errorf(codes.Aborted,
-			"current timestamp: %v, want > max-timestamp of queued mutations: %v",
-			tsTime, maxTime)
+			"current timestamp: %v, want > max-timestamp of queued mutations: %v", ts, maxTime)
 	}
 
 	for i, data := range mData {
 		if _, err = tx.ExecContext(ctx,
 			`INSERT INTO Queue (DirectoryID, LogID, Time, LocalID, Mutation) VALUES (?, ?, ?, ?, ?);`,
-			directoryID, logID, tsTime, i, data); err != nil {
+			directoryID, logID, ts, i, data); err != nil {
 			return status.Errorf(codes.Internal, "failed inserting into queue: %v", err)
 		}
 	}
@@ -179,29 +162,38 @@ func (m *Mutations) send(ctx context.Context, ts time.Time, directoryID string,
 
 // HighWatermark returns the highest watermark +1 in logID that is less than or
 // equal to batchSize items greater than start.
-func (m *Mutations) HighWatermark(ctx context.Context, directoryID string, logID,
-	start int64, batchSize int32) (int32, int64, error) {
+func (m *Mutations) HighWatermark(ctx context.Context, directoryID string, logID int64,
+	start time.Time, batchSize int32) (int32, time.Time, error) {
+	startQuery := start.Add(quantum - 1).Truncate(quantum)
 	var count int32
-	var high int64
+	var high sql.NullTime
 	if err := m.db.QueryRowContext(ctx,
-		`SELECT COUNT(*), COALESCE(MAX(T1.Time)+1, ?) FROM 
+		`SELECT COUNT(*), MAX(T1.Time) FROM
 		(
 			SELECT Q.Time FROM Queue as Q
 			WHERE Q.DirectoryID = ? AND Q.LogID = ? AND Q.Time >= ?
 			ORDER BY Q.Time ASC
 			LIMIT ?
 		) AS T1`,
-		start, directoryID, logID, start, batchSize).
+		directoryID, logID, startQuery, batchSize).
 		Scan(&count, &high); err != nil {
-		return 0, 0, err
+		return 0, start, err
 	}
-	return count, high, nil
+	if count == 0 {
+		// When there are no rows, return the start time as the highest timestamp.
+		return 0, start, nil
+	}
+	return count, high.Time.Add(1 * time.Microsecond), nil
 }
 
 // ReadLog reads all mutations in logID between [low, high).
 // ReadLog may return more rows than batchSize in order to fetch all the rows at a particular timestamp.
 func (m *Mutations) ReadLog(ctx context.Context, directoryID string,
-	logID, low, high int64, batchSize int32) ([]*mutator.LogMessage, error) {
+	logID int64, low, high time.Time, batchSize int32) ([]*mutator.LogMessage, error) {
+	// Advance the low and high marks to the next highest quantum to preserve read semantics.
+	low = low.Add(quantum - 1).Truncate(quantum)
+	high = high.Add(quantum - 1).Truncate(quantum)
+
 	rows, err := m.db.QueryContext(ctx,
 		`SELECT Time, LocalID, Mutation FROM Queue
 		WHERE DirectoryID = ? AND LogID = ? AND Time >= ? AND Time < ?
@@ -242,7 +234,8 @@ func (m *Mutations) ReadLog(ctx context.Context, directoryID string,
 func readQueueMessages(rows *sql.Rows) ([]*mutator.LogMessage, error) {
 	results := make([]*mutator.LogMessage, 0)
 	for rows.Next() {
-		var timestamp, localID int64
+		var timestamp time.Time
+		var localID int64
 		var mData []byte
 		if err := rows.Scan(&timestamp, &localID, &mData); err != nil {
 			return nil, err

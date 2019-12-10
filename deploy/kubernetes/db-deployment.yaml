@@ -27,7 +27,7 @@ spec:
           value: "yes"
         - name: MYSQL_USER
           value: test
-        image: gcr.io/key-transparency/db
+        image: gcr.io/trillian-opensource-ci/db_server:latest
         name: db
         ports:
         - containerPort: 3306

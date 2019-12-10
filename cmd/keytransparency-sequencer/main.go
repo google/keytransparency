@@ -16,7 +16,6 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"flag"
 	"fmt"
 	"net"
@@ -44,10 +43,10 @@ import (
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	dir "github.com/google/keytransparency/core/directory"
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
+	ktsql "github.com/google/keytransparency/impl/sql"
 	etcdelect "github.com/google/trillian/util/election2/etcd"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 
-	_ "github.com/go-sql-driver/mysql" // Set database engine.
 	_ "github.com/google/trillian/crypto/keys/der/proto"
 	_ "github.com/google/trillian/merkle/coniks"  // Register hasher
 	_ "github.com/google/trillian/merkle/rfc6962" // Register hasher
@@ -73,17 +72,6 @@ var (
 	refresh    = flag.Duration("refresh", 5*time.Second, "Time between map revision construction runs")
 	batchSize  = flag.Int("batch-size", 100, "Maximum number of mutations to process per map revision")
 )
-
-func openDB() *sql.DB {
-	db, err := sql.Open("mysql", *serverDBPath)
-	if err != nil {
-		glog.Exitf("sql.Open(): %v", err)
-	}
-	if err := db.Ping(); err != nil {
-		glog.Exitf("db.Ping(): %v", err)
-	}
-	return db
-}
 
 // getElectionFactory returns an election factory based on flags, and a
 // function which releases the resources associated with the factory.
@@ -130,7 +118,10 @@ func main() {
 	}
 
 	// Database tables
-	sqldb := openDB()
+	sqldb, err := ktsql.Open(*serverDBPath)
+	if err != nil {
+		glog.Exit(err)
+	}
 	defer sqldb.Close()
 
 	mutations, err := mutationstorage.New(sqldb)
