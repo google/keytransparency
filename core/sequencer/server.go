@@ -330,21 +330,21 @@ func (s *Server) ApplyRevisions(ctx context.Context, in *spb.ApplyRevisionsReque
 	}
 
 	firstRev := highestApplied + int64(1)
-	rev := firstRev
-	for ; rev <= (highestApplied + int64(s.LogPublishBatchSize)); rev++ {
+	i := int64(0)
+	for ; i < int64(s.LogPublishBatchSize); i++ {
 		req := &spb.ApplyRevisionRequest{
 			DirectoryId: in.DirectoryId,
-			Revision:    rev,
+			Revision:    highestApplied + i + 1,
 		}
 		_, err := s.loopback.ApplyRevision(ctx, req)
 		if st := status.Convert(err); st.Code() == codes.NotFound {
-			unappliedRevisions.Set(0) // Outstanding revisions = 0
+			unappliedRevisions.Set(0) // All revisions have been applied.
 			break
 		} else if err != nil {
 			return nil, err
 		}
 	}
-	glog.Infof("ApplyRevisions: applied revision(s) [%d, %d]", firstRev, rev-1)
+	glog.Infof("ApplyRevisions: applied revision(s) [%d, %d]", firstRev, highestApplied+i)
 	return &empty.Empty{}, nil
 }
 
@@ -384,6 +384,7 @@ func (s *Server) ApplyRevision(ctx context.Context, in *spb.ApplyRevisionRequest
 	meta, err := s.batcher.ReadBatch(ctx, in.DirectoryId, in.Revision)
 	fnLatency.Observe(time.Since(start).Seconds(), in.DirectoryId, "ReadBatch")
 	if st := status.Convert(err); st.Code() != codes.OK {
+		// Preserve codes.NotFound error from ReadBatch.
 		return nil, status.Errorf(st.Code(), "ReadBatch(%v, %v): %v", in.DirectoryId, in.Revision, st.Message())
 	}
 	glog.Infof("ApplyRevision(): dir: %v, rev: %v, sources: %v", in.DirectoryId, in.Revision, meta)
