@@ -23,17 +23,16 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
-
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/keytransparency/core/sequencer/metadata"
 	"github.com/google/keytransparency/impl/memory"
 	"github.com/google/trillian/testonly/matchers"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	protopb "github.com/golang/protobuf/ptypes/timestamp"
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	rtpb "github.com/google/keytransparency/core/keyserver/readtoken_go_proto"
-	"github.com/google/keytransparency/core/sequencer/metadata"
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 	tpb "github.com/google/trillian"
 )
