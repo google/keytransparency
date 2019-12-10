@@ -12,10 +12,10 @@ kubectl proxy --port=8080
 ```
 After that you should be able to visit http://localhost:8080/ui .
 
-## Delete mysql DB
-To delete all data written to the DB you can run:
+## Delete the deployment
+To delete all data written to the DB and turn down the kubernetes objects you can run:
 ```
-kubectl delete -f deploy/kubernetes/db-deployment.yaml
+kubectl delete -k deploy/kubernetes/overlays/gke
 ```
 Alternatively, you use the kubernetes HTTP user interface:
  1) Start a proxy to the kubernetes api by running `kubectl proxy --port=8080`.
