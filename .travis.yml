@@ -40,7 +40,7 @@ jobs:
       install:
       - curl -LO "https://storage.googleapis.com/kubernetes-release/release/v1.16.3/bin/linux/amd64/kubectl" && chmod +x kubectl && sudo mv kubectl /usr/local/bin/
       - go get sigs.k8s.io/kind@v0.6.1
-      - kind create cluster --config kind-config.yaml
+      - kind create cluster --config deploy/kubernetes/kind-config.yaml
       - kubectl cluster-info --context kind-kind
       - kubectl version
       script: ./scripts/kubernetes_test.sh

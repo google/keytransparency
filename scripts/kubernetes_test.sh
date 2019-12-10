@@ -2,6 +2,11 @@
 set -ex
 set -o pipefail
 
+# This script assumes the existance of a local cluster
+# go get sigs.k8s.io/kind@v0.6.1 
+# kind create cluster --config deploy/kubernetes/kind-config.yaml
+# kubectl cluster-info --context kind-kind
+
 # kubectl exits with 1 if kt-secret does not exist
 if ! kubectl get secret kt-secrets; then
   echo "Generating keys..."
@@ -15,15 +20,15 @@ n=0; until ((n >= 60)); do kubectl -n default get serviceaccount default -o name
 
 
 kubectl apply -k deploy/kubernetes/overlays/local 
+trap "kubectl delete -k deploy/kubernetes/overlays/local" INT EXIT
 TIMEOUT=2m
 timeout ${TIMEOUT} kubectl rollout status deployment/db
 timeout ${TIMEOUT} kubectl rollout status deployment/log-server
 timeout ${TIMEOUT} kubectl rollout status deployment/log-signer
 timeout ${TIMEOUT} kubectl rollout status deployment/map-server
-# timeout ${TIMEOUT} kubectl rollout status deployment/monitor
+# timeout ${TIMEOUT} kubectl rollout status deployment/monitor # TODO(gbelvin): repair the monitor
 timeout ${TIMEOUT} kubectl rollout status deployment/sequencer
 timeout ${TIMEOUT} kubectl rollout status deployment/server
-trap "kubectl delete -k deploy/kubernetes/overlays/local" INT EXIT
 
 wget -T 60 --spider --retry-connrefused --waitretry=1 http://localhost:8081/metrics
 wget -T 60 -O /dev/null --no-check-certificate  \
