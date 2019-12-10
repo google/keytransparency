@@ -28,6 +28,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/keytransparency/impl/memory"
+	"github.com/google/trillian/testonly/matchers"
 
 	protopb "github.com/golang/protobuf/ptypes/timestamp"
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
@@ -171,10 +172,11 @@ func TestListMutations(t *testing.T) {
 
 			if !tc.wantErr {
 				e.s.Map.EXPECT().GetLeavesByRevision(gomock.Any(),
-					&tpb.GetMapLeavesByRevisionRequest{
-						MapId: mapID,
-						Index: genIndexes(tc.start, tc.end),
-					}).Return(&tpb.GetMapLeavesResponse{
+					matchers.ProtoEqual(
+						&tpb.GetMapLeavesByRevisionRequest{
+							MapId: mapID,
+							Index: genIndexes(tc.start, tc.end),
+						})).Return(&tpb.GetMapLeavesResponse{
 					MapLeafInclusion: genInclusions(tc.start, tc.end),
 				}, nil)
 			}
