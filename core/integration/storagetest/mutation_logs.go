@@ -54,7 +54,7 @@ func mustMarshal(t *testing.T, p proto.Message) []byte {
 	return b
 }
 
-// The lowest common denominator for the minimum timestamp supported between all implementations.
+// The minimum timestamp supported between all implementations.
 var minWatermark = time.Unix(0, 0)
 
 // TestReadLog ensures that reads happen in atomic units of batch size.
