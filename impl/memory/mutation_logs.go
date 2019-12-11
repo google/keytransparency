@@ -97,8 +97,8 @@ func (m MutationLogs) ReadLog(_ context.Context, _ string,
 	start := sort.Search(len(logShard), func(i int) bool { return !logShard[i].time.Before(low) })
 	end := sort.Search(len(logShard), func(i int) bool { return !logShard[i].time.Before(high) })
 	// If the search is unsuccessful, i will be equal to len(logShard).
-	if start == len(logShard) && logShard[start].time.Before(low) {
-		return nil, fmt.Errorf("invalid argument: low: %v, want <= max watermark: %v", low, logShard[start].time)
+	if start == len(logShard) && logShard[start-1].time.Before(low) {
+		return nil, fmt.Errorf("invalid argument: low: %v, want <= max watermark: %v", low, logShard[start-1].time)
 	}
 	out := make([]*mutator.LogMessage, 0, batchSize)
 	for i := start; i < end; i++ {
