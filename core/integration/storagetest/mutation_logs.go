@@ -64,6 +64,7 @@ func (mutationLogsTests) TestReadLog(ctx context.Context, t *testing.T, newForTe
 	m, done := newForTest(ctx, t, directoryID, logID)
 	defer done(ctx)
 	// Write ten batches.
+	var lastTS time.Time
 	for i := byte(0); i < 10; i++ {
 		entry := &pb.EntryUpdate{Mutation: &pb.SignedEntry{Entry: mustMarshal(t, &pb.Entry{Index: []byte{i}})}}
 		ts, err := m.Send(ctx, directoryID, logID, entry, entry, entry)
@@ -73,6 +74,7 @@ func (mutationLogsTests) TestReadLog(ctx context.Context, t *testing.T, newForTe
 		if ts.Before(minWatermark) {
 			t.Fatalf("Send(): %v is before min watermark %v", ts, minWatermark)
 		}
+		lastTS = ts
 	}
 
 	for i, tc := range []struct {
@@ -86,7 +88,7 @@ func (mutationLogsTests) TestReadLog(ctx context.Context, t *testing.T, newForTe
 		{limit: 100, want: 30}, // Reading all the items gets us the 30 items we wrote.
 	} {
 		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
-			rows, err := m.ReadLog(ctx, directoryID, logID, minWatermark, time.Now(), tc.limit)
+			rows, err := m.ReadLog(ctx, directoryID, logID, minWatermark, lastTS.Add(1), tc.limit)
 			if err != nil {
 				t.Fatalf("ReadLog(%v): %v", tc.limit, err)
 			}
