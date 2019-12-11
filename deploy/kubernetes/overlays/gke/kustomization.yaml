@@ -1,0 +1,11 @@
+bases:
+- ../../base
+patchesStrategicMerge:
+- log-server-stackdriver-prometheus-sidecar.yaml
+- log-signer-stackdriver-prometheus-sidecar.yaml
+- map-server-stackdriver-prometheus-sidecar.yaml
+- sequencer-stackdriver-prometheus-sidecar.yaml
+- server-stackdriver-prometheus-sidecar.yaml
+- server-service.yaml
+
+

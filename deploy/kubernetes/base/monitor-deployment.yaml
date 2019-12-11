@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert --file ../../docker-compose.yml
+    kompose.version: 1.14.0 ()
+  creationTimestamp: null
+  labels:
+    io.kompose.service: monitor
+  name: monitor
+spec:
+  replicas: 1
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        io.kompose.service: monitor
+    spec:
+      volumes:
+       - name: secrets
+         secret:
+           secretName: kt-secrets
+      containers:
+      - command:
+        - /keytransparency-monitor
+        - --addr=0.0.0.0:8099
+        - --kt-url=server:8080
+        - --insecure
+        - --directoryid=default
+        - --tls-key=/run/secrets/server.key
+        - --tls-cert=/run/secrets/server.crt
+        - --sign-key=/run/secrets/monitor_sign-key.pem
+        - --password=towel
+        - --alsologtostderr
+        - --v=3
+        image: gcr.io/key-transparency/keytransparency-monitor:latest
+        name: monitor
+        ports:
+        - containerPort: 8099
+        resources: {}
+        volumeMounts:
+        - name: secrets
+          mountPath: "/run/secrets"
+          readOnly: true
+      restartPolicy: Always
+status: {}

@@ -59,7 +59,7 @@ gcloud --quiet container images add-tag gcr.io/${PROJECT_NAME_CI}/keytransparenc
 
 
 echo "Updating jobs..."
-kubectl apply -f deploy/kubernetes/.
+kubectl apply -k deploy/kubernetes/overlays/gke
 kubectl set image deploy/prometheus prometheus=gcr.io/${PROJECT_NAME_CI}/prometheus:${TRAVIS_COMMIT}
 kubectl set image deploy/log-server log-server=gcr.io/${PROJECT_NAME_CI}/log-server:${TRAVIS_COMMIT}
 kubectl set image deploy/log-signer log-signer=gcr.io/${PROJECT_NAME_CI}/log-signer:${TRAVIS_COMMIT}

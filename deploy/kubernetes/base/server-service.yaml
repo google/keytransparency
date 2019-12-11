@@ -11,14 +11,14 @@ metadata:
   name: server
 spec:
   ports:
-  - name: "443"
+  - name: "grpc-api"
     port: 443
     targetPort: 8080
-  - name: "8081"
+  - name: "http-metrics"
     port: 8081
     targetPort: 8081
   selector:
     io.kompose.service: server
-  type: LoadBalancer
+  type: NodePort
 status:
   loadBalancer: {}

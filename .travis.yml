@@ -34,13 +34,22 @@ jobs:
     - name: "race"
       script:
       - go test -race ./... -v
-    - name: "docker integration test"
+    - name: "docker-compose test"
       install: skip
-      script: ./scripts/integration.sh
+      script: ./scripts/docker-compose_test.sh
+    - name: "kubernetes test"
+      install:
+      - curl -LO "https://storage.googleapis.com/kubernetes-release/release/v1.16.3/bin/linux/amd64/kubectl" && chmod +x kubectl && sudo mv kubectl /usr/local/bin/
+      - go get sigs.k8s.io/kind@v0.6.1
+      - kind create cluster --config deploy/kubernetes/kind-config.yaml
+      - kubectl cluster-info --context kind-kind
+      - kubectl version
+      script: ./scripts/kubernetes_test.sh
     - stage: deploy
       if: branch = master AND type != pull_request
       install:
-      - gcloud -q components install kubectl
+      - curl -LO "https://storage.googleapis.com/kubernetes-release/release/v1.16.3/bin/linux/amd64/kubectl" && chmod +x kubectl && sudo mv kubectl /usr/local/bin/
+      - kubectl version
       - openssl aes-256-cbc -K $encrypted_555d9b2948d2_key -iv $encrypted_555d9b2948d2_iv
         -in client_secrets.json.enc -d | gcloud auth activate-service-account --key-file /dev/stdin
       script: ./scripts/deploy.sh

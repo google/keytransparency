@@ -1,0 +1,4 @@
+bases:
+- ../../base
+patchesStrategicMerge:
+- server-service.yaml
