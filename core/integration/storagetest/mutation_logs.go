@@ -66,8 +66,12 @@ func (mutationLogsTests) TestReadLog(ctx context.Context, t *testing.T, newForTe
 	// Write ten batches.
 	for i := byte(0); i < 10; i++ {
 		entry := &pb.EntryUpdate{Mutation: &pb.SignedEntry{Entry: mustMarshal(t, &pb.Entry{Index: []byte{i}})}}
-		if _, err := m.Send(ctx, directoryID, logID, entry, entry, entry); err != nil {
+		ts, err := m.Send(ctx, directoryID, logID, entry, entry, entry)
+		if err != nil {
 			t.Fatalf("Send(): %v", err)
+		}
+		if ts.Before(minWatermark) {
+			t.Fatalf("Send(): %v is before min watermark %v", ts, minWatermark)
 		}
 	}
 
