@@ -255,8 +255,8 @@ func (s *Server) DefineRevisions(ctx context.Context,
 
 	// Query metadata about outstanding log items.
 	lastMeta, err := s.batcher.ReadBatch(ctx, in.DirectoryId, resp.HighestDefined)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "ReadBatch(): %v", err)
+	if st := status.Convert(err); st.Code() != codes.OK {
+		return nil, status.Errorf(st.Code(), "ReadBatch(): %v", st.Message())
 	}
 	// Advance the watermarks forward, to define a new batch.
 	count, meta, err := s.HighWatermarks(ctx, in.DirectoryId, lastMeta, in.MaxBatch)
@@ -291,53 +291,60 @@ func (s *Server) DefineRevisions(ctx context.Context,
 func (s *Server) GetDefinedRevisions(ctx context.Context,
 	in *spb.GetDefinedRevisionsRequest) (*spb.GetDefinedRevisionsResponse, error) {
 	// Get the last processed revision number.
-	mapClient, err := s.trillian.MapClient(ctx, in.DirectoryId)
-	if err != nil {
-		return nil, err
-	}
-	_, root, err := mapClient.GetAndVerifyLatestMapRoot(ctx)
+	highestApplied, err := s.highestAppliedRev(ctx, in.DirectoryId)
 	if err != nil {
 		return nil, err
 	}
 	// Get the highest defined revision number.
 	// TODO(pavelkalinnikov): Run this in parallel with getting the root.
-	rev, err := s.batcher.HighestRev(ctx, in.DirectoryId)
+	highestDefined, err := s.batcher.HighestRev(ctx, in.DirectoryId)
 	if err != nil {
 		return nil, err
 	}
+
+	unappliedRevisions.Set(float64(highestDefined - highestApplied))
 	return &spb.GetDefinedRevisionsResponse{
-		HighestApplied: int64(root.Revision),
-		HighestDefined: rev,
+		HighestApplied: highestApplied,
+		HighestDefined: highestDefined,
 	}, nil
+}
+
+func (s *Server) highestAppliedRev(ctx context.Context, dirID string) (int64, error) {
+	mapClient, err := s.trillian.MapClient(ctx, dirID)
+	if err != nil {
+		return 0, err
+	}
+	_, root, err := mapClient.GetAndVerifyLatestMapRoot(ctx)
+	if err != nil {
+		return 0, err
+	}
+	return int64(root.Revision), nil
 }
 
 // ApplyRevisions builds multiple outstanding revisions of a single directory's
 // map by integrating the corresponding mutations.
 func (s *Server) ApplyRevisions(ctx context.Context, in *spb.ApplyRevisionsRequest) (*empty.Empty, error) {
-	resp, err := s.loopback.GetDefinedRevisions(ctx,
-		&spb.GetDefinedRevisionsRequest{DirectoryId: in.DirectoryId})
+	highestApplied, err := s.highestAppliedRev(ctx, in.DirectoryId)
 	if err != nil {
 		return nil, err
 	}
 
-	cnt := resp.HighestDefined - resp.HighestApplied
-	unappliedRevisions.Set(float64(cnt))
-	if cnt < 0 {
-		cnt = 0
-	}
-
-	if mx := int64(s.LogPublishBatchSize); cnt > mx {
-		glog.Warningf("ApplyRevisions: too many outstanding revisions: %d; applying %d", cnt, mx)
-		cnt = mx
-	}
-	glog.Infof("Applying revisions %d-%d", resp.HighestApplied+1, resp.HighestApplied+cnt)
-	for i := int64(1); i <= cnt; i++ {
+	firstRev := highestApplied + int64(1)
+	i := int64(0)
+	for ; i < int64(s.LogPublishBatchSize); i++ {
 		req := &spb.ApplyRevisionRequest{
-			DirectoryId: in.DirectoryId, Revision: resp.HighestApplied + i}
-		if _, err := s.loopback.ApplyRevision(ctx, req); err != nil {
+			DirectoryId: in.DirectoryId,
+			Revision:    highestApplied + i + 1,
+		}
+		_, err := s.loopback.ApplyRevision(ctx, req)
+		if st := status.Convert(err); st.Code() == codes.NotFound {
+			unappliedRevisions.Set(0) // All revisions have been applied.
+			break
+		} else if err != nil {
 			return nil, err
 		}
 	}
+	glog.Infof("ApplyRevisions: applied revision(s) [%d, %d]", firstRev, highestApplied+i)
 	return &empty.Empty{}, nil
 }
 
@@ -376,8 +383,9 @@ func (s *Server) ApplyRevision(ctx context.Context, in *spb.ApplyRevisionRequest
 	defer func() { fnLatency.Observe(time.Since(start).Seconds(), in.DirectoryId, "ApplyRevision") }()
 	meta, err := s.batcher.ReadBatch(ctx, in.DirectoryId, in.Revision)
 	fnLatency.Observe(time.Since(start).Seconds(), in.DirectoryId, "ReadBatch")
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "ReadBatch(%v, %v): %v", in.DirectoryId, in.Revision, err)
+	if st := status.Convert(err); st.Code() != codes.OK {
+		// Preserve codes.NotFound error from ReadBatch.
+		return nil, status.Errorf(st.Code(), "ReadBatch(%v, %v): %v", in.DirectoryId, in.Revision, st.Message())
 	}
 	glog.Infof("ApplyRevision(): dir: %v, rev: %v, sources: %v", in.DirectoryId, in.Revision, meta)
 

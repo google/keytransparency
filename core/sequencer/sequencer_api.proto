@@ -147,8 +147,8 @@ service KeyTransparencySequencer {
   // ApplyRevisions figures out the outstanding revisions, and applies the
   // corresponding mutations the to the map.
   rpc ApplyRevisions(ApplyRevisionsRequest) returns (google.protobuf.Empty);
-  // ApplyRevision applies the contained mutations to the current map root.
-  // If this method fails, it must be retried with the same arguments.
+  // ApplyRevision applies the mutations for the supplied revision.
+  // If the revision does not exist, this must return `NotFound`.
   rpc ApplyRevision(ApplyRevisionRequest) returns (ApplyRevisionResponse);
   // PublishRevisions copies the MapRoots of all known map revisions into the Log
   // of MapRoots.
