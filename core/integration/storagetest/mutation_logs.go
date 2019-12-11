@@ -54,8 +54,8 @@ func mustMarshal(t *testing.T, p proto.Message) []byte {
 	return b
 }
 
-// https://dev.mysql.com/doc/refman/8.0/en/datetime.html
-var minWatermark = time.Date(1000, 1, 1, 0, 0, 0, 0, time.UTC)
+// The lowest common denominator for the minimum timestamp supported between all implementations.
+var minWatermark = time.Unix(0, 0)
 
 // TestReadLog ensures that reads happen in atomic units of batch size.
 func (mutationLogsTests) TestReadLog(ctx context.Context, t *testing.T, newForTest mutationLogsFactory) {
