@@ -6,19 +6,9 @@ command to create, upload, and run all containers:
 ```
 ./scripts/deploy.sh
 ```
-You can observe deployed services and their pod's logs by running:
-```
-kubectl proxy --port=8080
-```
-After that you should be able to visit http://localhost:8080/ui .
 
 ## Delete the deployment
-To delete all data written to the DB and turn down the kubernetes objects you can run:
+To delete the deployment, run:
 ```
 kubectl delete -k deploy/kubernetes/overlays/gke
 ```
-Alternatively, you use the kubernetes HTTP user interface:
- 1) Start a proxy to the kubernetes api by running `kubectl proxy --port=8080`.
- 2) Find and delete the mysql pod/deployment on the 
- [user interface](http://localhost:8080/ui).
-
