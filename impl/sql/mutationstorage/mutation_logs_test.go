@@ -23,6 +23,7 @@ import (
 	"github.com/google/keytransparency/core/adminserver"
 	"github.com/google/keytransparency/core/integration/storagetest"
 	"github.com/google/keytransparency/core/keyserver"
+	"github.com/google/keytransparency/core/water"
 	"github.com/google/keytransparency/impl/sql/testdb"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -105,24 +106,24 @@ func TestSend(t *testing.T) {
 	m, done := newForTest(ctx, t, directoryID, 1, 2)
 	defer done(ctx)
 	update := []byte("bar")
-	ts1 := time.Now().Truncate(time.Microsecond)
-	ts2 := ts1.Add(1 * time.Microsecond)
-	ts3 := ts2.Add(1 * time.Microsecond)
+	wm1 := water.NewMark(uint64(time.Now().UnixNano()))
+	wm2 := wm1.Add(1000)
+	wm3 := wm2.Add(1)
 
 	// Test cases are cumulative. Earlier test caes setup later test cases.
 	for _, tc := range []struct {
 		desc     string
-		ts       time.Time
+		wm       water.Mark
 		wantCode codes.Code
 	}{
 		// Enforce timestamp uniqueness.
-		{desc: "First", ts: ts2},
-		{desc: "Second", ts: ts2, wantCode: codes.Aborted},
+		{desc: "First", wm: wm2},
+		{desc: "Second", wm: wm2, wantCode: codes.Aborted},
 		// Enforce a monotonically increasing timestamp
-		{desc: "Old", ts: ts1, wantCode: codes.Aborted},
-		{desc: "New", ts: ts3},
+		{desc: "Old", wm: wm1, wantCode: codes.Aborted},
+		{desc: "New", wm: wm3},
 	} {
-		err := m.send(ctx, tc.ts, directoryID, 1, update, update)
+		err := m.send(ctx, tc.wm, directoryID, 1, update, update)
 		if got, want := status.Code(err), tc.wantCode; got != want {
 			t.Errorf("%v: send(): %v, got: %v, want %v", tc.desc, err, got, want)
 		}

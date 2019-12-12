@@ -21,7 +21,6 @@ import (
 	"math/rand"
 	"runtime"
 	"sync"
-	"time"
 
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
@@ -37,6 +36,7 @@ import (
 	"github.com/google/keytransparency/core/crypto/vrf/p256"
 	"github.com/google/keytransparency/core/directory"
 	"github.com/google/keytransparency/core/mutator"
+	"github.com/google/keytransparency/core/water"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	rtpb "github.com/google/keytransparency/core/keyserver/readtoken_go_proto"
@@ -70,13 +70,13 @@ func createMetrics(mf monitoring.MetricFactory) {
 type MutationLogs interface {
 	// Send submits the whole group of mutations atomically to a given log.
 	// TODO(gbelvin): Create a batch level object to make it clear that this a batch of updates.
-	// Returns the timestamp that the mutation batch got written at.
-	Send(ctx context.Context, directoryID string, logID int64, mutation ...*pb.EntryUpdate) (time.Time, error)
+	// Returns the logical timestamp that the mutation batch got written at.
+	Send(ctx context.Context, directoryID string, logID int64, mutation ...*pb.EntryUpdate) (water.Mark, error)
 	// ReadLog returns the messages in the (low, high] range stored in the
 	// specified log. ReadLog always returns complete units of the original
 	// batches sent via Send, and will return  more items than limit if
 	// needed to do so.
-	ReadLog(ctx context.Context, directoryID string, logID int64, low, high time.Time,
+	ReadLog(ctx context.Context, directoryID string, logID int64, low, high water.Mark,
 		limit int32) ([]*mutator.LogMessage, error)
 	// ListLogs returns a list of logs, optionally filtered by the writable bit.
 	ListLogs(ctx context.Context, directoryID string, writable bool) ([]int64, error)
@@ -664,18 +664,14 @@ func (s *Server) BatchQueueUserUpdate(ctx context.Context, in *pb.BatchQueueUser
 	if st := status.Convert(err); st.Code() != codes.OK {
 		return nil, status.Errorf(st.Code(), "Could not pick a log to write to: %v", err)
 	}
-	wmTime, err := s.logs.Send(ctx, directory.DirectoryID, wmLogID, in.Updates...)
+	wm, err := s.logs.Send(ctx, directory.DirectoryID, wmLogID, in.Updates...)
 	if st := status.Convert(err); st.Code() != codes.OK {
 		glog.Errorf("mutations.Write failed: %v", err)
 		return nil, status.Errorf(st.Code(), "Mutation write error")
 	}
-	watermarkWritten.Set(fractionalUnix(wmTime), directory.DirectoryID, fmt.Sprintf("%v", wmLogID))
+	watermarkWritten.Set(float64(wm.Value()), directory.DirectoryID, fmt.Sprintf("%v", wmLogID))
 	sequencerQueueWritten.Add(float64(len(in.Updates)), directory.DirectoryID, fmt.Sprintf("%v", wmLogID))
 	return &empty.Empty{}, nil
-}
-
-func fractionalUnix(t time.Time) float64 {
-	return float64(t.UnixNano()) * float64(time.Nanosecond) / float64(time.Microsecond)
 }
 
 func (s *Server) randLog(ctx context.Context, directoryID string) (int64, error) {

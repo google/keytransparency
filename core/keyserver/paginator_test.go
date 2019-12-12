@@ -16,24 +16,18 @@ package keyserver
 
 import (
 	"testing"
-	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/sequencer/metadata"
+	"github.com/google/keytransparency/core/water"
 
-	tpb "github.com/golang/protobuf/ptypes/timestamp"
 	rtpb "github.com/google/keytransparency/core/keyserver/readtoken_go_proto"
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 )
 
-func newSourceSlice(t *testing.T, logID int64, low, high time.Time) *spb.MapMetadata_SourceSlice {
-	t.Helper()
-	s, err := metadata.New(logID, low, high)
-	if err != nil {
-		t.Fatalf("Invalid source: %v", err)
-	}
-	return s.Proto()
+func newSourceSlice(logID int64, low, high water.Mark) *spb.MapMetadata_SourceSlice {
+	return metadata.New(logID, low, high).Proto()
 }
 
 func TestEncodeToken(t *testing.T) {
@@ -55,7 +49,7 @@ func TestEncodeToken(t *testing.T) {
 }
 
 func TestTokenEncodeDecode(t *testing.T) {
-	rt1 := &rtpb.ReadToken{SliceIndex: 2, StartTime: &tpb.Timestamp{Nanos: 5}}
+	rt1 := &rtpb.ReadToken{SliceIndex: 2, StartWatermark: 5}
 	rt1Token, err := EncodeToken(rt1)
 	if err != nil {
 		t.Fatalf("EncodeToken(%v): %v", rt1, err)
@@ -81,16 +75,16 @@ func TestTokenEncodeDecode(t *testing.T) {
 }
 
 func TestFirst(t *testing.T) {
-	start := time.Unix(0, 0)
+	start := water.Mark{}
 	for _, tc := range []struct {
 		s    SourceList
 		want *rtpb.ReadToken
 	}{
 		{
 			s: SourceList{
-				newSourceSlice(t, 2, start.Add(2*time.Microsecond), start.Add(11*time.Microsecond)),
-				newSourceSlice(t, 3, start.Add(11*time.Microsecond), start.Add(21*time.Microsecond))},
-			want: &rtpb.ReadToken{SliceIndex: 0, StartTime: timestamp(t, start.Add(2*time.Microsecond))},
+				newSourceSlice(2, start.Add(2), start.Add(11)),
+				newSourceSlice(3, start.Add(11), start.Add(21))},
+			want: &rtpb.ReadToken{SliceIndex: 0, StartWatermark: start.Value() + 2},
 		},
 		{s: SourceList{}, want: &rtpb.ReadToken{}},
 	} {
@@ -101,10 +95,10 @@ func TestFirst(t *testing.T) {
 }
 
 func TestNext(t *testing.T) {
-	start := time.Unix(1, 0)
+	start := water.NewMark(100)
 	a := SourceList{
-		newSourceSlice(t, 2, start.Add(2*time.Microsecond), start.Add(11*time.Microsecond)),
-		newSourceSlice(t, 3, start.Add(11*time.Microsecond), start.Add(21*time.Microsecond)),
+		newSourceSlice(2, start.Add(2), start.Add(11)),
+		newSourceSlice(3, start.Add(11), start.Add(21)),
 	}
 	for _, tc := range []struct {
 		s       SourceList
@@ -116,16 +110,16 @@ func TestNext(t *testing.T) {
 		{
 			desc:    "first page",
 			s:       a,
-			rt:      &rtpb.ReadToken{SliceIndex: 0, StartTime: timestamp(t, start.Add(2*time.Microsecond))},
-			lastRow: &mutator.LogMessage{ID: start.Add(6 * time.Microsecond)},
-			want:    &rtpb.ReadToken{SliceIndex: 0, StartTime: timestamp(t, start.Add(6*time.Microsecond))},
+			rt:      &rtpb.ReadToken{SliceIndex: 0, StartWatermark: start.Value() + 2},
+			lastRow: &mutator.LogMessage{ID: start.Add(6)},
+			want:    &rtpb.ReadToken{SliceIndex: 0, StartWatermark: start.Value() + 6},
 		},
 		{
 			desc:    "next source",
 			s:       a,
 			rt:      &rtpb.ReadToken{},
 			lastRow: nil,
-			want:    &rtpb.ReadToken{SliceIndex: 1, StartTime: timestamp(t, start.Add(11*time.Microsecond))},
+			want:    &rtpb.ReadToken{SliceIndex: 1, StartWatermark: start.Value() + 11},
 		},
 		{
 			desc:    "last page",
@@ -137,7 +131,7 @@ func TestNext(t *testing.T) {
 		{
 			desc:    "empty",
 			s:       SourceList{},
-			rt:      &rtpb.ReadToken{SliceIndex: 1, StartTime: timestamp(t, start.Add(2*time.Microsecond))},
+			rt:      &rtpb.ReadToken{SliceIndex: 1, StartWatermark: start.Value() + 2},
 			lastRow: nil,
 			want:    &rtpb.ReadToken{},
 		},

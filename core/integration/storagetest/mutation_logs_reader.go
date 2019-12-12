@@ -17,10 +17,10 @@ package storagetest
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/keytransparency/core/sequencer"
+	"github.com/google/keytransparency/core/water"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 )
@@ -33,7 +33,7 @@ type LogsReadWriter interface {
 	// Returns the timestamp that the mutation batch got written at.
 	// This timestamp can be used as an argument to the lower bound of ReadLog [low, high).
 	// To acquire a value to  use  for the  upper bound of ReadLog [low, high), use HighWatermark.
-	Send(ctx context.Context, directoryID string, logID int64, mutation ...*pb.EntryUpdate) (time.Time, error)
+	Send(ctx context.Context, directoryID string, logID int64, mutation ...*pb.EntryUpdate) (water.Mark, error)
 }
 
 // logsRWFactory returns a new database object, and a function for cleaning it up.
@@ -56,18 +56,18 @@ func RunMutationLogsReaderTests(t *testing.T, factory logsRWFactory) {
 
 type mutationLogsReaderTests struct{}
 
-func setupWatermarks(ctx context.Context, t *testing.T, m LogsReadWriter, dirID string, logID int64, maxIndex int) ([]time.Time, []time.Time) {
+func setupWatermarks(ctx context.Context, t *testing.T, m LogsReadWriter, dirID string, logID int64, maxIndex int) ([]water.Mark, []water.Mark) {
 	t.Helper()
 	// Setup the test by writing 10 items to the mutation log and
 	// collecting the reported high water mark after each write.
-	sent := []time.Time{} // Timestamps that Send reported.
-	hwm := []time.Time{}  // High water marks collected after each Send.
+	sent := []water.Mark{} // Timestamps that Send reported.
+	hwm := []water.Mark{}  // High water marks collected after each Send.
 	for i := 0; i <= maxIndex; i++ {
 		ts, err := m.Send(ctx, dirID, logID, &pb.EntryUpdate{Mutation: &pb.SignedEntry{Entry: []byte{byte(i)}}})
 		if err != nil {
 			t.Fatalf("Send(%v): %v", logID, err)
 		}
-		count, wm, err := m.HighWatermark(ctx, dirID, logID, minWatermark, 100 /*batchSize*/)
+		count, wm, err := m.HighWatermark(ctx, dirID, logID, water.Mark{}, 100 /*batchSize*/)
 		if err != nil {
 			t.Fatalf("HighWatermark(): %v", err)
 		}
@@ -89,24 +89,24 @@ func (mutationLogsReaderTests) TestHighWatermarkPreserve(ctx context.Context, t 
 	maxIndex := 9
 	sent, _ := setupWatermarks(ctx, t, m, directoryID, logID, maxIndex)
 
-	arbitraryTime := time.Date(1, 2, 3, 4, 5, 6, 7, time.UTC)
+	arbitraryWM := water.NewMark(100500)
 	for _, tc := range []struct {
 		desc  string
-		start time.Time
+		start water.Mark
 		batch int32
-		want  time.Time
+		want  water.Mark
 	}{
 		// Verify that high watermarks preserves the starting time when batch size is 0.
-		{desc: "batch 0", start: arbitraryTime, batch: 0, want: arbitraryTime},
+		{desc: "batch 0", start: arbitraryWM, batch: 0, want: arbitraryWM},
 		// Verify that high watermarks preserves the starting time when there are no rows in the result.
-		{desc: "rows 0", start: sent[maxIndex].Add(time.Second), batch: 1, want: sent[maxIndex].Add(time.Second)},
+		{desc: "rows 0", start: sent[maxIndex].Add(1000), batch: 1, want: sent[maxIndex].Add(1000)},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
 			count, got, err := m.HighWatermark(ctx, directoryID, logID, tc.start, tc.batch)
 			if err != nil {
 				t.Errorf("HighWatermark(): %v", err)
 			}
-			if !got.Equal(tc.want) {
+			if got != tc.want {
 				t.Errorf("HighWatermark(%v, %v) high: %v, want %v", tc.start, tc.batch, got, tc.want)
 			}
 			if count != 0 {
@@ -126,7 +126,7 @@ func (mutationLogsReaderTests) TestHighWatermarkRead(ctx context.Context, t *tes
 	_, hwm := setupWatermarks(ctx, t, m, directoryID, logID, maxIndex)
 	for _, tc := range []struct {
 		desc     string
-		readHigh time.Time
+		readHigh water.Mark
 		want     []byte
 	}{
 		// Verify that highwatermark can retrieve all the data written so far.
@@ -135,7 +135,7 @@ func (mutationLogsReaderTests) TestHighWatermarkRead(ctx context.Context, t *tes
 		{desc: "stable", readHigh: hwm[2], want: []byte{0, 1, 2}},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
-			low := minWatermark
+			low := water.Mark{}
 			rows, err := m.ReadLog(ctx, directoryID, logID, low, tc.readHigh, 100)
 			if err != nil {
 				t.Fatalf("ReadLog(): %v", err)
@@ -162,7 +162,7 @@ func (mutationLogsReaderTests) TestHighWatermarkBatch(ctx context.Context, t *te
 	sent, _ := setupWatermarks(ctx, t, m, directoryID, logID, maxIndex)
 	for _, tc := range []struct {
 		desc  string
-		start time.Time
+		start water.Mark
 		batch int32
 		want  []byte
 	}{

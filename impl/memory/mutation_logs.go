@@ -19,14 +19,14 @@ import (
 	"context"
 	"fmt"
 	"sort"
-	"time"
 
 	"github.com/google/keytransparency/core/mutator"
+	"github.com/google/keytransparency/core/water"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 )
 
-var clock = time.Unix(10, 0) // Start our clock at an arbitrary, non-zero place.
+var clock = uint64(10) // Start logical clock at an arbitrary, non-zero place.
 
 // NewMutationLogs creates a new fake MutationLogs.
 func NewMutationLogs() MutationLogs {
@@ -34,7 +34,7 @@ func NewMutationLogs() MutationLogs {
 }
 
 type batch struct {
-	time time.Time
+	wm   water.Mark
 	msgs []*mutator.LogMessage
 }
 
@@ -63,9 +63,9 @@ func (m MutationLogs) ListLogs(_ context.Context, _ string, writable bool) ([]in
 }
 
 // Send stores a batch of mutations in a given logID.
-func (m MutationLogs) Send(_ context.Context, _ string, logID int64, mutation ...*pb.EntryUpdate) (time.Time, error) {
-	clock = clock.Add(time.Second)
-	ts := clock
+func (m MutationLogs) Send(_ context.Context, _ string, logID int64, mutation ...*pb.EntryUpdate) (water.Mark, error) {
+	wm := water.NewMark(clock)
+	clock++
 	// Only save the Merkle tree bits.
 	entries := make([]*pb.SignedEntry, 0, len(mutation))
 	for _, i := range mutation {
@@ -73,32 +73,32 @@ func (m MutationLogs) Send(_ context.Context, _ string, logID int64, mutation ..
 	}
 
 	logShard := m[logID]
-	if len(logShard) > 0 && logShard[len(logShard)-1].time.After(ts) {
-		return time.Time{}, fmt.Errorf("inserting mutation entry %v out of order", ts)
+	if len(logShard) > 0 && logShard[len(logShard)-1].wm.Compare(wm) > 0 {
+		return water.Mark{}, fmt.Errorf("inserting mutation entry %v out of order", wm)
 	}
 
 	// Convert []SignedEntry into []LogMessage for storage.
 	msgs := make([]*mutator.LogMessage, 0, len(entries))
 	for _, e := range entries {
-		msgs = append(msgs, &mutator.LogMessage{ID: ts, Mutation: e})
+		msgs = append(msgs, &mutator.LogMessage{ID: wm, Mutation: e})
 	}
-	m[logID] = append(logShard, batch{time: ts, msgs: msgs})
-	return ts, nil
+	m[logID] = append(logShard, batch{wm: wm, msgs: msgs})
+	return wm, nil
 }
 
 // ReadLog returns mutations between [low, high).  Always returns complete batches.
 // ReadLog will return more items than batchSize if necessary to return a complete batch.
 func (m MutationLogs) ReadLog(_ context.Context, _ string,
-	logID int64, low, high time.Time, batchSize int32) ([]*mutator.LogMessage, error) {
+	logID int64, low, high water.Mark, batchSize int32) ([]*mutator.LogMessage, error) {
 	logShard := m[logID]
 	if len(logShard) == 0 || batchSize == 0 {
 		return nil, nil
 	}
-	start := sort.Search(len(logShard), func(i int) bool { return !logShard[i].time.Before(low) })
-	end := sort.Search(len(logShard), func(i int) bool { return !logShard[i].time.Before(high) })
+	start := sort.Search(len(logShard), func(i int) bool { return logShard[i].wm.Compare(low) >= 0 })
+	end := sort.Search(len(logShard), func(i int) bool { return logShard[i].wm.Compare(high) >= 0 })
 	// If the search is unsuccessful, i will be equal to len(logShard).
-	if start == len(logShard) && logShard[start-1].time.Before(low) {
-		return nil, fmt.Errorf("invalid argument: low: %v, want <= max watermark: %v", low, logShard[start-1].time)
+	if start == len(logShard) && logShard[start-1].wm.Compare(low) < 0 {
+		return nil, fmt.Errorf("invalid argument: low: %v, want <= max watermark: %v", low, logShard[start-1].wm)
 	}
 	out := make([]*mutator.LogMessage, 0, batchSize)
 	for i := start; i < end; i++ {
@@ -111,15 +111,15 @@ func (m MutationLogs) ReadLog(_ context.Context, _ string,
 }
 
 // HighWatermark returns the highest timestamp batchSize items beyond start.
-func (m MutationLogs) HighWatermark(_ context.Context, _ string, logID int64, start time.Time,
-	batchSize int32) (int32, time.Time, error) {
+func (m MutationLogs) HighWatermark(_ context.Context, _ string, logID int64, start water.Mark,
+	batchSize int32) (int32, water.Mark, error) {
 	logShard := m[logID]
-	i := sort.Search(len(logShard), func(i int) bool { return !logShard[i].time.Before(start) })
+	i := sort.Search(len(logShard), func(i int) bool { return logShard[i].wm.Compare(start) >= 0 })
 
 	count := int32(0)
-	high := start // Preserve start time if there are no rows to process.
+	high := start // Preserve start watermark if there are no rows to process.
 	for ; i < len(logShard) && count < batchSize; i++ {
-		high = logShard[i].time.Add(time.Nanosecond) // Returns exclusive n + 1
+		high = logShard[i].wm.Add(1) // Return the exclusive watermark.
 		count += int32(len(logShard[i].msgs))
 	}
 	return count, high, nil

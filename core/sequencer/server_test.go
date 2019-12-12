@@ -18,7 +18,6 @@ import (
 	"context"
 	"fmt"
 	"testing"
-	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/go-cmp/cmp"
@@ -29,6 +28,7 @@ import (
 	"github.com/google/keytransparency/core/sequencer/mapper"
 	"github.com/google/keytransparency/core/sequencer/metadata"
 	"github.com/google/keytransparency/core/sequencer/runner"
+	"github.com/google/keytransparency/core/water"
 	"github.com/google/keytransparency/impl/memory"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
@@ -37,6 +37,8 @@ import (
 )
 
 const directoryID = "directoryID"
+
+var zero = water.Mark{}
 
 func fakeMetric(_ string) {}
 
@@ -98,32 +100,27 @@ func (b *fakeBatcher) ReadBatch(_ context.Context, _ string, rev int64) (*spb.Ma
 	return meta, nil
 }
 
-func setupLogs(ctx context.Context, t *testing.T, dirID string, logLengths map[int64]int) (memory.MutationLogs, map[int64][]time.Time) {
+func setupLogs(ctx context.Context, t *testing.T, dirID string, logLengths map[int64]int) (memory.MutationLogs, map[int64][]water.Mark) {
 	t.Helper()
 	fakeLogs := memory.NewMutationLogs()
-	idx := make(map[int64][]time.Time)
+	idx := make(map[int64][]water.Mark)
 	for logID, msgs := range logLengths {
 		if err := fakeLogs.AddLogs(ctx, dirID, logID); err != nil {
 			t.Fatal(err)
 		}
 		for i := 0; i < msgs; i++ {
-			ts, err := fakeLogs.Send(ctx, dirID, logID, &pb.EntryUpdate{})
+			wm, err := fakeLogs.Send(ctx, dirID, logID, &pb.EntryUpdate{})
 			if err != nil {
 				t.Fatal(err)
 			}
-			idx[logID] = append(idx[logID], ts)
+			idx[logID] = append(idx[logID], wm)
 		}
 	}
 	return fakeLogs, idx
 }
 
-func newSource(t *testing.T, logID int64, low, high time.Time) *spb.MapMetadata_SourceSlice {
-	t.Helper()
-	s, err := metadata.New(logID, low, high)
-	if err != nil {
-		t.Fatalf("Invalid source: %v", err)
-	}
-	return s.Proto()
+func newSource(logID int64, low, high water.Mark) *spb.MapMetadata_SourceSlice {
+	return metadata.New(logID, low, high).Proto()
 }
 
 func TestDefiningRevisions(t *testing.T) {
@@ -153,14 +150,14 @@ func TestDefiningRevisions(t *testing.T) {
 		{desc: "skewed", highestRev: mapRev - 1, wantNew: mapRev - 1},
 		{desc: "almost_drained", highestRev: mapRev,
 			meta: spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
-				newSource(t, 0, zero.Add(0*time.Microsecond), zero.Add(9*time.Microsecond)),
-				newSource(t, 1, zero.Add(0*time.Microsecond), zero.Add(20*time.Microsecond)),
+				newSource(0, zero, water.NewMark(9)),
+				newSource(1, zero, water.NewMark(20)),
 			}},
 			wantNew: mapRev + 1},
 		{desc: "drained", highestRev: mapRev,
 			meta: spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
-				newSource(t, 0, zero, idx[0][9].Add(1)),
-				newSource(t, 1, zero, idx[1][19].Add(1)),
+				newSource(0, zero, idx[0][9].Add(1)),
+				newSource(1, zero, idx[1][19].Add(1)),
 			}},
 			wantNew: mapRev},
 	} {
@@ -212,14 +209,14 @@ func TestReadMessages(t *testing.T) {
 		want      int
 	}{
 		{batchSize: 1, want: 9, meta: &spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
-			newSource(t, 0, idx[0][1], idx[0][9].Add(1)),
+			newSource(0, idx[0][1], idx[0][9].Add(1)),
 		}}},
 		{batchSize: 10000, want: 9, meta: &spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
-			newSource(t, 0, idx[0][1], idx[0][9].Add(1)),
+			newSource(0, idx[0][1], idx[0][9].Add(1)),
 		}}},
 		{batchSize: 1, want: 19, meta: &spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
-			newSource(t, 0, idx[0][1], idx[0][9].Add(1)),
-			newSource(t, 1, idx[1][1], idx[1][10].Add(1)),
+			newSource(0, idx[0][1], idx[0][9].Add(1)),
+			newSource(1, idx[1][1], idx[1][10].Add(1)),
 		}}},
 	} {
 		logSlices := runner.DoMapMetaFn(mapper.MapMetaFn, tc.meta, fakeMetric)
@@ -248,41 +245,41 @@ func TestHighWatermarks(t *testing.T) {
 	}{
 		{desc: "nobatch", batchSize: 30, count: 30,
 			next: &spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
-				newSource(t, 0, zero, idx[0][9].Add(1)),
-				newSource(t, 1, zero, idx[1][19].Add(1)),
+				newSource(0, zero, idx[0][9].Add(1)),
+				newSource(1, zero, idx[1][19].Add(1)),
 			}}},
 		{desc: "exactbatch", batchSize: 20, count: 20,
 			next: &spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
-				newSource(t, 0, zero, idx[0][9].Add(1)),
-				newSource(t, 1, zero, idx[1][9].Add(1)),
+				newSource(0, zero, idx[0][9].Add(1)),
+				newSource(1, zero, idx[1][9].Add(1)),
 			}}},
 		{desc: "batchwprev", batchSize: 20, count: 20,
 			last: &spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
-				newSource(t, 0, zero, idx[0][9].Add(2)),
+				newSource(0, zero, idx[0][9].Add(2)),
 			}},
 			next: &spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
 				// Nothing to read from log 1, preserve watermark of log 1.
-				newSource(t, 0, idx[0][9].Add(2), idx[0][9].Add(2)),
-				newSource(t, 1, zero, idx[1][19].Add(1)),
+				newSource(0, idx[0][9].Add(2), idx[0][9].Add(2)),
+				newSource(1, zero, idx[1][19].Add(1)),
 			}}},
 		// Don't drop existing watermarks.
 		{desc: "keep existing", batchSize: 1, count: 1,
 			last: &spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
-				newSource(t, 1, zero, zero.Add(10)),
+				newSource(1, zero, water.NewMark(10)),
 			}},
 			next: &spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
-				newSource(t, 0, zero, idx[0][0].Add(1)),
+				newSource(0, zero, idx[0][0].Add(1)),
 				// No reads from log 1, but don't drop the watermark.
-				newSource(t, 1, zero.Add(10), zero.Add(10)),
+				newSource(1, water.NewMark(10), water.NewMark(10)),
 			}}},
 		{desc: "logs that dont move", batchSize: 0, count: 0,
 			last: &spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
-				newSource(t, 3, zero, zero.Add(10*time.Microsecond)),
+				newSource(3, zero, water.NewMark(10)),
 			}},
 			next: &spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
-				newSource(t, 0, zero, zero),
-				newSource(t, 1, zero, zero),
-				newSource(t, 3, zero.Add(10*time.Microsecond), zero.Add(10*time.Microsecond)),
+				newSource(0, zero, zero),
+				newSource(1, zero, zero),
+				newSource(3, water.NewMark(10), water.NewMark(10)),
 			}}},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
