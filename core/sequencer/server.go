@@ -278,7 +278,7 @@ func (s *Server) DefineRevisions(ctx context.Context,
 			return nil, status.Errorf(codes.Internal, "WriteBatchSources(): %v", err)
 		}
 		for _, source := range meta.Sources {
-			watermarkDefined.Set(float64(source.HighestExclusive),
+			watermarkDefined.Set(float64(metadata.FromProto(source).EndTime().UnixNano()),
 				in.DirectoryId, fmt.Sprintf("%v", source.LogId))
 		}
 	}
@@ -445,14 +445,14 @@ func (s *Server) ApplyRevision(ctx context.Context, in *spb.ApplyRevisionRequest
 	fnLatency.Observe(time.Since(computeStart).Seconds(), in.DirectoryId, "ProcessMutations")
 
 	// Serialize metadata
-	metadata, err := proto.Marshal(meta)
+	serializedMeta, err := proto.Marshal(meta)
 	if err != nil {
 		return nil, err
 	}
 
 	// Set new leaf values.
 	setRevisionStart := time.Now()
-	err = mapClient.WriteLeaves(ctx, in.Revision, newLeaves, metadata)
+	err = mapClient.WriteLeaves(ctx, in.Revision, newLeaves, serializedMeta)
 	fnLatency.Observe(time.Since(setRevisionStart).Seconds(), in.DirectoryId, "WriteLeaves")
 	if err != nil {
 		return nil, err
@@ -460,7 +460,7 @@ func (s *Server) ApplyRevision(ctx context.Context, in *spb.ApplyRevisionRequest
 	glog.V(2).Infof("CreateRevision: WriteLeaves:{Revision: %v}", in.Revision)
 
 	for _, s := range meta.Sources {
-		watermarkApplied.Set(float64(s.HighestExclusive), in.DirectoryId, fmt.Sprintf("%v", s.LogId))
+		watermarkApplied.Set(float64(metadata.FromProto(s).EndTime().UnixNano()), in.DirectoryId, fmt.Sprintf("%v", s.LogId))
 	}
 	mapLeafCount.Add(float64(len(newLeaves)), in.DirectoryId)
 	mapRevisionCount.Inc(in.DirectoryId)
