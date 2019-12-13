@@ -147,8 +147,10 @@ type LogsReader interface {
 	// or all logIDs associated with directoryID if writable is false.
 	ListLogs(ctx context.Context, directoryID string, writable bool) ([]int64, error)
 
-	// ReadLog returns the lowest messages in the [low, high) watermarks range of
-	// the specified log, up to batchSize.
+	// ReadLog returns up to `batchSize` lowest messages in the [low, high)
+	// watermarks range of the specified log. Some implementations may return
+	// more because there can be multiple entries with the same watermark, but
+	// different local IDs. The entries are ordered by (watermark, local ID).
 	ReadLog(ctx context.Context, directoryID string, logID int64, low, high water.Mark,
 		batchSize int32) ([]*mutator.LogMessage, error)
 }
