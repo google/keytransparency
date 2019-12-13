@@ -124,12 +124,24 @@ type Watermarks map[int64]int64
 
 // LogsReader reads messages in multiple logs.
 type LogsReader interface {
-	// HighWatermark counts up to batchSize entries in the specified log, located
-	// strictly after the given start watermark (i.e. exclusive). Returns the
-	// number of entries found, and the watermark covering the last entry.
-	// TODO(pavelkalinnikov): Return watermark just beyond the last entry.
-	HighWatermark(ctx context.Context, directoryID string, logID int64, start water.Mark,
-		batchSize int32) (count int32, wm water.Mark, err error)
+	// HighWatermark counts up to `batchSize` entries in the specified log,
+	// located at or after the given `start` watermark. Returns the number of
+	// entries found, and the watermark "just beyond" the last entry found.
+	//
+	// Guarantees:
+	// - The returned `count` is normally between 0 and `batchSize`. It can be
+	//   more if the storage supports batching multiple entries with the same
+	//   watermark key. The `batchSize` is a hint rather than a hard limit.
+	// - The returned `high` watermark is at least equal to `start`.
+	// - There are exactly `count` entries in the [`start`, `high`) range.
+	// - The content of the [`start`, `high`) range will never change. The caller
+	//   can take it as a promise, and set `start` for the next HighWatermark
+	//   call to be the returned `high`.
+	// - If `high` == `start` then there are no entries found, i.e. `count` is 0.
+	//   Note that it's also possible that `high` > `start` but there are still
+	//   no entries found.
+	HighWatermark(ctx context.Context, directoryID string, logID int64,
+		start water.Mark, batchSize int32) (count int32, high water.Mark, err error)
 
 	// ListLogs returns the logIDs associated with directoryID that have their write bits set,
 	// or all logIDs associated with directoryID if writable is false.
