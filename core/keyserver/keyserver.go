@@ -669,9 +669,13 @@ func (s *Server) BatchQueueUserUpdate(ctx context.Context, in *pb.BatchQueueUser
 		glog.Errorf("mutations.Write failed: %v", err)
 		return nil, status.Errorf(st.Code(), "Mutation write error")
 	}
-	watermarkWritten.Set(float64(wmTime.Unix()), directory.DirectoryID, fmt.Sprintf("%v", wmLogID))
+	watermarkWritten.Set(fractionalUnix(wmTime), directory.DirectoryID, fmt.Sprintf("%v", wmLogID))
 	sequencerQueueWritten.Add(float64(len(in.Updates)), directory.DirectoryID, fmt.Sprintf("%v", wmLogID))
 	return &empty.Empty{}, nil
+}
+
+func fractionalUnix(t time.Time) float64 {
+	return float64(t.UnixNano()) * float64(time.Nanosecond) / float64(time.Second)
 }
 
 func (s *Server) randLog(ctx context.Context, directoryID string) (int64, error) {
