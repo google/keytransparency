@@ -156,13 +156,14 @@ type Batcher interface {
 
 // Server implements KeyTransparencySequencerServer.
 type Server struct {
-	directories         directory.Storage
-	batcher             Batcher
-	trillian            trillianFactory
-	logs                LogsReader
-	loopback            spb.KeyTransparencySequencerClient
-	BatchSize           int32
-	LogPublishBatchSize uint64
+	directories            directory.Storage
+	batcher                Batcher
+	trillian               trillianFactory
+	logs                   LogsReader
+	loopback               spb.KeyTransparencySequencerClient
+	BatchSize              int32
+	ApplyRevisionBatchSize uint64
+	LogPublishBatchSize    uint64
 }
 
 // NewServer creates a new KeyTransparencySequencerServer.
@@ -185,11 +186,12 @@ func NewServer(
 			tlog:        tlog,
 			twrite:      twrite,
 		},
-		batcher:             batcher,
-		logs:                logs,
-		loopback:            loopback,
-		BatchSize:           10000,
-		LogPublishBatchSize: 10,
+		batcher:                batcher,
+		logs:                   logs,
+		loopback:               loopback,
+		BatchSize:              10000,
+		ApplyRevisionBatchSize: 2,
+		LogPublishBatchSize:    10,
 	}
 }
 
@@ -331,7 +333,7 @@ func (s *Server) ApplyRevisions(ctx context.Context, in *spb.ApplyRevisionsReque
 
 	firstRev := highestApplied + int64(1)
 	i := int64(0)
-	for ; i < int64(s.LogPublishBatchSize); i++ {
+	for ; i < int64(s.ApplyRevisionBatchSize); i++ {
 		req := &spb.ApplyRevisionRequest{
 			DirectoryId: in.DirectoryId,
 			Revision:    highestApplied + i + 1,
