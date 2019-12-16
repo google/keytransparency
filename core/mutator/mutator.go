@@ -18,12 +18,11 @@
 package mutator
 
 import (
-	"time"
-
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
+	"github.com/google/keytransparency/core/water"
 )
 
 var (
@@ -52,7 +51,7 @@ type VerifyMutationFn func(mutation *pb.SignedEntry) error
 
 // LogMessage represents a change to a user, and associated data.
 type LogMessage struct {
-	ID        time.Time
+	ID        water.Mark
 	LocalID   int64
 	Mutation  *pb.SignedEntry
 	ExtraData *pb.Committed

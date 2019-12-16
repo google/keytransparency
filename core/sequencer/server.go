@@ -34,6 +34,7 @@ import (
 	"github.com/google/keytransparency/core/sequencer/mapper"
 	"github.com/google/keytransparency/core/sequencer/metadata"
 	"github.com/google/keytransparency/core/sequencer/runner"
+	"github.com/google/keytransparency/core/water"
 
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 	tpb "github.com/google/trillian"
@@ -62,17 +63,6 @@ var (
 	logRootTrail       monitoring.Gauge
 	unappliedRevisions monitoring.Gauge
 )
-
-// zero is the time to use for the beginning edge of new watermarks.
-// When getting the watermark for a new log that is not in the lastMeta set,
-// we need to pick a lower bound starting point for reading.  time.Time{} is
-// not a valid choice here because it is too low to represent with metadata.New()
-// so we need to pick a different, low sentinel value that the tests know about.
-var zero = time.Unix(0, 0)
-
-func fractionalUnix(t time.Time) float64 {
-	return float64(t.UnixNano()) * float64(time.Nanosecond) / float64(time.Microsecond)
-}
 
 func createMetrics(mf monitoring.MetricFactory) {
 	knownDirectories = mf.NewGauge(
@@ -134,17 +124,34 @@ type Watermarks map[int64]int64
 
 // LogsReader reads messages in multiple logs.
 type LogsReader interface {
-	// HighWatermark returns the number of items and the highest primary
-	// key up to batchSize items after start (exclusive).
-	HighWatermark(ctx context.Context, directoryID string, logID int64, start time.Time,
-		batchSize int32) (count int32, watermark time.Time, err error)
+	// HighWatermark counts up to `batchSize` entries in the specified log,
+	// located at or after the given `start` watermark. Returns the number of
+	// entries found, and the watermark "just beyond" the last entry found.
+	//
+	// Guarantees:
+	// - The returned `count` is normally between 0 and `batchSize`. It can be
+	//   more if the storage supports batching multiple entries with the same
+	//   watermark key. The `batchSize` is a hint rather than a hard limit.
+	// - The returned `high` watermark is at least equal to `start`.
+	// - There are exactly `count` entries in the [`start`, `high`) range.
+	// - The content of the [`start`, `high`) range will never change. The caller
+	//   can take it as a promise, and set `start` for the next HighWatermark
+	//   call to be the returned `high`.
+	// - If `high` == `start` then there are no entries found, i.e. `count` is 0.
+	//   Note that it's also possible that `high` > `start` but there are still
+	//   no entries found.
+	HighWatermark(ctx context.Context, directoryID string, logID int64,
+		start water.Mark, batchSize int32) (count int32, high water.Mark, err error)
 
 	// ListLogs returns the logIDs associated with directoryID that have their write bits set,
 	// or all logIDs associated with directoryID if writable is false.
 	ListLogs(ctx context.Context, directoryID string, writable bool) ([]int64, error)
 
-	// ReadLog returns the lowest messages in the [low, high) range stored in the specified log, up to batchSize.
-	ReadLog(ctx context.Context, directoryID string, logID int64, low, high time.Time,
+	// ReadLog returns up to `batchSize` lowest messages in the [low, high)
+	// watermarks range of the specified log. Some implementations may return
+	// more because there can be multiple entries with the same watermark, but
+	// different local IDs. The entries are ordered by (watermark, local ID).
+	ReadLog(ctx context.Context, directoryID string, logID int64, low, high water.Mark,
 		batchSize int32) ([]*mutator.LogMessage, error)
 }
 
@@ -284,7 +291,7 @@ func (s *Server) DefineRevisions(ctx context.Context,
 			return nil, status.Errorf(codes.Internal, "WriteBatchSources(): %v", err)
 		}
 		for _, source := range meta.Sources {
-			watermarkDefined.Set(fractionalUnix(metadata.FromProto(source).EndTime()),
+			watermarkDefined.Set(float64(metadata.FromProto(source).HighMark().Value()),
 				in.DirectoryId, fmt.Sprintf("%v", source.LogId))
 		}
 	}
@@ -360,8 +367,7 @@ func (s *Server) readMessages(ctx context.Context, source *spb.MapMetadata_Sourc
 	directoryID string, chunkSize int32,
 	emit func(*mutator.LogMessage)) error {
 	ss := metadata.FromProto(source)
-	low := ss.StartTime()
-	high := ss.EndTime()
+	low, high := ss.LowMark(), ss.HighMark()
 	for moreToRead := true; moreToRead; {
 		// Request one more item than chunkSize so we can find the next page token.
 		batch, err := s.logs.ReadLog(ctx, directoryID, source.LogId, low, high, chunkSize+1)
@@ -466,7 +472,7 @@ func (s *Server) ApplyRevision(ctx context.Context, in *spb.ApplyRevisionRequest
 	glog.V(2).Infof("CreateRevision: WriteLeaves:{Revision: %v}", in.Revision)
 
 	for _, s := range meta.Sources {
-		watermarkApplied.Set(fractionalUnix(metadata.FromProto(s).EndTime()), in.DirectoryId, fmt.Sprintf("%v", s.LogId))
+		watermarkApplied.Set(float64(metadata.FromProto(s).HighMark().Value()), in.DirectoryId, fmt.Sprintf("%v", s.LogId))
 	}
 	mapLeafCount.Add(float64(len(newLeaves)), in.DirectoryId)
 	mapRevisionCount.Inc(in.DirectoryId)
@@ -550,11 +556,11 @@ func (s *Server) HighWatermarks(ctx context.Context, directoryID string, lastMet
 	// revision.
 	// TODO(gbelvin): Separate end watermarks for the sequencer's needs
 	// from ranges of watermarks for the verifier's needs.
-	ends := make(map[int64]time.Time)
-	starts := make(map[int64]time.Time)
+	ends := make(map[int64]water.Mark)
+	starts := make(map[int64]water.Mark)
 	for _, source := range lastMeta.GetSources() {
-		highest := metadata.FromProto(source).EndTime()
-		if ends[source.LogId].Before(highest) {
+		highest := metadata.FromProto(source).HighMark()
+		if ends[source.LogId].Compare(highest) < 0 {
 			ends[source.LogId] = highest
 			starts[source.LogId] = highest
 		}
@@ -567,10 +573,7 @@ func (s *Server) HighWatermarks(ctx context.Context, directoryID string, lastMet
 	}
 	// TODO(gbelvin): Get HighWatermarks in parallel.
 	for _, logID := range logIDs {
-		low, ok := ends[logID]
-		if !ok {
-			low = zero // Here be dragons. See comment on zero.
-		}
+		low := ends[logID]
 		count, high, err := s.logs.HighWatermark(ctx, directoryID, logID, low, batchSize)
 		if err != nil {
 			return 0, nil, status.Errorf(codes.Internal,
@@ -584,10 +587,7 @@ func (s *Server) HighWatermarks(ctx context.Context, directoryID string, lastMet
 
 	meta := &spb.MapMetadata{}
 	for logID, end := range ends {
-		src, err := metadata.New(logID, starts[logID], end)
-		if err != nil {
-			return 0, nil, err
-		}
+		src := metadata.New(logID, starts[logID], end)
 		meta.Sources = append(meta.Sources, src.Proto())
 	}
 	// Deterministic results are nice.

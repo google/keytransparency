@@ -15,49 +15,34 @@ package metadata
 
 import (
 	"testing"
-	"time"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/google/keytransparency/core/water"
 
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 )
 
-func TestValidateTime(t *testing.T) {
-	for _, tc := range []struct {
-		ts    time.Time
-		valid bool
-	}{
-		{ts: time.Time{}, valid: false},
-		{ts: time.Date(1, 0, 0, 0, 0, 0, 0, time.UTC), valid: false},
-		{ts: time.Date(1000, 0, 0, 0, 0, 0, 0, time.UTC), valid: false},
-		{ts: time.Date(2000, 0, 0, 0, 0, 0, 0, time.UTC), valid: true},
-		{ts: time.Date(200000, 0, 0, 0, 0, 0, 0, time.UTC), valid: false},
-	} {
-		err := validateTime(tc.ts)
-		if got := err == nil; got != tc.valid {
-			t.Errorf("validateTime(%v): %v, want valid: %v", tc.ts, err, tc.valid)
-		}
-	}
-}
-
-func TestTimeToProto(t *testing.T) {
+func TestSourceSliceProto(t *testing.T) {
 	logID := int64(1)
 	for _, tc := range []struct {
-		low, high time.Time
+		low, high water.Mark
 		want      *spb.MapMetadata_SourceSlice
 	}{
-		{low: time.Unix(0, 0), high: time.Unix(0, 0), want: &spb.MapMetadata_SourceSlice{LogId: logID, LowestInclusive: 0}},
-		{low: time.Unix(0, 1), high: time.Unix(0, 0), want: &spb.MapMetadata_SourceSlice{LogId: logID, LowestInclusive: 1}},
-		{low: time.Unix(0, 1000), high: time.Unix(0, 0), want: &spb.MapMetadata_SourceSlice{LogId: logID, LowestInclusive: 1}},
-		{low: time.Unix(1, 0), high: time.Unix(0, 0), want: &spb.MapMetadata_SourceSlice{LogId: logID, LowestInclusive: 1000000}},
-		{low: time.Unix(1, 0), high: time.Unix(1, 0), want: &spb.MapMetadata_SourceSlice{LogId: logID, LowestInclusive: 1000000, HighestExclusive: 1000000}},
+		{low: water.Mark{}, high: water.Mark{}, want: &spb.MapMetadata_SourceSlice{LogId: logID, LowestInclusive: 0}},
+		{low: water.NewMark(1), high: water.Mark{}, want: &spb.MapMetadata_SourceSlice{LogId: logID, LowestInclusive: 1}},
+		{low: water.NewMark(1000), high: water.Mark{}, want: &spb.MapMetadata_SourceSlice{LogId: logID, LowestInclusive: 1000}},
+		{low: water.NewMark(1000000), high: water.Mark{}, want: &spb.MapMetadata_SourceSlice{LogId: logID, LowestInclusive: 1000000}},
+		{low: water.NewMark(1000000), high: water.NewMark(1000000), want: &spb.MapMetadata_SourceSlice{LogId: logID, LowestInclusive: 1000000, HighestExclusive: 1000000}},
 	} {
-		ss, err := New(logID, tc.low, tc.high)
-		if err != nil {
-			t.Fatal(err)
-		}
+		ss := New(logID, tc.low, tc.high)
 		if got := ss.Proto(); !proto.Equal(got, tc.want) {
 			t.Errorf("New().Proto(): %v, want %v", got, tc.want)
+		}
+		if got, want := ss.LowMark(), tc.low; got != want {
+			t.Errorf("LowMark(): got %v, want %v", got, want)
+		}
+		if got, want := ss.HighMark(), tc.high; got != want {
+			t.Errorf("HighMark(): got %v, want %v", got, want)
 		}
 	}
 }
