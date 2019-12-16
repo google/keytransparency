@@ -675,7 +675,7 @@ func (s *Server) BatchQueueUserUpdate(ctx context.Context, in *pb.BatchQueueUser
 }
 
 func fractionalUnix(t time.Time) float64 {
-	return float64(t.UnixNano()) * float64(time.Nanosecond) / float64(time.Second)
+	return float64(t.UnixNano()) * float64(time.Nanosecond) / float64(time.Microsecond)
 }
 
 func (s *Server) randLog(ctx context.Context, directoryID string) (int64, error) {

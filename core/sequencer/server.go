@@ -71,7 +71,7 @@ var (
 var zero = time.Unix(0, 0)
 
 func fractionalUnix(t time.Time) float64 {
-	return float64(t.UnixNano()) * float64(time.Nanosecond) / float64(time.Second)
+	return float64(t.UnixNano()) * float64(time.Nanosecond) / float64(time.Microsecond)
 }
 
 func createMetrics(mf monitoring.MetricFactory) {
