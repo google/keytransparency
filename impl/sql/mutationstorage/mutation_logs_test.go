@@ -106,7 +106,7 @@ func TestSend(t *testing.T) {
 	m, done := newForTest(ctx, t, directoryID, 1, 2)
 	defer done(ctx)
 	update := []byte("bar")
-	wm1 := water.NewMark(uint64(time.Now().UnixNano()))
+	wm1 := water.NewMark(uint64(time.Duration(time.Now().UnixNano()) * time.Nanosecond / time.Microsecond))
 	wm2 := wm1.Add(1000)
 	wm3 := wm2.Add(1)
 
