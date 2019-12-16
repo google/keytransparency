@@ -81,7 +81,7 @@ func (m *Mutations) Send(ctx context.Context, directoryID string, logID int64, u
 	}
 	// TODO(gbelvin): Implement retry with backoff for retryable errors if
 	// we get timestamp contention.
-	wm := water.NewMark(uint64(time.Now().UnixNano()))
+	wm := water.NewMark(uint64(time.Duration(time.Now().UnixNano()) * time.Nanosecond / time.Microsecond))
 	if err := m.send(ctx, wm, directoryID, logID, updateData...); err != nil {
 		return water.Mark{}, err
 	}
@@ -137,7 +137,7 @@ func (m *Mutations) send(ctx context.Context, wm water.Mark, directoryID string,
 
 	var maxTimestamp int64
 	if err := tx.QueryRowContext(ctx,
-		`SELECT COALESCE(MAX(TimeNanos), 0) FROM Queue WHERE DirectoryID = ? AND LogID = ?;`,
+		`SELECT COALESCE(MAX(TimeMicros), 0) FROM Queue WHERE DirectoryID = ? AND LogID = ?;`,
 		directoryID, logID).Scan(&maxTimestamp); err != nil {
 		return status.Errorf(codes.Internal, "could not find max timestamp: %v", err)
 	}
@@ -149,7 +149,7 @@ func (m *Mutations) send(ctx context.Context, wm water.Mark, directoryID string,
 
 	for i, data := range mData {
 		if _, err = tx.ExecContext(ctx,
-			`INSERT INTO Queue (DirectoryID, LogID, TimeNanos, LocalID, Mutation) VALUES (?, ?, ?, ?, ?);`,
+			`INSERT INTO Queue (DirectoryID, LogID, TimeMicros, LocalID, Mutation) VALUES (?, ?, ?, ?, ?);`,
 			directoryID, logID, wm.Value(), i, data); err != nil {
 			return status.Errorf(codes.Internal, "failed inserting into queue: %v", err)
 		}
@@ -164,11 +164,11 @@ func (m *Mutations) HighWatermark(ctx context.Context, directoryID string, logID
 	var count int32
 	var highTimestamp int64
 	if err := m.db.QueryRowContext(ctx,
-		`SELECT COUNT(*), COALESCE(MAX(T1.TimeNanos), 0) FROM
+		`SELECT COUNT(*), COALESCE(MAX(T1.TimeMicros), 0) FROM
 		(
-			SELECT Q.TimeNanos FROM Queue as Q
-			WHERE Q.DirectoryID = ? AND Q.LogID = ? AND Q.TimeNanos >= ?
-			ORDER BY Q.TimeNanos ASC
+			SELECT Q.TimeMicros FROM Queue as Q
+			WHERE Q.DirectoryID = ? AND Q.LogID = ? AND Q.TimeMicros >= ?
+			ORDER BY Q.TimeMicros ASC
 			LIMIT ?
 		) AS T1`,
 		directoryID, logID, start.Value(), batchSize).
@@ -188,9 +188,9 @@ func (m *Mutations) ReadLog(ctx context.Context, directoryID string,
 	logID int64, low, high water.Mark, batchSize int32) ([]*mutator.LogMessage, error) {
 	// Advance the low and high marks to the next highest quantum to preserve read semantics.
 	rows, err := m.db.QueryContext(ctx,
-		`SELECT TimeNanos, LocalID, Mutation FROM Queue
-		WHERE DirectoryID = ? AND LogID = ? AND TimeNanos >= ? AND TimeNanos < ?
-		ORDER BY TimeNanos, LocalID ASC
+		`SELECT TimeMicros, LocalID, Mutation FROM Queue
+		WHERE DirectoryID = ? AND LogID = ? AND TimeMicros >= ? AND TimeMicros < ?
+		ORDER BY TimeMicros, LocalID ASC
 		LIMIT ?;`,
 		directoryID, logID, low.Value(), high.Value(), batchSize)
 	if err != nil {
@@ -206,8 +206,8 @@ func (m *Mutations) ReadLog(ctx context.Context, directoryID string,
 	if len(msgs) > 0 {
 		last := msgs[len(msgs)-1]
 		restRows, err := m.db.QueryContext(ctx,
-			`SELECT TimeNanos, LocalID, Mutation FROM Queue
-			WHERE DirectoryID = ? AND LogID = ? AND TimeNanos = ? AND LocalID > ?
+			`SELECT TimeMicros, LocalID, Mutation FROM Queue
+			WHERE DirectoryID = ? AND LogID = ? AND TimeMicros = ? AND LocalID > ?
 			ORDER BY LocalID ASC;`,
 			directoryID, logID, last.ID.Value(), last.LocalID)
 		if err != nil {
