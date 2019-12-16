@@ -70,6 +70,10 @@ var (
 // so we need to pick a different, low sentinel value that the tests know about.
 var zero = time.Unix(0, 0)
 
+func fractionalUnix(t time.Time) float64 {
+	return float64(t.UnixNano()) * float64(time.Nanosecond) / float64(time.Second)
+}
+
 func createMetrics(mf monitoring.MetricFactory) {
 	knownDirectories = mf.NewGauge(
 		"known_directories",
@@ -280,7 +284,7 @@ func (s *Server) DefineRevisions(ctx context.Context,
 			return nil, status.Errorf(codes.Internal, "WriteBatchSources(): %v", err)
 		}
 		for _, source := range meta.Sources {
-			watermarkDefined.Set(float64(metadata.FromProto(source).EndTime().Unix()),
+			watermarkDefined.Set(fractionalUnix(metadata.FromProto(source).EndTime()),
 				in.DirectoryId, fmt.Sprintf("%v", source.LogId))
 		}
 	}
@@ -462,7 +466,7 @@ func (s *Server) ApplyRevision(ctx context.Context, in *spb.ApplyRevisionRequest
 	glog.V(2).Infof("CreateRevision: WriteLeaves:{Revision: %v}", in.Revision)
 
 	for _, s := range meta.Sources {
-		watermarkApplied.Set(float64(metadata.FromProto(s).EndTime().Unix()), in.DirectoryId, fmt.Sprintf("%v", s.LogId))
+		watermarkApplied.Set(fractionalUnix(metadata.FromProto(s).EndTime()), in.DirectoryId, fmt.Sprintf("%v", s.LogId))
 	}
 	mapLeafCount.Add(float64(len(newLeaves)), in.DirectoryId)
 	mapRevisionCount.Inc(in.DirectoryId)
