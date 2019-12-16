@@ -110,7 +110,7 @@ func (m MutationLogs) ReadLog(_ context.Context, _ string,
 	return out, nil
 }
 
-// HighWatermark returns the highest timestamp batchSize items beyond start.
+// HighWatermark returns the highest watermark batchSize items beyond start.
 func (m MutationLogs) HighWatermark(_ context.Context, _ string, logID int64, start water.Mark,
 	batchSize int32) (int32, water.Mark, error) {
 	logShard := m[logID]

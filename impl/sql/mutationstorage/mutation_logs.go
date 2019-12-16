@@ -137,7 +137,7 @@ func (m *Mutations) send(ctx context.Context, wm water.Mark, directoryID string,
 
 	var maxTimestamp int64
 	if err := tx.QueryRowContext(ctx,
-		`SELECT COALESCE(MAX(Timestamp), 0) FROM Queue WHERE DirectoryID = ? AND LogID = ?;`,
+		`SELECT COALESCE(MAX(TimeNanos), 0) FROM Queue WHERE DirectoryID = ? AND LogID = ?;`,
 		directoryID, logID).Scan(&maxTimestamp); err != nil {
 		return status.Errorf(codes.Internal, "could not find max timestamp: %v", err)
 	}
@@ -149,7 +149,7 @@ func (m *Mutations) send(ctx context.Context, wm water.Mark, directoryID string,
 
 	for i, data := range mData {
 		if _, err = tx.ExecContext(ctx,
-			`INSERT INTO Queue (DirectoryID, LogID, Timestamp, LocalID, Mutation) VALUES (?, ?, ?, ?, ?);`,
+			`INSERT INTO Queue (DirectoryID, LogID, TimeNanos, LocalID, Mutation) VALUES (?, ?, ?, ?, ?);`,
 			directoryID, logID, wm.Value(), i, data); err != nil {
 			return status.Errorf(codes.Internal, "failed inserting into queue: %v", err)
 		}
@@ -164,11 +164,11 @@ func (m *Mutations) HighWatermark(ctx context.Context, directoryID string, logID
 	var count int32
 	var highTimestamp int64
 	if err := m.db.QueryRowContext(ctx,
-		`SELECT COUNT(*), COALESCE(MAX(T1.Timestamp), 0) FROM
+		`SELECT COUNT(*), COALESCE(MAX(T1.TimeNanos), 0) FROM
 		(
-			SELECT Q.Timestamp FROM Queue as Q
-			WHERE Q.DirectoryID = ? AND Q.LogID = ? AND Q.Timestamp >= ?
-			ORDER BY Q.Timestamp ASC
+			SELECT Q.TimeNanos FROM Queue as Q
+			WHERE Q.DirectoryID = ? AND Q.LogID = ? AND Q.TimeNanos >= ?
+			ORDER BY Q.TimeNanos ASC
 			LIMIT ?
 		) AS T1`,
 		directoryID, logID, start.Value(), batchSize).
@@ -188,9 +188,9 @@ func (m *Mutations) ReadLog(ctx context.Context, directoryID string,
 	logID int64, low, high water.Mark, batchSize int32) ([]*mutator.LogMessage, error) {
 	// Advance the low and high marks to the next highest quantum to preserve read semantics.
 	rows, err := m.db.QueryContext(ctx,
-		`SELECT Timestamp, LocalID, Mutation FROM Queue
-		WHERE DirectoryID = ? AND LogID = ? AND Timestamp >= ? AND Timestamp < ?
-		ORDER BY Timestamp, LocalID ASC
+		`SELECT TimeNanos, LocalID, Mutation FROM Queue
+		WHERE DirectoryID = ? AND LogID = ? AND TimeNanos >= ? AND TimeNanos < ?
+		ORDER BY TimeNanos, LocalID ASC
 		LIMIT ?;`,
 		directoryID, logID, low.Value(), high.Value(), batchSize)
 	if err != nil {
@@ -206,8 +206,8 @@ func (m *Mutations) ReadLog(ctx context.Context, directoryID string,
 	if len(msgs) > 0 {
 		last := msgs[len(msgs)-1]
 		restRows, err := m.db.QueryContext(ctx,
-			`SELECT Timestamp, LocalID, Mutation FROM Queue
-			WHERE DirectoryID = ? AND LogID = ? AND Timestamp = ? AND LocalID > ?
+			`SELECT TimeNanos, LocalID, Mutation FROM Queue
+			WHERE DirectoryID = ? AND LogID = ? AND TimeNanos = ? AND LocalID > ?
 			ORDER BY LocalID ASC;`,
 			directoryID, logID, last.ID.Value(), last.LocalID)
 		if err != nil {

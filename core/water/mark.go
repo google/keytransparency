@@ -16,6 +16,8 @@
 package water
 
 // Mark is wrapper for uint64 representing a watermark, or a logical timestamp.
+// Some implementations use an actual timestamp in micro- or nanoseconds, some
+// use more generic sequence numbers.
 type Mark struct {
 	value uint64
 }
@@ -35,7 +37,7 @@ func (m Mark) Add(value uint64) Mark {
 	return Mark{value: m.value + value}
 }
 
-// Compare returns the result of comparing with the other Mark.
+// Compare returns the result of comparing this Mark with with the other.
 func (m Mark) Compare(other Mark) int {
 	if m.value < other.value {
 		return -1

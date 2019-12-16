@@ -66,11 +66,14 @@ func createMetrics(mf monitoring.MetricFactory) {
 		directoryIDLabel, logIDLabel)
 }
 
-// MutationLogs provides sets of time ordered message logs.
+// MutationLogs provides sets of roughly time ordered message logs.
 type MutationLogs interface {
 	// Send submits the whole group of mutations atomically to a given log.
+	// Returns the watermark key that the mutation batch got written at. This
+	// watermark can be used as a lower bound argument of a ReadLog call. To
+	// acquire a watermark to use for the upper bound, use HighWatermark.
+	//
 	// TODO(gbelvin): Create a batch level object to make it clear that this a batch of updates.
-	// Returns the logical timestamp that the mutation batch got written at.
 	Send(ctx context.Context, directoryID string, logID int64, mutation ...*pb.EntryUpdate) (water.Mark, error)
 	// ReadLog returns the messages in the (low, high] range stored in the
 	// specified log. ReadLog always returns complete units of the original

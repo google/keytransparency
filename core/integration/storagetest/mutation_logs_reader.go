@@ -28,11 +28,11 @@ import (
 // LogsReadWriter supports test's ability to write to and read from the mutation logs.
 type LogsReadWriter interface {
 	sequencer.LogsReader
-	// Send submits the whole group of mutations atomically to a log.
-	// TODO(gbelvin): Create a batch level object to make it clear that this a batch of updates.
-	// Returns the timestamp that the mutation batch got written at.
-	// This timestamp can be used as an argument to the lower bound of ReadLog [low, high).
-	// To acquire a value to  use  for the  upper bound of ReadLog [low, high), use HighWatermark.
+
+	// Send submits the whole group of mutations atomically to a given log.
+	// Returns the watermark key that the mutation batch got written at. This
+	// watermark can be used as a lower bound argument of a ReadLog call. To
+	// acquire a watermark to use for the upper bound, use HighWatermark.
 	Send(ctx context.Context, directoryID string, logID int64, mutation ...*pb.EntryUpdate) (water.Mark, error)
 }
 
@@ -60,7 +60,7 @@ func setupWatermarks(ctx context.Context, t *testing.T, m LogsReadWriter, dirID 
 	t.Helper()
 	// Setup the test by writing 10 items to the mutation log and
 	// collecting the reported high water mark after each write.
-	sent := []water.Mark{} // Timestamps that Send reported.
+	sent := []water.Mark{} // Watermarks that Send reported.
 	hwm := []water.Mark{}  // High water marks collected after each Send.
 	for i := 0; i <= maxIndex; i++ {
 		ts, err := m.Send(ctx, dirID, logID, &pb.EntryUpdate{Mutation: &pb.SignedEntry{Entry: []byte{byte(i)}}})
@@ -96,9 +96,13 @@ func (mutationLogsReaderTests) TestHighWatermarkPreserve(ctx context.Context, t 
 		batch int32
 		want  water.Mark
 	}{
-		// Verify that high watermarks preserves the starting time when batch size is 0.
+		// Verify that high watermarks preserves the starting mark when batch size is 0.
 		{desc: "batch 0", start: arbitraryWM, batch: 0, want: arbitraryWM},
-		// Verify that high watermarks preserves the starting time when there are no rows in the result.
+		// Verify that high watermarks preserves the starting mark when there are no rows in the result.
+		//
+		// TODO(pavelkalinnikov): This is actually not necessarily the case. The
+		// storage might return a higher watermark if it is confident that there
+		// won't be any entries in between.
 		{desc: "rows 0", start: sent[maxIndex].Add(1000), batch: 1, want: sent[maxIndex].Add(1000)},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {

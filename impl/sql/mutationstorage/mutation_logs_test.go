@@ -116,10 +116,10 @@ func TestSend(t *testing.T) {
 		wm       water.Mark
 		wantCode codes.Code
 	}{
-		// Enforce timestamp uniqueness.
+		// Enforce watermark uniqueness.
 		{desc: "First", wm: wm2},
 		{desc: "Second", wm: wm2, wantCode: codes.Aborted},
-		// Enforce a monotonically increasing timestamp
+		// Enforce a monotonically increasing watermark.
 		{desc: "Old", wm: wm1, wantCode: codes.Aborted},
 		{desc: "New", wm: wm3},
 	} {

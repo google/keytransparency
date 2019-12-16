@@ -39,10 +39,10 @@ var (
 		`CREATE TABLE IF NOT EXISTS Queue (
 		DirectoryID VARCHAR(30) NOT NULL,
 		LogID       BIGINT      NOT NULL,
-		Timestamp   BIGINT      NOT NULL, -- In nanoseconds from Unix epoch.
+		TimeNanos   BIGINT      NOT NULL, -- In nanoseconds from Unix epoch.
 		LocalID     BIGINT      NOT NULL,
 		Mutation    BLOB        NOT NULL,
-		PRIMARY KEY(DirectoryID, LogID, Timestamp, LocalID)
+		PRIMARY KEY(DirectoryID, LogID, TimeNanos, LocalID)
 	);`,
 		`CREATE TABLE IF NOT EXISTS Logs (
 		DirectoryID VARCHAR(30)   NOT NULL,
