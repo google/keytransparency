@@ -80,8 +80,15 @@ func (m MutationLogs) Send(_ context.Context, _ string, logID int64, mutation ..
 
 	// Convert []SignedEntry into []LogMessage for storage.
 	msgs := make([]*mutator.LogMessage, 0, len(entries))
-	for _, e := range entries {
-		msgs = append(msgs, &mutator.LogMessage{LogID: logID, ID: wm, CreatedAt: time.Now(), Mutation: e})
+	for i, e := range entries {
+		m := &mutator.LogMessage{
+			LogID:     logID,
+			ID:        wm,
+			LocalID:   int64(i),
+			CreatedAt: time.Now(),
+			Mutation:  e,
+		}
+		msgs = append(msgs, m)
 	}
 	m[logID] = append(logShard, batch{wm: wm, msgs: msgs})
 	return wm, nil
