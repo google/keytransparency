@@ -19,6 +19,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"time"
 
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/water"
@@ -80,7 +81,7 @@ func (m MutationLogs) Send(_ context.Context, _ string, logID int64, mutation ..
 	// Convert []SignedEntry into []LogMessage for storage.
 	msgs := make([]*mutator.LogMessage, 0, len(entries))
 	for _, e := range entries {
-		msgs = append(msgs, &mutator.LogMessage{ID: wm, Mutation: e})
+		msgs = append(msgs, &mutator.LogMessage{LogID: logID, ID: wm, CreatedAt: time.Now(), Mutation: e})
 	}
 	m[logID] = append(logShard, batch{wm: wm, msgs: msgs})
 	return wm, nil

@@ -197,7 +197,7 @@ func (m *Mutations) ReadLog(ctx context.Context, directoryID string,
 		return nil, err
 	}
 	defer rows.Close()
-	msgs, err := readQueueMessages(rows)
+	msgs, err := readQueueMessages(rows, logID)
 	if err != nil {
 		return nil, err
 	}
@@ -214,7 +214,7 @@ func (m *Mutations) ReadLog(ctx context.Context, directoryID string,
 			return nil, err
 		}
 		defer restRows.Close()
-		rest, err := readQueueMessages(restRows)
+		rest, err := readQueueMessages(restRows, logID)
 		if err != nil {
 			return nil, err
 		}
@@ -224,7 +224,7 @@ func (m *Mutations) ReadLog(ctx context.Context, directoryID string,
 	return msgs, nil
 }
 
-func readQueueMessages(rows *sql.Rows) ([]*mutator.LogMessage, error) {
+func readQueueMessages(rows *sql.Rows, logID int64) ([]*mutator.LogMessage, error) {
 	results := make([]*mutator.LogMessage, 0)
 	for rows.Next() {
 		var timestamp int64
@@ -238,8 +238,10 @@ func readQueueMessages(rows *sql.Rows) ([]*mutator.LogMessage, error) {
 			return nil, err
 		}
 		results = append(results, &mutator.LogMessage{
+			LogID:     logID,
 			ID:        water.NewMark(uint64(timestamp)),
 			LocalID:   localID,
+			CreatedAt: time.Unix(0, int64(time.Duration(timestamp)*time.Microsecond/time.Nanosecond)),
 			Mutation:  entryUpdate.Mutation,
 			ExtraData: entryUpdate.Committed,
 		})
