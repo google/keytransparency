@@ -18,6 +18,8 @@
 package mutator
 
 import (
+	"time"
+
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -51,8 +53,10 @@ type VerifyMutationFn func(mutation *pb.SignedEntry) error
 
 // LogMessage represents a change to a user, and associated data.
 type LogMessage struct {
+	LogID     int64
 	ID        water.Mark
 	LocalID   int64
+	CreatedAt time.Time
 	Mutation  *pb.SignedEntry
 	ExtraData *pb.Committed
 }

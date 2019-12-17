@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strconv"
 	"sync"
 	"time"
 
@@ -58,6 +59,7 @@ var (
 	watermarkWritten   monitoring.Gauge
 	watermarkDefined   monitoring.Gauge
 	watermarkApplied   monitoring.Gauge
+	appliedLatency     monitoring.Histogram
 	mutationFailures   monitoring.Counter
 	fnLatency          monitoring.Histogram
 	logRootTrail       monitoring.Gauge
@@ -100,6 +102,10 @@ func createMetrics(mf monitoring.MetricFactory) {
 	watermarkApplied = mf.NewGauge(
 		"watermark_applied",
 		"High watermark of each input log that has been committed in a map revision",
+		directoryIDLabel, logIDLabel)
+	appliedLatency = mf.NewHistogram(
+		"applied_latency",
+		"Latency between creating a mutation entry and putting it to a map revision, in seconds",
 		directoryIDLabel, logIDLabel)
 	mutationFailures = mf.NewCounter(
 		"mutation_failures",
@@ -470,6 +476,11 @@ func (s *Server) ApplyRevision(ctx context.Context, in *spb.ApplyRevisionRequest
 		return nil, err
 	}
 	glog.V(2).Infof("CreateRevision: WriteLeaves:{Revision: %v}", in.Revision)
+
+	writtenAt := time.Now()
+	for _, li := range logItems {
+		appliedLatency.Observe(writtenAt.Sub(li.CreatedAt).Seconds(), in.DirectoryId, strconv.FormatInt(li.LogID, 10))
+	}
 
 	for _, s := range meta.Sources {
 		watermarkApplied.Set(float64(metadata.FromProto(s).HighMark().Value()), in.DirectoryId, fmt.Sprintf("%v", s.LogId))
