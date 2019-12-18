@@ -210,7 +210,7 @@ func runSequencer(ctx context.Context, conn *grpc.ClientConn,
 	go sequencer.PeriodicallyRun(ctx, time.Tick(*refresh), func(ctx context.Context) {
 		if err := signer.ForAllMasterships(ctx, func(ctx context.Context, dirID string) error {
 			_, err := spb.NewKeyTransparencySequencerClient(conn).
-				UpdateMetrics(ctx, &spb.UpdateMetricsRequest{
+				EstimateBacklog(ctx, &spb.EstimateBacklogRequest{
 					DirectoryId:       dirID,
 					MaxUnappliedCount: 100000,
 				})

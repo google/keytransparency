@@ -212,39 +212,37 @@ func NewServer(
 	}
 }
 
-func (s *Server) UpdateMetrics(ctx context.Context, in *spb.UpdateMetricsRequest) (*spb.UpdateMetricsResponse, error) {
-	if err := s.unappliedMetric(ctx, in.DirectoryId, in.MaxUnappliedCount); err != nil {
-		glog.Errorf("unappliedMetric(%v): %v", in.DirectoryId, err)
-		return nil, err
-	}
-	return &spb.UpdateMetricsResponse{}, nil
-}
+// EstimateBacklog updates the log_entryunapplied metric for directoryID
+func (s *Server) EstimateBacklog(ctx context.Context, in *spb.EstimateBacklogRequest) (*spb.EstimateBacklogResponse, error) {
+	directoryID := in.GetDirectoryId()
+	maxCount := in.GetMaxUnappliedCount()
 
-// unappliedMetric updates the log_entryunapplied metric for directoryID
-func (s *Server) unappliedMetric(ctx context.Context, directoryID string, maxCount int32) error {
 	// Get the previous and current high water marks.
 	mapClient, err := s.trillian.MapClient(ctx, directoryID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	_, latestMapRoot, err := mapClient.GetAndVerifyLatestMapRoot(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	var lastMeta spb.MapMetadata
 	if err := proto.Unmarshal(latestMapRoot.Metadata, &lastMeta); err != nil {
-		return err
+		return nil, err
 	}
 	// Query metadata about outstanding log items.
 	count, meta, err := s.HighWatermarks(ctx, directoryID, &lastMeta, maxCount)
 	if err != nil {
-		return status.Errorf(codes.Internal, "HighWatermarks(): %v", err)
+		return nil, status.Errorf(codes.Internal, "HighWatermarks(): %v", err)
 	}
 	logEntryUnapplied.Set(float64(count), directoryID)
 	for _, source := range meta.Sources {
 		watermarkWritten.Set(float64(source.HighestExclusive), directoryID, fmt.Sprintf("%v", source.LogId))
 	}
-	return nil
+	return &spb.EstimateBacklogResponse{
+		DirectoryId:    directoryID,
+		UnappliedCount: count,
+	}, nil
 }
 
 // DefineRevisions returns the set of outstanding revisions that have not been

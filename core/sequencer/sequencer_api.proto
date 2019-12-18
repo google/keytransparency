@@ -128,14 +128,15 @@ message PublishRevisionsResponse {
   repeated int64 revisions = 1;
 }
 
-// UpdateMetricsRequest is empty.
-message UpdateMetricsRequest {
+message EstimateBacklogRequest {
   string directory_id = 1;
   int32 max_unapplied_count = 2;
 }
 
-// UpdateMetricsResponse is empty.
-message UpdateMetricsResponse {}
+message EstimateBacklogResponse {
+   string directory_id = 1;
+   int32 unapplied_count = 2;
+}
 
 // The KeyTransparency Sequencer API.
 service KeyTransparencySequencer {
@@ -153,6 +154,6 @@ service KeyTransparencySequencer {
   // PublishRevisions copies the MapRoots of all known map revisions into the Log
   // of MapRoots.
   rpc PublishRevisions(PublishRevisionsRequest) returns (PublishRevisionsResponse);
-  // UpdateMetrics will update various counters on the server. Call periodically.
-  rpc UpdateMetrics(UpdateMetricsRequest) returns (UpdateMetricsResponse);
+  // EstimateBacklog will update various counters on the server. Call periodically.
+  rpc EstimateBacklog(EstimateBacklogRequest) returns (EstimateBacklogResponse);
 }
