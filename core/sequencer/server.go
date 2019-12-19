@@ -103,9 +103,10 @@ func createMetrics(mf monitoring.MetricFactory) {
 		"watermark_applied",
 		"High watermark of each input log that has been committed in a map revision",
 		directoryIDLabel, logIDLabel)
-	appliedLatency = mf.NewHistogram(
+	appliedLatency = mf.NewHistogramWithBuckets(
 		"applied_latency",
 		"Latency between creating a mutation entry and putting it to a map revision, in seconds",
+		monitoring.LatencyBuckets(),
 		directoryIDLabel, logIDLabel)
 	mutationFailures = mf.NewCounter(
 		"mutation_failures",
