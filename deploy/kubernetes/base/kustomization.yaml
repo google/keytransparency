@@ -19,4 +19,5 @@ resources:
 - sequencer-service.yaml
 - server-deployment.yaml
 - server-service.yaml
+- ingress.yaml
 

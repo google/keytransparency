@@ -3,5 +3,5 @@ kind: Service
 metadata:
   name: server
 spec:
-  type: LoadBalancer
+  type: NodePort # Required for ingress
 
