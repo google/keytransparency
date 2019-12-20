@@ -42,7 +42,7 @@ timeout ${TIMEOUT} kubectl rollout status deployment/monitor
 timeout ${TIMEOUT} kubectl rollout status deployment/sequencer
 timeout ${TIMEOUT} kubectl rollout status deployment/server
 
-wget -T 60 --spider --retry-connrefused --waitretry=1 http://localhost:8081/metrics
+wget -T 60 --spider --retry-connrefused --waitretry=1 http://localhost:8081/readyz
 wget -T 60 -O /dev/null --no-check-certificate  \
 	--retry-connrefused --waitretry=1 \
 	--retry-on-http-error=405,404,503 \
