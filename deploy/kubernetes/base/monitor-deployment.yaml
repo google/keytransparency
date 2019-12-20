@@ -31,6 +31,14 @@ spec:
         - --alsologtostderr
         - --v=3
         image: gcr.io/key-transparency/keytransparency-monitor:latest
+        livenessProbe:
+         httpGet:
+           path: /healthz
+           port: 8099
+        readinessProbe:
+         httpGet:
+           path: /readyz
+           port: 8099
         name: monitor
         ports:
         - containerPort: 8099
