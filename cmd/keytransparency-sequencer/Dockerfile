@@ -11,6 +11,5 @@ RUN go get ./cmd/keytransparency-sequencer
 FROM gcr.io/distroless/base
 
 COPY --from=build /go/bin/keytransparency-sequencer /
-ADD ./genfiles/* /kt/
 
 ENTRYPOINT ["/keytransparency-sequencer"]
