@@ -16,6 +16,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"net"
 	"net/http"
 
@@ -26,9 +27,11 @@ import (
 	"google.golang.org/grpc"
 )
 
-func serveHTTPMetric(addr string) {
+func serveHTTPMetric(addr string, sqldb *sql.DB) {
 	metricMux := http.NewServeMux()
 	metricMux.Handle("/metrics", promhttp.Handler())
+	metricMux.Handle("/healthz", serverutil.Healthz())
+	metricMux.Handle("/readyz", serverutil.Readyz(sqldb))
 
 	glog.Infof("Hosting metrics on %v", addr)
 	if err := http.ListenAndServe(addr, metricMux); err != nil {

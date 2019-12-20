@@ -138,6 +138,8 @@ func main() {
 	// Insert handlers for other http paths here.
 	mux := http.NewServeMux()
 	mux.Handle("/metrics", promhttp.Handler())
+	mux.Handle("/healthz", serverutil.Healthz())
+	mux.Handle("/readyz", serverutil.Healthz())
 	mux.Handle("/", gwmux)
 
 	// Serve HTTP2 server over TLS.

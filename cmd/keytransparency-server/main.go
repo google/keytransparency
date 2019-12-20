@@ -155,6 +155,8 @@ func main() {
 	mux.Handle("/", gwmux)
 
 	metricMux := http.NewServeMux()
+	metricMux.Handle("/healthz", serverutil.Healthz())
+	metricMux.Handle("/readyz", serverutil.Readyz(sqldb))
 	metricMux.Handle("/metrics", promhttp.Handler())
 	go func() {
 		glog.Infof("Hosting metrics on %v", *metricsAddr)
