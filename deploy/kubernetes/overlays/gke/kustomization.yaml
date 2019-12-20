@@ -6,6 +6,5 @@ patchesStrategicMerge:
 - map-server-stackdriver-prometheus-sidecar.yaml
 - sequencer-stackdriver-prometheus-sidecar.yaml
 - server-stackdriver-prometheus-sidecar.yaml
-- server-service.yaml
 
 
