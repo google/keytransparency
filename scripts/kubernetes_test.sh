@@ -9,7 +9,7 @@ set -o pipefail
 
 # Build docker images and make them available inside of the k8 cluster
 export TRAVIS_COMMIT=${TRAVIS_COMMIT:-$(git rev-parse HEAD)}
-#docker-compose build --parallel
+docker-compose build --parallel
 kind load docker-image gcr.io/key-transparency/keytransparency-monitor:${TRAVIS_COMMIT}
 kind load docker-image gcr.io/key-transparency/keytransparency-sequencer:${TRAVIS_COMMIT}
 kind load docker-image gcr.io/key-transparency/keytransparency-server:${TRAVIS_COMMIT}
