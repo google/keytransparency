@@ -7,6 +7,12 @@ set -o pipefail
 # kind create cluster --config deploy/kubernetes/kind-config.yaml
 # kubectl cluster-info --context kind-kind
 
+# Build docker images and make them available inside of the k8 cluster
+docker-compose build --parallel
+kind load docker-image gcr.io/key-transparency/keytransparency-monitor
+kind load docker-image gcr.io/key-transparency/keytransparency-sequencer
+kind load docker-image gcr.io/key-transparency/keytransparency-server
+
 # kubectl exits with 1 if kt-secret does not exist
 if ! kubectl get secret kt-secrets; then
   echo "Generating keys..."
@@ -17,7 +23,6 @@ fi
 
 # Hack to wait for the default service account's creation. https://github.com/kubernetes/kubernetes/issues/66689
 n=0; until ((n >= 60)); do kubectl -n default get serviceaccount default -o name && break; n=$((n + 1)); sleep 1; done; ((n < 60))
-
 
 kubectl apply -k deploy/kubernetes/overlays/local 
 trap "kubectl delete -k deploy/kubernetes/overlays/local" INT EXIT
