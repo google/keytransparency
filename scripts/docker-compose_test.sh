@@ -6,6 +6,7 @@ if [ ! -f genfiles/server.key ]; then
 	./scripts/prepare_server.sh -f
 fi
 
+docker-compose build --parallel
 docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 trap "docker-compose down" INT EXIT
 TIMEOUT=2m
