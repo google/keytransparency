@@ -8,10 +8,17 @@ set -o pipefail
 # kubectl cluster-info --context kind-kind
 
 # Build docker images and make them available inside of the k8 cluster
-docker-compose build --parallel
-kind load docker-image gcr.io/key-transparency/keytransparency-monitor
-kind load docker-image gcr.io/key-transparency/keytransparency-sequencer
-kind load docker-image gcr.io/key-transparency/keytransparency-server
+export TRAVIS_COMMIT=${TRAVIS_COMMIT:-$(git rev-parse HEAD)}
+#docker-compose build --parallel
+kind load docker-image gcr.io/key-transparency/keytransparency-monitor:${TRAVIS_COMMIT}
+kind load docker-image gcr.io/key-transparency/keytransparency-sequencer:${TRAVIS_COMMIT}
+kind load docker-image gcr.io/key-transparency/keytransparency-server:${TRAVIS_COMMIT}
+
+cd deploy/kubernetes/base
+kustomize edit set image gcr.io/key-transparency/keytransparency-monitor:${TRAVIS_COMMIT}
+kustomize edit set image gcr.io/key-transparency/keytransparency-sequencer:${TRAVIS_COMMIT}
+kustomize edit set image gcr.io/key-transparency/keytransparency-server:${TRAVIS_COMMIT}
+cd -
 
 # kubectl exits with 1 if kt-secret does not exist
 if ! kubectl get secret kt-secrets; then
