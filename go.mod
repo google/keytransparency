@@ -23,7 +23,7 @@ require (
 	github.com/golangci/golangci-lint v1.21.0 // indirect
 	github.com/google/certificate-transparency-go v1.1.0 // indirect
 	github.com/google/go-cmp v0.3.1
-	github.com/google/tink v1.2.1-0.20190523150020-6495d823d968
+	github.com/google/tink v1.3.0-rc3
 	github.com/google/trillian v1.3.3
 	github.com/gorilla/websocket v1.4.1 // indirect
 	github.com/gostaticanalysis/analysisutil v0.0.3 // indirect
