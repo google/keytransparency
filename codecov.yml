@@ -1,3 +1,14 @@
 ignore: 
   - "**/*.pb.go"     # ignore generated protos
   - "**/*.pb.gw.go"  # ignore generated protos
+coverage:
+  range: 60..80
+  round: down
+  precision: 2
+  status:
+    project:
+      default:
+        threshold: 1 # Allow coverage to drop by 1%
+    patch:
+      default:
+        threshold: 1 # Allow coverage to drop by 1%
