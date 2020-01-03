@@ -25,7 +25,7 @@ set -eufx
 export PROJECT_NAME_CI=key-transparency
 export CLOUDSDK_COMPUTE_ZONE=us-central1-a
 export CLUSTER_NAME_CI=ci-cluster
-
+export TRAVIS_COMMIT=${TRAVIS_COMMIT:-$(git rev-parse HEAD)}
 
 gcloud --quiet config set project ${PROJECT_NAME_CI}
 gcloud --quiet config set compute/zone ${CLOUDSDK_COMPUTE_ZONE}
