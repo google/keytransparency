@@ -27,15 +27,15 @@ import (
 	"google.golang.org/grpc"
 )
 
-func serveHTTPMetric(addr string, sqldb *sql.DB) {
-	metricMux := http.NewServeMux()
-	metricMux.Handle("/metrics", promhttp.Handler())
-	metricMux.Handle("/healthz", serverutil.Healthz())
-	metricMux.Handle("/readyz", serverutil.Readyz(sqldb))
-	metricMux.Handle("/", serverutil.Healthz())
+func serveHTTPMetrics(addr string, sqldb *sql.DB) {
+	mux := http.NewServeMux()
+	mux.Handle("/metrics", promhttp.Handler())
+	mux.Handle("/healthz", serverutil.Healthz())
+	mux.Handle("/readyz", serverutil.Readyz(sqldb))
+	mux.Handle("/", serverutil.Healthz())
 
-	glog.Infof("Hosting metrics on %v", addr)
-	if err := http.ListenAndServe(addr, metricMux); err != nil {
+	glog.Infof("Hosting server status and metrics on %v", addr)
+	if err := http.ListenAndServe(addr, mux); err != nil {
 		glog.Fatalf("ListenAndServeTLS(%v): %v", addr, err)
 	}
 }
