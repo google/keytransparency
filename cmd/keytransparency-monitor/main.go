@@ -69,19 +69,21 @@ func main() {
 	}
 	ktClient := pb.NewKeyTransparencyClient(cc)
 
-	// TODO(gbelvin): implement backoff for this
+	// The first gRPC command might fail while the keyserver is starting up. Retry for up to 1 minute.
+	cctx, cancel := context.WithTimeout(ctx, time.Minute)
+	defer cancel()
 	b := backoff.Backoff{
 		Min:    time.Millisecond,
 		Max:    time.Second,
 		Factor: 1.5,
 	}
 	var config *pb.Directory
-	cctx, cancel := context.WithTimeout(ctx, time.Minute)
-	defer cancel()
-	b.Retry(cctx, func() (err error) {
+	if err := b.Retry(cctx, func() (err error) {
 		config, err = ktClient.GetDirectory(ctx, &pb.GetDirectoryRequest{DirectoryId: *directoryID})
 		return
-	}, codes.Unavailable)
+	}, codes.Unavailable); err != nil {
+		glog.Exitf("Could not read directory info %v:", err)
+	}
 
 	// Read signing key:
 	key, err := pem.ReadPrivateKeyFile(*signingKey, *signingKeyPassword)
