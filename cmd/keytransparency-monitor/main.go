@@ -21,12 +21,14 @@ import (
 	"flag"
 	"net"
 	"net/http"
+	"time"
 
 	"github.com/golang/glog"
 	tcrypto "github.com/google/trillian/crypto"
 	"github.com/google/trillian/crypto/keys/pem"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
 
@@ -34,6 +36,7 @@ import (
 	"github.com/google/keytransparency/core/fake"
 	"github.com/google/keytransparency/core/monitor"
 	"github.com/google/keytransparency/core/monitorserver"
+	"github.com/google/keytransparency/internal/backoff"
 
 	mopb "github.com/google/keytransparency/core/api/monitor/v1/monitor_go_proto"
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
@@ -67,10 +70,18 @@ func main() {
 	ktClient := pb.NewKeyTransparencyClient(cc)
 
 	// TODO(gbelvin): implement backoff for this
-	config, err := ktClient.GetDirectory(ctx, &pb.GetDirectoryRequest{DirectoryId: *directoryID})
-	if err != nil {
-		glog.Exitf("Could not read directory info %v:", err)
+	b := backoff.Backoff{
+		Min:    time.Millisecond,
+		Max:    time.Second,
+		Factor: 1.5,
 	}
+	var config *pb.Directory
+	cctx, cancel := context.WithTimeout(ctx, time.Minute)
+	defer cancel()
+	b.Retry(cctx, func() (err error) {
+		config, err = ktClient.GetDirectory(ctx, &pb.GetDirectoryRequest{DirectoryId: *directoryID})
+		return
+	}, codes.Unavailable)
 
 	// Read signing key:
 	key, err := pem.ReadPrivateKeyFile(*signingKey, *signingKeyPassword)
