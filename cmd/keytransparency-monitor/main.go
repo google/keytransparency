@@ -140,7 +140,7 @@ func main() {
 	mux.Handle("/metrics", promhttp.Handler())
 	mux.Handle("/healthz", serverutil.Healthz())
 	mux.Handle("/readyz", serverutil.Healthz())
-	mux.Handle("/", gwmux)
+	mux.Handle("/", serverutil.RootHealthHandler(gwmux))
 
 	// Serve HTTP2 server over TLS.
 	glog.Infof("Listening on %v", *addr)

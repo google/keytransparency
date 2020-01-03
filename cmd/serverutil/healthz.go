@@ -16,9 +16,25 @@ package serverutil
 
 import "net/http"
 
-// Healthz is a liveness probe.
-func Healthz() http.HandlerFunc {
-	return func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(http.StatusOK)
+// Healthz is a liveness handler that always responds with HTTP 200.
+func Healthz() http.HandlerFunc { return healthz }
+
+func healthz(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("ok"))
+}
+
+// RootHeaalthHandler handles liveness checks at "/".
+// All other requests are passed through to `otherHandler`.
+func RootHealthHandler(otherHandler http.Handler) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Capture requests for the root "/" page first.
+		// This is the default load balancer health check.
+		// https://cloud.google.com/kubernetes-engine/docs/concepts/ingress#health_checks
+		if r.URL.Path == "/" {
+			healthz(w, r)
+			return
+		}
+		otherHandler.ServeHTTP(w, r)
 	}
 }

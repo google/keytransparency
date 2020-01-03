@@ -49,7 +49,7 @@ func serveHTTPGateway(ctx context.Context, lis net.Listener, dopts []grpc.DialOp
 	}
 
 	mux := http.NewServeMux()
-	mux.Handle("/", gwmux)
+	mux.Handle("/", serverutil.RootHealthHandler(gwmux))
 
 	server := &http.Server{Handler: serverutil.GrpcHandlerFunc(grpcServer, mux)}
 	if err := server.ServeTLS(lis, *certFile, *keyFile); err != nil {

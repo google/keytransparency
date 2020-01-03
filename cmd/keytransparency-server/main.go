@@ -152,7 +152,7 @@ func main() {
 
 	// Insert handlers for other http paths here.
 	mux := http.NewServeMux()
-	mux.Handle("/", gwmux)
+	mux.Handle("/", serverutil.RootHealthHandler(gwmux))
 
 	metricMux := http.NewServeMux()
 	metricMux.Handle("/healthz", serverutil.Healthz())
