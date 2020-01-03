@@ -66,6 +66,7 @@ func main() {
 	}
 	ktClient := pb.NewKeyTransparencyClient(cc)
 
+	// TODO(gbelvin): implement backoff for this
 	config, err := ktClient.GetDirectory(ctx, &pb.GetDirectoryRequest{DirectoryId: *directoryID})
 	if err != nil {
 		glog.Exitf("Could not read directory info %v:", err)
