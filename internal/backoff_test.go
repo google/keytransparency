@@ -161,7 +161,7 @@ func TestRetry(t *testing.T) {
 			f: func() error {
 				// Cancel the context and return an error. This func will succeed on
 				// any future calls, but it should not be retried due to the context
-				// being cancelled.
+				// being canceled.
 				if ctx.Err() == nil {
 					cancel()
 					return status.Errorf(codes.Unavailable, "error")
