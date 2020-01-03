@@ -9,6 +9,14 @@ fi
 docker-compose build --parallel
 docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 trap "docker-compose down" INT EXIT
+TIMEOUT=2m
+timeout ${TIMEOUT} bash -c -- 'until [ "`docker inspect -f {{.State.Status}} keytransparency_db_1`" == "running" ]; do sleep 0.1; done;'
+timeout ${TIMEOUT} bash -c -- 'until [ "`docker inspect -f {{.State.Status}} keytransparency_log-server_1`" == "running" ]; do sleep 0.1; done;'
+timeout ${TIMEOUT} bash -c -- 'until [ "`docker inspect -f {{.State.Status}} keytransparency_log-signer_1`" == "running" ]; do sleep 0.1; done;'
+timeout ${TIMEOUT} bash -c -- 'until [ "`docker inspect -f {{.State.Status}} keytransparency_map-server_1`" == "running" ]; do sleep 0.1; done;'
+timeout ${TIMEOUT} bash -c -- 'until [ "`docker inspect -f {{.State.Status}} keytransparency_sequencer_1`" == "running" ]; do sleep 0.1; done;'
+timeout ${TIMEOUT} bash -c -- 'until [ "`docker inspect -f {{.State.Status}} keytransparency_server_1`" == "running" ]; do sleep 0.1; done;'
+timeout ${TIMEOUT} bash -c -- 'until [ "`docker inspect -f {{.State.Status}} keytransparency_monitor_1`" == "running" ]; do sleep 0.1; done;'
 
 wget -T 60 --spider --retry-connrefused --waitretry=1 http://localhost:8081/metrics
 wget -T 60 -O /dev/null --no-check-certificate  \
