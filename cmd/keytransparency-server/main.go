@@ -158,6 +158,7 @@ func main() {
 	metricMux.Handle("/healthz", serverutil.Healthz())
 	metricMux.Handle("/readyz", serverutil.Readyz(sqldb))
 	metricMux.Handle("/metrics", promhttp.Handler())
+	metricMux.Handle("/", serverutil.Healthz())
 	go func() {
 		glog.Infof("Hosting metrics on %v", *metricsAddr)
 		if err := http.ListenAndServe(*metricsAddr, metricMux); err != nil {

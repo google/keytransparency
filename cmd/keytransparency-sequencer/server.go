@@ -32,6 +32,7 @@ func serveHTTPMetric(addr string, sqldb *sql.DB) {
 	metricMux.Handle("/metrics", promhttp.Handler())
 	metricMux.Handle("/healthz", serverutil.Healthz())
 	metricMux.Handle("/readyz", serverutil.Readyz(sqldb))
+	metricMux.Handle("/", serverutil.Healthz())
 
 	glog.Infof("Hosting metrics on %v", addr)
 	if err := http.ListenAndServe(addr, metricMux); err != nil {
