@@ -21,12 +21,14 @@ import (
 	"flag"
 	"net"
 	"net/http"
+	"time"
 
 	"github.com/golang/glog"
 	tcrypto "github.com/google/trillian/crypto"
 	"github.com/google/trillian/crypto/keys/pem"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
 
@@ -34,6 +36,7 @@ import (
 	"github.com/google/keytransparency/core/fake"
 	"github.com/google/keytransparency/core/monitor"
 	"github.com/google/keytransparency/core/monitorserver"
+	"github.com/google/keytransparency/internal/backoff"
 
 	mopb "github.com/google/keytransparency/core/api/monitor/v1/monitor_go_proto"
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
@@ -66,8 +69,19 @@ func main() {
 	}
 	ktClient := pb.NewKeyTransparencyClient(cc)
 
-	config, err := ktClient.GetDirectory(ctx, &pb.GetDirectoryRequest{DirectoryId: *directoryID})
-	if err != nil {
+	// The first gRPC command might fail while the keyserver is starting up. Retry for up to 1 minute.
+	cctx, cancel := context.WithTimeout(ctx, time.Minute)
+	defer cancel()
+	b := backoff.Backoff{
+		Min:    time.Millisecond,
+		Max:    time.Second,
+		Factor: 1.5,
+	}
+	var config *pb.Directory
+	if err := b.Retry(cctx, func() (err error) {
+		config, err = ktClient.GetDirectory(ctx, &pb.GetDirectoryRequest{DirectoryId: *directoryID})
+		return
+	}, codes.Unavailable); err != nil {
 		glog.Exitf("Could not read directory info %v:", err)
 	}
 

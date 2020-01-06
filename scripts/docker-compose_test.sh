@@ -9,6 +9,14 @@ fi
 docker-compose build --parallel
 docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 trap "docker-compose down" INT EXIT
+TIMEOUT=2m
+timeout ${TIMEOUT} bash -c -- 'until [ "`docker inspect -f {{.State.Status}} $(docker-compose ps -q db)`" == "running" ]; do sleep 0.1; done;'
+timeout ${TIMEOUT} bash -c -- 'until [ "`docker inspect -f {{.State.Status}} $(docker-compose ps -q log-server)`" == "running" ]; do sleep 0.1; done;'
+timeout ${TIMEOUT} bash -c -- 'until [ "`docker inspect -f {{.State.Status}} $(docker-compose ps -q log-signer)`" == "running" ]; do sleep 0.1; done;'
+timeout ${TIMEOUT} bash -c -- 'until [ "`docker inspect -f {{.State.Status}} $(docker-compose ps -q map-server)`" == "running" ]; do sleep 0.1; done;'
+timeout ${TIMEOUT} bash -c -- 'until [ "`docker inspect -f {{.State.Status}} $(docker-compose ps -q sequencer)`" == "running" ]; do sleep 0.1; done;'
+timeout ${TIMEOUT} bash -c -- 'until [ "`docker inspect -f {{.State.Status}} $(docker-compose ps -q server)`" == "running" ]; do sleep 0.1; done;'
+timeout ${TIMEOUT} bash -c -- 'until [ "`docker inspect -f {{.State.Status}} $(docker-compose ps -q monitor)`" == "running" ]; do sleep 0.1; done;'
 
 wget -T 60 --spider --retry-connrefused --waitretry=1 http://localhost:8081/metrics
 wget -T 60 -O /dev/null --no-check-certificate  \

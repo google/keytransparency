@@ -38,7 +38,7 @@ timeout ${TIMEOUT} kubectl rollout status deployment/db
 timeout ${TIMEOUT} kubectl rollout status deployment/log-server
 timeout ${TIMEOUT} kubectl rollout status deployment/log-signer
 timeout ${TIMEOUT} kubectl rollout status deployment/map-server
-# timeout ${TIMEOUT} kubectl rollout status deployment/monitor # TODO(gbelvin): repair the monitor
+timeout ${TIMEOUT} kubectl rollout status deployment/monitor
 timeout ${TIMEOUT} kubectl rollout status deployment/sequencer
 timeout ${TIMEOUT} kubectl rollout status deployment/server
 
