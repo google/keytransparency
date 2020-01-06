@@ -21,7 +21,7 @@ spec:
       - command:
         - /keytransparency-monitor
         - --addr=0.0.0.0:8099
-        - --kt-url=server:8080
+        - --kt-url=server:443
         - --insecure
         - --directoryid=default
         - --tls-key=/run/secrets/server.key
