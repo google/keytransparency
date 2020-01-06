@@ -35,10 +35,12 @@ spec:
          httpGet:
            path: /healthz
            port: 8099
+           scheme: HTTPS
         readinessProbe:
          httpGet:
            path: /readyz
            port: 8099
+           scheme: HTTPS
         name: monitor
         ports:
         - containerPort: 8099
