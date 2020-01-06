@@ -50,7 +50,7 @@ var (
 
 	signingKey         = flag.String("sign-key", "genfiles/monitor_sign-key.pem", "Path to private key PEM for SMH signing")
 	signingKeyPassword = flag.String("password", "towel", "Password of the private key PEM file for SMH signing")
-	ktURL              = flag.String("kt-url", "localhost:8080", "URL of key-server.")
+	ktURL              = flag.String("kt-url", "localhost:443", "URL of key-server.")
 	insecure           = flag.Bool("insecure", false, "Skip TLS checks")
 	directoryID        = flag.String("directoryid", "", "KT Directory identifier to monitor")
 
@@ -80,6 +80,9 @@ func main() {
 	var config *pb.Directory
 	if err := b.Retry(cctx, func() (err error) {
 		config, err = ktClient.GetDirectory(ctx, &pb.GetDirectoryRequest{DirectoryId: *directoryID})
+		if err != nil {
+			glog.Errorf("GetDirectory(%v/%v): %v", *ktURL, *directoryID, err)
+		}
 		return
 	}, codes.Unavailable); err != nil {
 		glog.Exitf("Could not read directory info %v:", err)
@@ -138,7 +141,9 @@ func main() {
 	// Insert handlers for other http paths here.
 	mux := http.NewServeMux()
 	mux.Handle("/metrics", promhttp.Handler())
-	mux.Handle("/", gwmux)
+	mux.Handle("/healthz", serverutil.Healthz())
+	mux.Handle("/readyz", serverutil.Healthz())
+	mux.Handle("/", serverutil.RootHealthHandler(gwmux))
 
 	// Serve HTTP2 server over TLS.
 	glog.Infof("Listening on %v", *addr)

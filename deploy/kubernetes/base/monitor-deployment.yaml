@@ -21,7 +21,7 @@ spec:
       - command:
         - /keytransparency-monitor
         - --addr=0.0.0.0:8099
-        - --kt-url=server:8080
+        - --kt-url=server:443
         - --insecure
         - --directoryid=default
         - --tls-key=/run/secrets/server.key
@@ -31,6 +31,16 @@ spec:
         - --alsologtostderr
         - --v=3
         image: gcr.io/key-transparency/keytransparency-monitor:latest
+        livenessProbe:
+         httpGet:
+           path: /healthz
+           port: 8099
+           scheme: HTTPS
+        readinessProbe:
+         httpGet:
+           path: /readyz
+           port: 8099
+           scheme: HTTPS
         name: monitor
         ports:
         - containerPort: 8099

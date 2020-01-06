@@ -18,7 +18,7 @@ timeout ${TIMEOUT} bash -c -- 'until [ "`docker inspect -f {{.State.Status}} $(d
 timeout ${TIMEOUT} bash -c -- 'until [ "`docker inspect -f {{.State.Status}} $(docker-compose ps -q server)`" == "running" ]; do sleep 0.1; done;'
 timeout ${TIMEOUT} bash -c -- 'until [ "`docker inspect -f {{.State.Status}} $(docker-compose ps -q monitor)`" == "running" ]; do sleep 0.1; done;'
 
-wget -T 60 --spider --retry-connrefused --waitretry=1 http://localhost:8081/metrics
+wget -T 60 --spider --retry-connrefused --waitretry=1 http://localhost:8081/readyz
 wget -T 60 -O /dev/null --no-check-certificate  \
 	--retry-connrefused --waitretry=1 \
 	--retry-on-http-error=405,404,503 \

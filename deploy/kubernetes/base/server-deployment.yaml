@@ -32,7 +32,11 @@ spec:
         image: gcr.io/key-transparency/keytransparency-server:latest
         livenessProbe:
          httpGet:
-           path: /metrics
+           path: /healthz
+           port: 8081
+        readinessProbe:
+         httpGet:
+           path: /readyz
            port: 8081
         name: server
         ports:
