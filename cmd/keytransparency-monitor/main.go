@@ -80,6 +80,9 @@ func main() {
 	var config *pb.Directory
 	if err := b.Retry(cctx, func() (err error) {
 		config, err = ktClient.GetDirectory(ctx, &pb.GetDirectoryRequest{DirectoryId: *directoryID})
+		if err != nil {
+			glog.Errorf("GetDirectory(%v/%v): %v", *ktURL, *directoryID, err)
+		}
 		return
 	}, codes.Unavailable); err != nil {
 		glog.Exitf("Could not read directory info %v:", err)
