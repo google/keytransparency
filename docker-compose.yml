@@ -11,7 +11,6 @@ services:
   # Only works when when replicas = 1 for reach monitored service.
   # Kubernetes sidecars are needed for replicas > 1. 
   prometheus-to-sd:
-    container_name: prometheus-to-sd
     image: gcr.io/google-containers/prometheus-to-sd:v0.2.6
     entrypoint:
       - /monitor
