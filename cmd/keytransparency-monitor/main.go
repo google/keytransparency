@@ -17,9 +17,7 @@ package main
 import (
 	"context"
 	"crypto"
-	"crypto/tls"
 	"flag"
-	"net"
 	"time"
 
 	"github.com/golang/glog"
@@ -28,7 +26,6 @@ import (
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
 
 	"github.com/google/keytransparency/cmd/serverutil"
@@ -44,15 +41,11 @@ import (
 )
 
 var (
-	addr        = flag.String("addr", ":8070", "The ip:port combination to listen on")
-	metricsAddr = flag.String("metrics-addr", ":8071", "The ip:port to publish metrics on")
-	keyFile     = flag.String("tls-key", "genfiles/server.key", "TLS private key file")
-	certFile    = flag.String("tls-cert", "genfiles/server.pem", "TLS cert file")
-
+	addr               = flag.String("addr", ":8070", "The ip:port combination to listen on")
+	metricsAddr        = flag.String("metrics-addr", ":8071", "The ip:port to publish metrics on")
 	signingKey         = flag.String("sign-key", "genfiles/monitor_sign-key.pem", "Path to private key PEM for SMH signing")
 	signingKeyPassword = flag.String("password", "towel", "Password of the private key PEM file for SMH signing")
 	ktURL              = flag.String("kt-url", "localhost:443", "URL of key-server.")
-	insecure           = flag.Bool("insecure", false, "Skip TLS checks")
 	directoryID        = flag.String("directoryid", "", "KT Directory identifier to monitor")
 )
 
@@ -61,7 +54,7 @@ func main() {
 	ctx := context.Background()
 
 	// Connect to Key Transparency
-	cc, err := dial(*ktURL, *insecure)
+	cc, err := grpc.Dial(*ktURL, grpc.WithInsecure())
 	if err != nil {
 		glog.Exitf("Error Dialing %v: %v", ktURL, err)
 	}
@@ -119,7 +112,7 @@ func main() {
 	grpc_prometheus.Register(grpcServer)
 	grpc_prometheus.EnableHandlingTimeHistogram()
 
-	lis, conn, done, err := serverutil.ListenTLS(ctx, *addr, *certFile, *keyFile)
+	lis, conn, done, err := serverutil.Listen(ctx, *addr)
 	if err != nil {
 		glog.Fatalf("Listen(%v): %v", *addr, err)
 	}
@@ -135,28 +128,4 @@ func main() {
 	g.Go(func() error { return serverutil.ServeHTTPAPI(gctx, httpL, conn, mopb.RegisterMonitorHandler) })
 	g.Go(m.Serve)
 	glog.Errorf("Monitor exiting: %v", g.Wait())
-}
-
-func dial(url string, insecure bool) (*grpc.ClientConn, error) {
-	tcreds, err := transportCreds(url, insecure)
-	if err != nil {
-		return nil, err
-	}
-
-	// TODO(ismail): authenticate the monitor to the kt-server:
-	return grpc.Dial(url, grpc.WithTransportCredentials(tcreds))
-}
-
-func transportCreds(ktURL string, insecure bool) (credentials.TransportCredentials, error) {
-	host, _, err := net.SplitHostPort(ktURL)
-	if err != nil {
-		return nil, err
-	}
-
-	if insecure {
-		return credentials.NewTLS(&tls.Config{
-			InsecureSkipVerify: true, // nolint: gosec
-		}), nil
-	}
-	return credentials.NewClientTLSFromCert(nil, host), nil
 }

@@ -16,38 +16,22 @@ package serverutil
 
 import (
 	"context"
-	"crypto/tls"
 	"net"
 
 	"github.com/golang/glog"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
 )
 
-// ListenTLS binds to listenAddr and returns a gRPC connection to it.
-func ListenTLS(ctx context.Context, listenAddr, certFile, keyFile string) (net.Listener, *grpc.ClientConn, func(), error) {
-	cert, err := tls.LoadX509KeyPair(certFile, keyFile)
+// Listen binds to listenAddr and returns a gRPC connection to it.
+func Listen(ctx context.Context, listenAddr string) (net.Listener, *grpc.ClientConn, func(), error) {
+	lis, err := net.Listen("tcp", listenAddr)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	config := &tls.Config{
-		Certificates: []tls.Certificate{cert},
-		NextProtos:   []string{"http/1.1", "h2"},
-	}
-	lis, err := tls.Listen("tcp", listenAddr, config)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-
 	addr := lis.Addr().String()
 	glog.Infof("Listening on %v", addr)
 
-	// Non-blocking dial before we start the server.
-	tcreds, err := credentials.NewClientTLSFromFile(certFile, "")
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	conn, err := grpc.DialContext(ctx, addr, grpc.WithTransportCredentials(tcreds))
+	conn, err := grpc.DialContext(ctx, addr, grpc.WithInsecure())
 	if err != nil {
 		return nil, nil, nil, err
 	}

@@ -20,8 +20,6 @@ spec:
         - --db=test:zaphod@tcp(db:3306)/test
         - --log-url=log-server:8090
         - --map-url=map-server:8090
-        - --tls-key=/run/secrets/server.key
-        - --tls-cert=/run/secrets/server.crt
         - --auth-type=insecure-fake
         - --alsologtostderr
         - --v=5
@@ -39,9 +37,5 @@ spec:
         - containerPort: 8080
         - containerPort: 8081
         resources: {}
-        volumeMounts:
-        - name: secrets
-          mountPath: "/run/secrets"
-          readOnly: true
       restartPolicy: Always
 status: {}

@@ -47,8 +47,6 @@ var (
 	addr         = flag.String("addr", ":8080", "The ip:port combination to listen on")
 	metricsAddr  = flag.String("metrics-addr", ":8081", "The ip:port to publish metrics on")
 	serverDBPath = flag.String("db", "test:zaphod@tcp(localhost:3306)/test", "Database connection string")
-	keyFile      = flag.String("tls-key", "genfiles/server.key", "TLS private key file")
-	certFile     = flag.String("tls-cert", "genfiles/server.crt", "TLS cert file")
 	authType     = flag.String("auth-type", "google", "Sets the type of authentication required from clients to update their entries. Accepted values are google (oauth tokens) and insecure-fake (for testing only).")
 
 	mapURL           = flag.String("map-url", "", "URL of Trillian Map Server")
@@ -131,7 +129,7 @@ func main() {
 	grpc_prometheus.Register(grpcServer)
 	grpc_prometheus.EnableHandlingTimeHistogram()
 
-	lis, conn, done, err := serverutil.ListenTLS(ctx, *addr, *certFile, *keyFile)
+	lis, conn, done, err := serverutil.Listen(ctx, *addr)
 	if err != nil {
 		glog.Fatalf("Listen(%v): %v", *addr, err)
 	}

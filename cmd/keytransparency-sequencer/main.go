@@ -54,8 +54,6 @@ import (
 )
 
 var (
-	keyFile     = flag.String("tls-key", "genfiles/server.key", "TLS private key file")
-	certFile    = flag.String("tls-cert", "genfiles/server.crt", "TLS cert file")
 	addr        = flag.String("addr", ":8080", "The ip:port to serve on")
 	metricsAddr = flag.String("metrics-addr", ":8081", "The ip:port to publish metrics on")
 
@@ -140,7 +138,7 @@ func main() {
 	)
 
 	// Listen and create empty grpc client connection.
-	lis, conn, done, err := serverutil.ListenTLS(ctx, *addr, *certFile, *keyFile)
+	lis, conn, done, err := serverutil.Listen(ctx, *listenAddr)
 	if err != nil {
 		glog.Fatalf("Listen(%v): %v", *addr, err)
 	}

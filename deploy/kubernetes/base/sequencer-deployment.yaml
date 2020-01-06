@@ -21,8 +21,6 @@ spec:
         - --addr=0.0.0.0:8080
         - --log-url=log-server:8090
         - --map-url=map-server:8090
-        - --tls-key=/run/secrets/server.key
-        - --tls-cert=/run/secrets/server.crt
         - --alsologtostderr
         - --v=5
         image: gcr.io/key-transparency/keytransparency-sequencer:latest
@@ -39,9 +37,5 @@ spec:
         - containerPort: 8080
         - containerPort: 8081
         resources: {}
-        volumeMounts:
-        - name: secrets
-          mountPath: "/run/secrets"
-          readOnly: true
       restartPolicy: Always
 status: {}
