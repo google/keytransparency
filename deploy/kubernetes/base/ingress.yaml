@@ -3,6 +3,8 @@ kind: Ingress
 metadata:
   name: kt-ingress
 spec:
+  tls:
+  - secretName: kt-tls
   backend:
     serviceName: server
     servicePort: 443

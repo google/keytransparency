@@ -13,10 +13,6 @@ spec:
       labels:
         io.kompose.service: sequencer
     spec:
-      volumes:
-       - name: secrets
-         secret:
-           secretName: kt-secrets
       containers:
       - command:
         - /keytransparency-sequencer

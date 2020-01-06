@@ -21,11 +21,12 @@ kustomize edit set image gcr.io/key-transparency/keytransparency-server:${TRAVIS
 cd -
 
 # kubectl exits with 1 if kt-secret does not exist
-if ! kubectl get secret kt-secrets; then
+if ! kubectl get secret kt-tls; then
   echo "Generating keys..."
   rm -f ./genfiles/*
   ./scripts/prepare_server.sh -f
-  kubectl create secret generic kt-secrets --from-file=genfiles/server.crt --from-file=genfiles/server.key --from-file=genfiles/monitor_sign-key.pem
+  kubectl create secret generic kt-monitor --from-file=genfiles/monitor_sign-key.pem
+  kubectl create secret tls kt-tls --cert=genfiles/server.crt --key=genfiles/server.key
 fi
 
 # Hack to wait for the default service account's creation. https://github.com/kubernetes/kubernetes/issues/66689

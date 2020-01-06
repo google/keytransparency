@@ -13,10 +13,6 @@ spec:
       labels:
         io.kompose.service: server
     spec:
-      volumes:
-       - name: secrets
-         secret:
-           secretName: kt-secrets
       containers:
       - command:
         - /keytransparency-server

@@ -16,7 +16,7 @@ spec:
       volumes:
        - name: secrets
          secret:
-           secretName: kt-secrets
+           secretName: kt-monitor
       containers:
       - command:
         - /keytransparency-monitor

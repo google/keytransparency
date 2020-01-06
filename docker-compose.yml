@@ -85,8 +85,6 @@ services:
       - --db=test:zaphod@tcp(db:3306)/test
       - --log-url=log-server:8090
       - --map-url=map-server:8090
-      - --tls-key=/run/secrets/server.key
-      - --tls-cert=/run/secrets/server.crt
       - --auth-type=insecure-fake
       - --alsologtostderr
       - --v=1
@@ -108,8 +106,6 @@ services:
       - --addr=0.0.0.0:8080
       - --log-url=log-server:8090
       - --map-url=map-server:8090
-      - --tls-key=/run/secrets/server.key
-      - --tls-cert=/run/secrets/server.crt
       - --alsologtostderr
       - --v=5
     ports:
@@ -133,8 +129,6 @@ services:
       - --kt-url=server:8080
       - --insecure
       - --directoryid=default
-      - --tls-key=/run/secrets/server.key
-      - --tls-cert=/run/secrets/server.crt
       - --sign-key=/run/secrets/monitor.key
       - --password=towel
       - --alsologtostderr
@@ -143,8 +137,6 @@ services:
     - "8070:8070" # gRPC / HTTPS
     - "8071:8071" # HTTP metrics
     secrets:
-      - server.key
-      - server.crt
       - monitor.key
 
 networks:
