@@ -16,7 +16,10 @@ spec:
       volumes:
        - name: secrets
          secret:
-           secretName: kt-secrets
+           secretName: kt-monitor
+       - name: tls
+         secret:
+           secretName: kt-tls
       containers:
       - command:
         - /keytransparency-monitor
@@ -25,8 +28,8 @@ spec:
         - --kt-url=server:443
         - --insecure
         - --directoryid=default
-        - --tls-key=/run/secrets/server.key
-        - --tls-cert=/run/secrets/server.crt
+        - --tls-key=/run/tls/tls.key
+        - --tls-cert=/run/tls/tls.crt
         - --sign-key=/run/secrets/monitor_sign-key.pem
         - --password=towel
         - --alsologtostderr
@@ -50,6 +53,9 @@ spec:
         volumeMounts:
         - name: secrets
           mountPath: "/run/secrets"
+          readOnly: true
+        - name: tls
+          mountPath: "/run/tls"
           readOnly: true
       restartPolicy: Always
 status: {}
