@@ -77,6 +77,17 @@ services:
       - log-server
       - map-server
     image: gcr.io/key-transparency/keytransparency-server:${TRAVIS_COMMIT}
+    deploy:
+      replicas: 1
+      labels:
+        com.docker.lb.hosts: keys.keytranspraency.org
+        com.docker.lb.network: kt-network
+        com.docker.lb.port: 443
+        com.docker.lb.ssl_cert: server.cert
+        com.docker.lb.ssl_key: server.key
+    environment:
+      METADATA: proxy-handles-tls
+    restart: always
     ports:
       - "443:8080" # json & grpc
       - "8081:8081" # metrics
@@ -90,9 +101,9 @@ services:
       - --v=1
     labels:
       kompose.service.type: LoadBalancer
-    secrets:
-      - server.key
-      - server.crt
+    networks:
+      - default
+      - ingress
 
   sequencer:
     depends_on:
@@ -143,3 +154,5 @@ networks:
   attachable:
     driver: overlay
     attachable: true
+  ingress:
+    driver: overlay
