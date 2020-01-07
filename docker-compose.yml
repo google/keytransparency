@@ -8,22 +8,6 @@ secrets:
     file: ./genfiles/monitor_sign-key.pem
 
 services:
-  # Only works when when replicas = 1 for reach monitored service.
-  # Kubernetes sidecars are needed for replicas > 1. 
-  prometheus-to-sd:
-    image: gcr.io/google-containers/prometheus-to-sd:v0.2.6
-    entrypoint:
-      - /monitor
-      - --stackdriver-prefix=custom.googleapis.com
-      - --source=logserver:http://log-server:8091/metrics
-      - --source=logsigner:http://log-signer:8091/metrics
-      - --source=mapserver:http://map-server:8091/metrics
-      - --source=keyserver:http://server:8081/metrics
-      - --source=sequencer:http://sequencer:8081/metrics
-      - --pod-id=prometheus-to-sd
-      - --namespace-id=default
-      - --metrics-resolution=5s
-
   prometheus:
     depends_on:
       - server
