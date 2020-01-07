@@ -8,8 +8,10 @@ fi
 
 export TRAVIS_COMMIT=${TRAVIS_COMMIT:-$(git rev-parse HEAD)}
 docker-compose build --parallel
-docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
-trap "docker-compose down" INT EXIT
+# Assumes there is a docker swarm already configured.
+# docker swarm init
+docker stack deploy -c docker-compose.yml -c docker-compose.prod.yml kt
+trap "docker stack rm kt" INT EXIT
 TIMEOUT=2m
 timeout ${TIMEOUT} bash -c -- 'until [ "`docker inspect -f {{.State.Status}} $(docker-compose ps -q db)`" == "running" ]; do sleep 0.1; done;'
 timeout ${TIMEOUT} bash -c -- 'until [ "`docker inspect -f {{.State.Status}} $(docker-compose ps -q log-server)`" == "running" ]; do sleep 0.1; done;'
