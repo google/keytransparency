@@ -132,11 +132,6 @@ services:
       - --v=1
     labels:
       kompose.service.type: LoadBalancer
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8081/readyz"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
     secrets:
       - server.key
       - server.crt
@@ -164,11 +159,6 @@ services:
     ports:
       - "8080"
       - "8081"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8081/readyz"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
     secrets:
       - server.key
       - server.crt
