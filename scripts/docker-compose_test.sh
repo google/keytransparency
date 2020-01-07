@@ -12,14 +12,7 @@ docker-compose build --parallel
 # docker swarm init
 docker stack deploy -c docker-compose.yml -c docker-compose.prod.yml kt
 trap "docker stack rm kt" INT EXIT
-TIMEOUT=2m
-timeout ${TIMEOUT} bash -c -- 'until [ "`docker inspect -f {{.State.Status}} $(docker-compose ps -q db)`" == "running" ]; do sleep 0.1; done;'
-timeout ${TIMEOUT} bash -c -- 'until [ "`docker inspect -f {{.State.Status}} $(docker-compose ps -q log-server)`" == "running" ]; do sleep 0.1; done;'
-timeout ${TIMEOUT} bash -c -- 'until [ "`docker inspect -f {{.State.Status}} $(docker-compose ps -q log-signer)`" == "running" ]; do sleep 0.1; done;'
-timeout ${TIMEOUT} bash -c -- 'until [ "`docker inspect -f {{.State.Status}} $(docker-compose ps -q map-server)`" == "running" ]; do sleep 0.1; done;'
-timeout ${TIMEOUT} bash -c -- 'until [ "`docker inspect -f {{.State.Health.Status}} $(docker-compose ps -q sequencer)`" == "healthy" ]; do sleep 0.1; done;'
-timeout ${TIMEOUT} bash -c -- 'until [ "`docker inspect -f {{.State.Health.Status}} $(docker-compose ps -q server)`" == "healthy" ]; do sleep 0.1; done;'
-timeout ${TIMEOUT} bash -c -- 'until [ "`docker inspect -f {{.State.Health.Status}} $(docker-compose ps -q monitor)`" == "healthy" ]; do sleep 0.1; done;'
+./scripts/docker-stack-wait.sh -t 180 kt
 
 wget -T 60 --spider --retry-connrefused --waitretry=1 http://localhost:8081/readyz
 wget -T 60 -O /dev/null --no-check-certificate  \
