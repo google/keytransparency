@@ -30,7 +30,10 @@ func main() {
 		log.Fatal("Expected URL as command-line argument")
 	}
 	url := os.Args[1]
+	//nolint:gas
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+
+	// TODO(gbelvin): sanitize user input to avoice SSRF attacks.
 	resp, err := http.Get(url)
 	if err != nil {
 		log.Fatalf("http.Get(%v): %v", url, err)
