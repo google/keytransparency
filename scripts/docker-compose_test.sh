@@ -15,9 +15,9 @@ timeout ${TIMEOUT} bash -c -- 'until [ "`docker inspect -f {{.State.Status}} $(d
 timeout ${TIMEOUT} bash -c -- 'until [ "`docker inspect -f {{.State.Status}} $(docker-compose ps -q log-server)`" == "running" ]; do sleep 0.1; done;'
 timeout ${TIMEOUT} bash -c -- 'until [ "`docker inspect -f {{.State.Status}} $(docker-compose ps -q log-signer)`" == "running" ]; do sleep 0.1; done;'
 timeout ${TIMEOUT} bash -c -- 'until [ "`docker inspect -f {{.State.Status}} $(docker-compose ps -q map-server)`" == "running" ]; do sleep 0.1; done;'
-timeout ${TIMEOUT} bash -c -- 'until [ "`docker inspect -f {{.State.Status}} $(docker-compose ps -q sequencer)`" == "running" ]; do sleep 0.1; done;'
-timeout ${TIMEOUT} bash -c -- 'until [ "`docker inspect -f {{.State.Status}} $(docker-compose ps -q server)`" == "running" ]; do sleep 0.1; done;'
-timeout ${TIMEOUT} bash -c -- 'until [ "`docker inspect -f {{.State.Status}} $(docker-compose ps -q monitor)`" == "running" ]; do sleep 0.1; done;'
+timeout ${TIMEOUT} bash -c -- 'until [ "`docker inspect -f {{.State.Health.Status}} $(docker-compose ps -q sequencer)`" == "healthy" ]; do sleep 0.1; done;'
+timeout ${TIMEOUT} bash -c -- 'until [ "`docker inspect -f {{.State.Health.Status}} $(docker-compose ps -q server)`" == "healthy" ]; do sleep 0.1; done;'
+timeout ${TIMEOUT} bash -c -- 'until [ "`docker inspect -f {{.State.Health.Status}} $(docker-compose ps -q monitor)`" == "healthy" ]; do sleep 0.1; done;'
 
 wget -T 60 --spider --retry-connrefused --waitretry=1 http://localhost:8081/readyz
 wget -T 60 -O /dev/null --no-check-certificate  \
