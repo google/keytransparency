@@ -35,7 +35,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("http.Get(%v): %v", url, err)
 	}
-	if resp.StatusCode >= 200 && resp.StatusCode <= 299 {
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
 		log.Fatalf("HTTP status %v was not in the 2xx range", resp.StatusCode)
 	}
 }
