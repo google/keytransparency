@@ -12,6 +12,7 @@ RUN go get ./cmd/healthcheck
 FROM gcr.io/distroless/base
 
 COPY --from=build /go/bin/keytransparency-monitor /
+COPY --from=build /go/bin/healthcheck /
 
 ENTRYPOINT ["/keytransparency-monitor"]
 HEALTHCHECK CMD ["/healthcheck","https://localhost:8099/healthz"]
