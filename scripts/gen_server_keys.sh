@@ -39,8 +39,9 @@ fi
 SANEXT="[SAN]\nbasicConstraints=CA:TRUE\nsubjectAltName=@alt_names\n\n${ALTNAMES}"
 
 # Create output directory.
-mkdir -p "$(go env GOPATH)/src/github.com/google/keytransparency/genfiles"
-cd "$(go env GOPATH)/src/github.com/google/keytransparency/genfiles"
+KT_DIR=$(go list -f '{{ .Dir }}' -m github.com/google/keytransparency)
+mkdir -p "${KT_DIR}/genfiles"
+cd "${KT_DIR}/genfiles"
 
 # Generate TLS keys.
 openssl genrsa -des3 -passout pass:xxxx -out server.pass.key 2048
