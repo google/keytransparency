@@ -33,7 +33,7 @@ func main() {
 	//nolint:gas
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 
-	// TODO(gbelvin): sanitize user input to avoice SSRF attacks.
+	//nolint:gas
 	resp, err := http.Get(url)
 	if err != nil {
 		log.Fatalf("http.Get(%v): %v", url, err)
