@@ -125,7 +125,7 @@ fi
 ##### Executing #####
 #####################
 
-cd "$(go env GOPATH)/src/github.com/google/keytransparency"
+cd $(go list -f '{{ .Dir }}' -m github.com/google/keytransparency)
 
 # Create keys.
 if ((FRONTEND == 1)); then
