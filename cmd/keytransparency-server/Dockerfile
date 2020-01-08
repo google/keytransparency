@@ -18,3 +18,4 @@ ENTRYPOINT ["/keytransparency-server"]
 HEALTHCHECK CMD ["/healthcheck","http://localhost:8081/healthz"]
 
 EXPOSE 8080
+EXPOSE 8081

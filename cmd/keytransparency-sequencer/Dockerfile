@@ -16,3 +16,6 @@ COPY --from=build /go/bin/healthcheck /
 
 ENTRYPOINT ["/keytransparency-sequencer"]
 HEALTHCHECK CMD ["/healthcheck","http://localhost:8081/healthz"]
+
+EXPOSE 8080
+EXPOSE 8081
