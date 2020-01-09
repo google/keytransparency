@@ -12,6 +12,7 @@ docker-compose build --parallel
 # docker swarm init
 docker stack deploy -c docker-compose.yml -c docker-compose.prod.yml kt
 trap "docker stack rm kt" INT EXIT
+docker run -t --network kt_attachable gcr.io/key-transparency/init:${TRAVIS_COMMIT} sequencer:8080 -- curl -k -X POST https://sequencer:8080/v1/directories -d'{"directory_id":"default","min_interval":"1s","max_interval":"60s"}'
 ./scripts/docker-stack-wait.sh -t 180 kt
 
 wget -T 60 --spider --retry-connrefused --waitretry=1 http://localhost:8081/readyz
