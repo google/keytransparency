@@ -13,9 +13,6 @@ services:
       - server
       - sequencer
     image: gcr.io/key-transparency/prometheus:${TRAVIS_COMMIT}
-    build:
-      context: .
-      dockerfile: deploy/prometheus/Dockerfile
     restart: always
     ports:
       - 9090:9090
@@ -81,9 +78,6 @@ services:
       - log-server
       - map-server
     image: gcr.io/key-transparency/keytransparency-server:${TRAVIS_COMMIT}
-    build:
-      context: .
-      dockerfile: ./cmd/keytransparency-server/Dockerfile
     restart: always
     ports:
       - "443:8080" # json & grpc
@@ -110,9 +104,6 @@ services:
       - log-server
       - map-server
     image: gcr.io/key-transparency/keytransparency-sequencer:${TRAVIS_COMMIT}
-    build:
-      context: .
-      dockerfile: ./cmd/keytransparency-sequencer/Dockerfile
     restart: always
     command:
       - --force_master
@@ -155,9 +146,6 @@ services:
       - server
       - sequencer
     image: gcr.io/key-transparency/keytransparency-monitor:${TRAVIS_COMMIT}
-    build:
-      context: .
-      dockerfile: ./cmd/keytransparency-monitor/Dockerfile
     command:
       - --addr=0.0.0.0:8099
       - --kt-url=server:8080

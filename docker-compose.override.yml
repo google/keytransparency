@@ -8,3 +8,33 @@ services:
     - "3306:3306"
     environment:
       MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+
+  prometheus:
+    image: gcr.io/key-transparency/prometheus:${TRAVIS_COMMIT}
+    build:
+      context: .
+      dockerfile: deploy/prometheus/Dockerfile
+
+  server:
+    image: gcr.io/key-transparency/keytransparency-server:${TRAVIS_COMMIT}
+    build:
+      context: .
+      dockerfile: ./cmd/keytransparency-server/Dockerfile
+
+  sequencer:
+    image: gcr.io/key-transparency/keytransparency-sequencer:${TRAVIS_COMMIT}
+    build:
+      context: .
+      dockerfile: ./cmd/keytransparency-sequencer/Dockerfile
+
+  init:
+    image: gcr.io/key-transparency/init:${TRAVIS_COMMIT}
+    build:
+      context: .
+      dockerfile: ./deploy/docker/init/Dockerfile
+
+  monitor:
+    image: gcr.io/key-transparency/keytransparency-monitor:${TRAVIS_COMMIT}
+    build:
+      context: .
+      dockerfile: ./cmd/keytransparency-monitor/Dockerfile
