@@ -13,13 +13,11 @@ services:
       - server
       - sequencer
     image: gcr.io/key-transparency/prometheus:${TRAVIS_COMMIT}
-    restart: always
     ports:
       - 9090:9090
 
   db:
     image: gcr.io/trillian-opensource-ci/db_server:latest
-    restart: always
     ports:
       - "3306"
     environment:
@@ -31,7 +29,6 @@ services:
     depends_on:
       - db
     image: gcr.io/trillian-opensource-ci/log_server:latest
-    restart: always
     command: 
       - --mysql_uri=test:zaphod@tcp(db:3306)/test
       - --rpc_endpoint=0.0.0.0:8090
@@ -45,7 +42,6 @@ services:
     depends_on:
       - db
     image: gcr.io/trillian-opensource-ci/log_signer:latest
-    restart: always
     command:
       - --mysql_uri=test:zaphod@tcp(db:3306)/test
       - --http_endpoint=0.0.0.0:8091
@@ -62,7 +58,6 @@ services:
     depends_on:
       - db
     image: gcr.io/trillian-opensource-ci/map_server:latest
-    restart: always
     command:
       - --mysql_uri=test:zaphod@tcp(db:3306)/test
       - --rpc_endpoint=0.0.0.0:8090
@@ -78,7 +73,6 @@ services:
       - log-server
       - map-server
     image: gcr.io/key-transparency/keytransparency-server:${TRAVIS_COMMIT}
-    restart: always
     ports:
       - "443:8080" # json & grpc
       - "8081:8081" # metrics
@@ -104,7 +98,6 @@ services:
       - log-server
       - map-server
     image: gcr.io/key-transparency/keytransparency-sequencer:${TRAVIS_COMMIT}
-    restart: always
     command:
       - --force_master
       - --db=test:zaphod@tcp(db:3306)/test
@@ -141,7 +134,6 @@ services:
       - --password=towel
       - --alsologtostderr
       - --v=3
-    restart: always
     ports:
     - "8099:8099" # gRPC / HTTPS
     secrets:
