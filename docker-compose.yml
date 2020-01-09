@@ -142,7 +142,13 @@ services:
       dockerfile: ./deploy/docker/init/Dockerfile
     depends_on:
       - sequencer
-    command:  sequencer:8080 -- curl -k https://sequencer:8080/v1/directories -d'{"directory_id":"default","min_interval":"1s","max_interval":"60s"}'
+    command:
+    - sequencer:8080
+    - --
+    - curl
+    - -k
+    - https://sequencer:8080/v1/directories
+    - -d{"directory_id":"default","min_interval":"1s","max_interval":"60s"}
 
   monitor:
     depends_on:
