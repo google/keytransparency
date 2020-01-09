@@ -1,4 +1,4 @@
-version: "3.1"
+version: "3.2"
 secrets:
   server.key:
     file: ./genfiles/server.key
@@ -121,6 +121,9 @@ services:
     secrets:
       - server.key
       - server.crt
+    networks:
+      - attachable
+      - default
 
   monitor:
     depends_on:
@@ -145,3 +148,8 @@ services:
       - server.key
       - server.crt
       - monitor.key
+
+networks:
+  attachable:
+    driver: overlay
+    attachable: true
