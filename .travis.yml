@@ -35,7 +35,9 @@ jobs:
       script:
       - go test -race ./... -v
     - name: "docker-compose test"
-      install: skip
+      install:
+       - docker swarm init
+       - docker node ls
       script: ./scripts/docker-compose_test.sh
     - name: "kubernetes test"
       install:
