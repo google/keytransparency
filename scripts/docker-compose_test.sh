@@ -6,7 +6,7 @@ if [ ! -f genfiles/server.key ]; then
 	./scripts/prepare_server.sh -f
 fi
 
-export TRAVIS_COMMIT=${TRAVIS_COMMIT:-$(git rev-parse HEAD)}
+export TRAVIS_COMMIT=$(git rev-parse HEAD)
 docker-compose build --parallel
 # Assumes there is a docker swarm already configured.
 # docker swarm init
