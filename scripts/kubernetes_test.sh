@@ -32,6 +32,7 @@ fi
 # Hack to wait for the default service account's creation. https://github.com/kubernetes/kubernetes/issues/66689
 n=0; until ((n >= 60)); do kubectl -n default get serviceaccount default -o name && break; n=$((n + 1)); sleep 1; done; ((n < 60))
 
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/nginx-0.27.0/deploy/static/mandatory.yaml
 kubectl apply -k deploy/kubernetes/overlays/local 
 trap "kubectl delete -k deploy/kubernetes/overlays/local" INT EXIT
 TIMEOUT=2m
