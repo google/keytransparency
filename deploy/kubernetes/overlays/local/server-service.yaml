@@ -5,9 +5,9 @@ metadata:
 spec:
   type: NodePort
   ports:
-    - name: "api"
-      port: 443
-    - name: "metrics"
+    - name: "grpc-api"
+      port: 8080
+    - name: "http-metrics"
       port: 8081
       nodePort: 30081
 

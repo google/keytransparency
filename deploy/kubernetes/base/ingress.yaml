@@ -7,4 +7,4 @@ spec:
   - secretName: kt-tls
   backend:
     serviceName: server
-    servicePort: 443
+    servicePort: 8080
