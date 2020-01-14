@@ -11,7 +11,7 @@ spec:
     - --
     - curl
     - -k
-    - https://sequencer:8080/v1/directories
+    - http://sequencer:8080/v1/directories
     - -d{"directory_id":"default","min_interval":"1s","max_interval":"60s"}
     image: gcr.io/key-transparency/init:latest
     name: init

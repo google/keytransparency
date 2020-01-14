@@ -22,11 +22,8 @@ spec:
         - /keytransparency-monitor
         - --addr=0.0.0.0:8070
         - --metrics-addr=0.0.0.0:8071
-        - --kt-url=server:443
-        - --insecure
+        - --kt-url=server:8080
         - --directoryid=default
-        - --tls-key=/run/secrets/server.key
-        - --tls-cert=/run/secrets/server.crt
         - --sign-key=/run/secrets/monitor_sign-key.pem
         - --password=towel
         - --alsologtostderr
