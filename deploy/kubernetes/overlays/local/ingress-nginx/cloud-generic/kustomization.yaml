@@ -1,5 +1,7 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
+bases:
+- ../static
 namespace: ingress-nginx
 commonLabels:
   app.kubernetes.io/name: ingress-nginx
