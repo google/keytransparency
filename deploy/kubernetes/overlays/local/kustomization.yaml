@@ -1,2 +1,4 @@
 bases:
 - ../../base
+resources:
+- ingress-nginx/baremetal
