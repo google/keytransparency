@@ -9,11 +9,13 @@ spec:
   - name: "grpc-api"
     port: 443
     targetPort: 8080
+    nodePort: 30080
   - name: "http-metrics"
     port: 8081
     targetPort: 8081
+    nodePort: 30081
   selector:
     io.kompose.service: server
-  type: NodePort
+  type: NodePort # Required for ingress
 status:
   loadBalancer: {}
