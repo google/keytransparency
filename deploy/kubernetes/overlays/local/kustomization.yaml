@@ -1,4 +1,6 @@
 bases:
 - ../../base
+resources:
+- ingress-nginx/baremetal
 patchesStrategicMerge:
 - server-service.yaml
