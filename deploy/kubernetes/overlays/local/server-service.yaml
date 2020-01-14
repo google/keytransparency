@@ -3,12 +3,11 @@ kind: Service
 metadata:
   name: server
 spec:
-  ports:
-  - name: "api"
-    port: 443
-    nodePort: 30443
-  - name: "metrics"
-    port: 8081
-    nodePort: 30081
   type: NodePort
+  ports:
+    - name: "api"
+      port: 443
+    - name: "metrics"
+      port: 8081
+      nodePort: 30081
 
