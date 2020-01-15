@@ -32,8 +32,8 @@ fi
 # Hack to wait for the default service account's creation. https://github.com/kubernetes/kubernetes/issues/66689
 n=0; until ((n >= 60)); do kubectl -n default get serviceaccount default -o name && break; n=$((n + 1)); sleep 1; done; ((n < 60))
 
-kubectl apply -k deploy/kubernetes/overlays/local 
-trap "kubectl delete -k deploy/kubernetes/overlays/local" INT EXIT
+kustomize build deploy/kubernetes/overlays/local/ | kubectl apply -f -
+trap "kustomize build deploy/kubernetes/overlays/local/ | kubectl delete -f -" INT EXIT
 TIMEOUT=2m
 timeout ${TIMEOUT} kubectl rollout status deployment/db
 timeout ${TIMEOUT} kubectl rollout status deployment/log-server
