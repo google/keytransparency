@@ -50,12 +50,13 @@ docker-compose build --parallel
 echo "Pushing docker images..."
 docker-compose push
 
-echo "Tagging docker images..."
-gcloud --quiet container images add-tag gcr.io/${PROJECT_NAME_CI}/prometheus:${TRAVIS_COMMIT} gcr.io/${PROJECT_NAME_CI}/prometheus:latest
-gcloud --quiet container images add-tag gcr.io/${PROJECT_NAME_CI}/keytransparency-server:${TRAVIS_COMMIT} gcr.io/${PROJECT_NAME_CI}/keytransparency-server:latest
-gcloud --quiet container images add-tag gcr.io/${PROJECT_NAME_CI}/keytransparency-sequencer:${TRAVIS_COMMIT} gcr.io/${PROJECT_NAME_CI}/keytransparency-sequencer:latest
-gcloud --quiet container images add-tag gcr.io/${PROJECT_NAME_CI}/keytransparency-monitor:${TRAVIS_COMMIT} gcr.io/${PROJECT_NAME_CI}/keytransparency-monitor:latest
-
+echo "Cleaning old docker images..."
+BEFORE_DATE=$(date -v -30d  +%Y-%m-%d)
+./scripts/gcrgc.sh gcr.io/key-transparency/init $BEFORE_DATE
+./scripts/gcrgc.sh gcr.io/key-transparency/prometheus $BEFORE_DATE
+./scripts/gcrgc.sh gcr.io/key-transparency/keytransparency-server $BEFORE_DATE
+./scripts/gcrgc.sh gcr.io/key-transparency/keytransparency-sequencer $BEFORE_DATE
+./scripts/gcrgc.sh gcr.io/key-transparency/keytransparency-monitor $BEFORE_DATE
 
 echo "Updating jobs..."
 cd deploy/kubernetes/base
