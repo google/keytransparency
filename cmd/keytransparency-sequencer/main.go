@@ -139,7 +139,7 @@ func main() {
 	)
 
 	// Listen and create empty grpc client connection.
-	lis, conn, done, err := serverutil.Listen(ctx, *addr, *certFile)
+	lis, conn, done, err := serverutil.ListenTLS(ctx, *listenAddr, *certFile, *keyFile)
 	if err != nil {
 		glog.Fatalf("Listen(%v): %v", *addr, err)
 	}
@@ -174,8 +174,8 @@ func main() {
 	g, gctx := errgroup.WithContext(ctx)
 	g.Go(func() error { return serverutil.ServeHTTPMetrics(*metricsAddr, serverutil.Readyz(sqldb)) })
 	g.Go(func() error {
-		return serverutil.ServeHTTPAPIAndGRPC(gctx, lis, *keyFile, *certFile,
-			grpcServer, conn, pb.RegisterKeyTransparencyAdminHandler)
+		return serverutil.ServeHTTPAPIAndGRPC(gctx, lis, grpcServer, conn,
+			pb.RegisterKeyTransparencyAdminHandler)
 	})
 	g.Go(func() error { return runSequencer(gctx, conn, directoryStorage) })
 

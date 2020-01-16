@@ -137,7 +137,7 @@ func main() {
 	grpc_prometheus.Register(grpcServer)
 	grpc_prometheus.EnableHandlingTimeHistogram()
 
-	lis, conn, done, err := serverutil.Listen(ctx, *addr, *certFile)
+	lis, conn, done, err := serverutil.ListenTLS(ctx, *addr, *certFile, *keyFile)
 	if err != nil {
 		glog.Fatalf("Listen(%v): %v", *addr, err)
 	}
@@ -146,8 +146,7 @@ func main() {
 	g, gctx := errgroup.WithContext(ctx)
 	g.Go(func() error { return serverutil.ServeHTTPMetrics(*metricsAddr, serverutil.Readyz(sqldb)) })
 	g.Go(func() error {
-		return serverutil.ServeHTTPAPIAndGRPC(gctx, lis, *keyFile, *certFile,
-			grpcServer, conn, pb.RegisterKeyTransparencyHandler)
+		return serverutil.ServeHTTPAPIAndGRPC(gctx, lis, grpcServer, conn, pb.RegisterKeyTransparencyHandler)
 	})
 
 	glog.Errorf("Key Transparency Server exiting: %v", g.Wait())
