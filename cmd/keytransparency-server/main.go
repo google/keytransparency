@@ -21,6 +21,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/google/trillian"
 	"github.com/google/trillian/monitoring/prometheus"
+	"github.com/soheilhy/cmux"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -143,11 +144,15 @@ func main() {
 	}
 	defer done()
 
+	m := cmux.New(lis)
+	grpcL := m.Match(cmux.HTTP2HeaderField("content-type", "application/grpc"))
+	httpL := m.Match(cmux.HTTP1Fast())
+
 	g, gctx := errgroup.WithContext(ctx)
 	g.Go(func() error { return serverutil.ServeHTTPMetrics(*metricsAddr, serverutil.Readyz(sqldb)) })
-	g.Go(func() error {
-		return serverutil.ServeHTTPAPIAndGRPC(gctx, lis, grpcServer, conn, pb.RegisterKeyTransparencyHandler)
-	})
+	g.Go(func() error { return grpcServer.Serve(grpcL) })
+	g.Go(func() error { return serverutil.ServeHTTPAPI(gctx, httpL, conn, pb.RegisterKeyTransparencyHandler) })
+	g.Go(m.Serve)
 
 	glog.Errorf("Key Transparency Server exiting: %v", g.Wait())
 }
