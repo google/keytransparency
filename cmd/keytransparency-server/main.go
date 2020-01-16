@@ -17,7 +17,6 @@ package main
 import (
 	"context"
 	"flag"
-	"net"
 
 	"github.com/golang/glog"
 	"github.com/google/trillian"
@@ -138,7 +137,7 @@ func main() {
 	grpc_prometheus.Register(grpcServer)
 	grpc_prometheus.EnableHandlingTimeHistogram()
 
-	lis, conn, done := listen(ctx, *addr, *certFile)
+	lis, conn, done := serverutil.Listen(ctx, *addr, *certFile)
 	defer done()
 
 	g, gctx := errgroup.WithContext(ctx)
@@ -149,24 +148,4 @@ func main() {
 	})
 
 	glog.Errorf("Key Transparency Server exiting: %v", g.Wait())
-}
-
-func listen(ctx context.Context, listenAddr, certFile string) (net.Listener, *grpc.ClientConn, func() error) {
-	// Listen and create empty grpc client connection.
-	lis, err := net.Listen("tcp", listenAddr)
-	if err != nil {
-		glog.Exitf("error creating TCP listener: %v", err)
-	}
-	addr := lis.Addr().String()
-	glog.Infof("Listening on %v", addr)
-	// Non-blocking dial before we start the server.
-	tcreds, err := credentials.NewClientTLSFromFile(certFile, "localhost")
-	if err != nil {
-		glog.Exitf("Failed opening cert file %v: %v", certFile, err)
-	}
-	conn, err := grpc.DialContext(ctx, addr, grpc.WithTransportCredentials(tcreds))
-	if err != nil {
-		glog.Exitf("error connecting to %v: %v", addr, err)
-	}
-	return lis, conn, conn.Close
 }
