@@ -24,9 +24,7 @@ import (
 	"time"
 
 	"github.com/golang/glog"
-	tcrypto "github.com/google/trillian/crypto"
 	"github.com/google/trillian/crypto/keys/pem"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
@@ -40,22 +38,21 @@ import (
 
 	mopb "github.com/google/keytransparency/core/api/monitor/v1/monitor_go_proto"
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
+	tcrypto "github.com/google/trillian/crypto"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 )
 
 var (
-	addr     = flag.String("addr", ":8099", "The ip:port combination to listen on")
-	keyFile  = flag.String("tls-key", "genfiles/server.key", "TLS private key file")
-	certFile = flag.String("tls-cert", "genfiles/server.pem", "TLS cert file")
+	addr        = flag.String("addr", ":8090", "The ip:port combination to listen on")
+	metricsAddr = flag.String("metrics-addr", ":8091", "The ip:port to publish metrics on")
+	keyFile     = flag.String("tls-key", "genfiles/server.key", "TLS private key file")
+	certFile    = flag.String("tls-cert", "genfiles/server.pem", "TLS cert file")
 
 	signingKey         = flag.String("sign-key", "genfiles/monitor_sign-key.pem", "Path to private key PEM for SMH signing")
 	signingKeyPassword = flag.String("password", "towel", "Password of the private key PEM file for SMH signing")
 	ktURL              = flag.String("kt-url", "localhost:443", "URL of key-server.")
 	insecure           = flag.Bool("insecure", false, "Skip TLS checks")
 	directoryID        = flag.String("directoryid", "", "KT Directory identifier to monitor")
-
-	// TODO(ismail): expose prometheus metrics: a variable that tracks valid/invalid MHs
-	// metricsAddr = flag.String("metrics-addr", ":8081", "The ip:port to publish metrics on")
 )
 
 func main() {
@@ -140,11 +137,9 @@ func main() {
 
 	// Insert handlers for other http paths here.
 	mux := http.NewServeMux()
-	mux.Handle("/metrics", promhttp.Handler())
-	mux.Handle("/healthz", serverutil.Healthz())
-	mux.Handle("/readyz", serverutil.Healthz())
 	mux.Handle("/", serverutil.RootHealthHandler(gwmux))
 
+	go func() { glog.Error(serverutil.ServeHTTPMetrics(*metricsAddr, serverutil.Healthz())) }()
 	// Serve HTTP2 server over TLS.
 	glog.Infof("Listening on %v", *addr)
 	if err := http.ListenAndServeTLS(*addr, *certFile, *keyFile,

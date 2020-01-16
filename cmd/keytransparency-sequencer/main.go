@@ -34,6 +34,7 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
 
+	"github.com/google/keytransparency/cmd/serverutil"
 	"github.com/google/keytransparency/core/adminserver"
 	"github.com/google/keytransparency/core/sequencer"
 	"github.com/google/keytransparency/core/sequencer/election"
@@ -185,7 +186,7 @@ func main() {
 	glog.Infof("Signer starting")
 
 	// Run servers
-	go serveHTTPMetrics(*metricsAddr, sqldb)
+	go func() { glog.Error(serverutil.ServeHTTPMetrics(*metricsAddr, serverutil.Readyz(sqldb))) }()
 	go serveHTTPGateway(ctx, lis, dopts, grpcServer,
 		pb.RegisterKeyTransparencyAdminHandlerFromEndpoint,
 	)

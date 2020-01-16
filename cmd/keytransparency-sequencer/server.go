@@ -16,29 +16,14 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"net"
 	"net/http"
 
 	"github.com/google/keytransparency/cmd/serverutil"
 
 	"github.com/golang/glog"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"google.golang.org/grpc"
 )
-
-func serveHTTPMetrics(addr string, sqldb *sql.DB) {
-	mux := http.NewServeMux()
-	mux.Handle("/metrics", promhttp.Handler())
-	mux.Handle("/healthz", serverutil.Healthz())
-	mux.Handle("/readyz", serverutil.Readyz(sqldb))
-	mux.Handle("/", serverutil.Healthz())
-
-	glog.Infof("Hosting server status and metrics on %v", addr)
-	if err := http.ListenAndServe(addr, mux); err != nil {
-		glog.Fatalf("ListenAndServeTLS(%v): %v", addr, err)
-	}
-}
 
 func serveHTTPGateway(ctx context.Context, lis net.Listener, dopts []grpc.DialOption,
 	grpcServer *grpc.Server, services ...serverutil.RegisterServiceFromEndpoint) {
