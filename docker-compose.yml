@@ -17,6 +17,7 @@ services:
       - 9090:9090
 
   db:
+    # TODO(gbelvin): Select a better tag for Trillian
     image: gcr.io/trillian-opensource-ci/db_server:latest
     ports:
       - "3306"
@@ -28,6 +29,7 @@ services:
   log-server:
     depends_on:
       - db
+    # TODO(gbelvin): Select a better tag for Trillian
     image: gcr.io/trillian-opensource-ci/log_server:latest
     command: 
       - --mysql_uri=test:zaphod@tcp(db:3306)/test
@@ -41,6 +43,7 @@ services:
   log-signer:
     depends_on:
       - db
+    # TODO(gbelvin): Select a better tag for Trillian
     image: gcr.io/trillian-opensource-ci/log_signer:latest
     command:
       - --mysql_uri=test:zaphod@tcp(db:3306)/test
@@ -57,6 +60,7 @@ services:
   map-server:
     depends_on:
       - db
+    # TODO(gbelvin): Select a better tag for Trillian
     image: gcr.io/trillian-opensource-ci/map_server:latest
     command:
       - --mysql_uri=test:zaphod@tcp(db:3306)/test
