@@ -20,7 +20,8 @@ spec:
       containers:
       - command:
         - /keytransparency-monitor
-        - --addr=0.0.0.0:8099
+        - --addr=0.0.0.0:8070
+        - --metrics-addr=0.0.0.0:8071
         - --kt-url=server:443
         - --insecure
         - --directoryid=default
@@ -34,16 +35,17 @@ spec:
         livenessProbe:
          httpGet:
            path: /healthz
-           port: 8099
-           scheme: HTTPS
+           port: 8071
+           scheme: HTTP
         readinessProbe:
          httpGet:
            path: /readyz
-           port: 8099
-           scheme: HTTPS
+           port: 8071
+           scheme: HTTP
         name: monitor
         ports:
-        - containerPort: 8099
+        - containerPort: 8070
+        - containerPort: 8071
         resources: {}
         volumeMounts:
         - name: secrets

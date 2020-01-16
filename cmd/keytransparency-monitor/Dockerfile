@@ -15,6 +15,7 @@ COPY --from=build /go/bin/keytransparency-monitor /
 COPY --from=build /go/bin/healthcheck /
 
 ENTRYPOINT ["/keytransparency-monitor"]
-HEALTHCHECK CMD ["/healthcheck","https://localhost:8099/healthz"]
+HEALTHCHECK CMD ["/healthcheck","http://localhost:8071/healthz"]
 
-EXPOSE 8099
+EXPOSE 8070
+EXPOSE 8071

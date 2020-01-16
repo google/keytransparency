@@ -43,8 +43,8 @@ import (
 )
 
 var (
-	addr        = flag.String("addr", ":8090", "The ip:port combination to listen on")
-	metricsAddr = flag.String("metrics-addr", ":8091", "The ip:port to publish metrics on")
+	addr        = flag.String("addr", ":8070", "The ip:port combination to listen on")
+	metricsAddr = flag.String("metrics-addr", ":8071", "The ip:port to publish metrics on")
 	keyFile     = flag.String("tls-key", "genfiles/server.key", "TLS private key file")
 	certFile    = flag.String("tls-cert", "genfiles/server.pem", "TLS cert file")
 
