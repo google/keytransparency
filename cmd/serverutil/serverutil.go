@@ -20,7 +20,9 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/golang/glog"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"google.golang.org/grpc"
 )
 
@@ -53,4 +55,16 @@ func GrpcGatewayMux(ctx context.Context, addr string, dopts []grpc.DialOption,
 	}
 
 	return gwmux, nil
+}
+
+// ServeHTTPMetrics hosts http metrics.
+func ServeHTTPMetrics(addr string, ready http.HandlerFunc) error {
+	mux := http.NewServeMux()
+	mux.Handle("/metrics", promhttp.Handler())
+	mux.Handle("/healthz", Healthz())
+	mux.Handle("/readyz", ready)
+	mux.Handle("/", Healthz())
+
+	glog.Infof("Hosting server status and metrics on %v", addr)
+	return http.ListenAndServe(addr, mux)
 }

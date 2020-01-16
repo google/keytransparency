@@ -22,7 +22,6 @@ import (
 	"github.com/golang/glog"
 	"github.com/google/trillian"
 	"github.com/google/trillian/monitoring/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
@@ -154,17 +153,8 @@ func main() {
 	mux := http.NewServeMux()
 	mux.Handle("/", serverutil.RootHealthHandler(gwmux))
 
-	metricMux := http.NewServeMux()
-	metricMux.Handle("/healthz", serverutil.Healthz())
-	metricMux.Handle("/readyz", serverutil.Readyz(sqldb))
-	metricMux.Handle("/metrics", promhttp.Handler())
-	metricMux.Handle("/", serverutil.Healthz())
-	go func() {
-		glog.Infof("Hosting metrics on %v", *metricsAddr)
-		if err := http.ListenAndServe(*metricsAddr, metricMux); err != nil {
-			glog.Fatalf("ListenAndServeTLS(%v): %v", *metricsAddr, err)
-		}
-	}()
+	go func() { glog.Error(serverutil.ServeHTTPMetrics(*metricsAddr, serverutil.Readyz(sqldb))) }()
+
 	// Serve HTTP2 server over TLS.
 	glog.Infof("Listening on %v", *addr)
 	if err := http.ListenAndServeTLS(*addr, *certFile, *keyFile,
