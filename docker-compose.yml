@@ -128,7 +128,8 @@ services:
       - sequencer
     image: gcr.io/key-transparency/keytransparency-monitor:${TRAVIS_COMMIT}
     command:
-      - --addr=0.0.0.0:8099
+      - --addr=0.0.0.0:8070
+      - --metrics-addr=0.0.0.0:8071
       - --kt-url=server:8080
       - --insecure
       - --directoryid=default
@@ -139,7 +140,8 @@ services:
       - --alsologtostderr
       - --v=3
     ports:
-    - "8099:8099" # gRPC / HTTPS
+    - "8070:8070" # gRPC / HTTPS
+    - "8071:8071" # HTTP metrics
     secrets:
       - server.key
       - server.crt
