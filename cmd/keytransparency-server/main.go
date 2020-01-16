@@ -17,11 +17,12 @@ package main
 import (
 	"context"
 	"flag"
-	"net/http"
+	"net"
 
 	"github.com/golang/glog"
 	"github.com/google/trillian"
 	"github.com/google/trillian/monitoring/prometheus"
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
@@ -137,28 +138,35 @@ func main() {
 	grpc_prometheus.Register(grpcServer)
 	grpc_prometheus.EnableHandlingTimeHistogram()
 
-	// Create HTTP handlers and gRPC gateway.
-	tcreds, err := credentials.NewClientTLSFromFile(*certFile, "")
+	lis, conn, done := listen(ctx, *addr, *certFile)
+	defer done()
+
+	g, gctx := errgroup.WithContext(ctx)
+	g.Go(func() error { return serverutil.ServeHTTPMetrics(*metricsAddr, serverutil.Readyz(sqldb)) })
+	g.Go(func() error {
+		return serverutil.ServeHTTPAPIAndGRPC(gctx, lis, *keyFile, *certFile,
+			grpcServer, conn, pb.RegisterKeyTransparencyHandler)
+	})
+
+	glog.Errorf("Key Transparency Server exiting: %v", g.Wait())
+}
+
+func listen(ctx context.Context, listenAddr, certFile string) (net.Listener, *grpc.ClientConn, func() error) {
+	// Listen and create empty grpc client connection.
+	lis, err := net.Listen("tcp", listenAddr)
 	if err != nil {
-		glog.Exitf("Failed opening cert file %v: %v", *certFile, err)
+		glog.Exitf("error creating TCP listener: %v", err)
 	}
-	dopts := []grpc.DialOption{grpc.WithTransportCredentials(tcreds)}
-	gwmux, err := serverutil.GrpcGatewayMux(ctx, *addr, dopts,
-		pb.RegisterKeyTransparencyHandlerFromEndpoint)
+	addr := lis.Addr().String()
+	glog.Infof("Listening on %v", addr)
+	// Non-blocking dial before we start the server.
+	tcreds, err := credentials.NewClientTLSFromFile(certFile, "localhost")
 	if err != nil {
-		glog.Exitf("Failed setting up REST proxy: %v", err)
+		glog.Exitf("Failed opening cert file %v: %v", certFile, err)
 	}
-
-	// Insert handlers for other http paths here.
-	mux := http.NewServeMux()
-	mux.Handle("/", serverutil.RootHealthHandler(gwmux))
-
-	go func() { glog.Error(serverutil.ServeHTTPMetrics(*metricsAddr, serverutil.Readyz(sqldb))) }()
-
-	// Serve HTTP2 server over TLS.
-	glog.Infof("Listening on %v", *addr)
-	if err := http.ListenAndServeTLS(*addr, *certFile, *keyFile,
-		serverutil.GrpcHandlerFunc(grpcServer, mux)); err != nil {
-		glog.Errorf("ListenAndServeTLS: %v", err)
+	conn, err := grpc.DialContext(ctx, addr, grpc.WithTransportCredentials(tcreds))
+	if err != nil {
+		glog.Exitf("error connecting to %v: %v", addr, err)
 	}
+	return lis, conn, conn.Close
 }

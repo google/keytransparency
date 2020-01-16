@@ -30,6 +30,7 @@ import (
 	"github.com/google/trillian/monitoring/prometheus"
 	"github.com/google/trillian/util/election2"
 	"github.com/google/trillian/util/etcd"
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
@@ -140,23 +141,8 @@ func main() {
 	)
 
 	// Listen and create empty grpc client connection.
-	lis, err := net.Listen("tcp", *listenAddr)
-	if err != nil {
-		glog.Exitf("error creating TCP listener: %v", err)
-	}
-	glog.Infof("Listening on %v", lis.Addr().String())
-	// Non-blocking dial before we start the server.
-	tcreds, err := credentials.NewClientTLSFromFile(*certFile, "localhost")
-	if err != nil {
-		glog.Exitf("Failed opening cert file %v: %v", *certFile, err)
-	}
-	dopts := []grpc.DialOption{grpc.WithTransportCredentials(tcreds)}
-	addr := lis.Addr().String()
-	conn, err := grpc.DialContext(ctx, addr, dopts...)
-	if err != nil {
-		glog.Exitf("error connecting to %v: %v", addr, err)
-	}
-	defer conn.Close()
+	lis, conn, done := listen(ctx, *listenAddr, *certFile)
+	defer done()
 
 	spb.RegisterKeyTransparencySequencerServer(grpcServer, sequencer.NewServer(
 		directoryStorage,
@@ -183,21 +169,40 @@ func main() {
 	grpc_prometheus.Register(grpcServer)
 	grpc_prometheus.EnableHandlingTimeHistogram()
 
-	glog.Infof("Signer starting")
-
 	// Run servers
-	go func() { glog.Error(serverutil.ServeHTTPMetrics(*metricsAddr, serverutil.Readyz(sqldb))) }()
-	go serveHTTPGateway(ctx, lis, dopts, grpcServer,
-		pb.RegisterKeyTransparencyAdminHandlerFromEndpoint,
-	)
-	runSequencer(ctx, conn, directoryStorage)
+	g, gctx := errgroup.WithContext(ctx)
+	g.Go(func() error { return serverutil.ServeHTTPMetrics(*metricsAddr, serverutil.Readyz(sqldb)) })
+	g.Go(func() error {
+		return serverutil.ServeHTTPAPIAndGRPC(gctx, lis, *keyFile, *certFile,
+			grpcServer, conn, pb.RegisterKeyTransparencyAdminHandler)
+	})
+	g.Go(func() error { return runSequencer(gctx, conn, directoryStorage) })
 
-	// Shutdown.
-	glog.Errorf("Signer exiting")
+	glog.Errorf("Signer exiting: %v", g.Wait())
 }
 
-func runSequencer(ctx context.Context, conn *grpc.ClientConn,
-	directoryStorage dir.Storage) {
+func listen(ctx context.Context, listenAddr, certFile string) (net.Listener, *grpc.ClientConn, func() error) {
+	// Listen and create empty grpc client connection.
+	lis, err := net.Listen("tcp", listenAddr)
+	if err != nil {
+		glog.Exitf("error creating TCP listener: %v", err)
+	}
+	addr := lis.Addr().String()
+	glog.Infof("Listening on %v", addr)
+	// Non-blocking dial before we start the server.
+	tcreds, err := credentials.NewClientTLSFromFile(certFile, "localhost")
+	if err != nil {
+		glog.Exitf("Failed opening cert file %v: %v", certFile, err)
+	}
+	conn, err := grpc.DialContext(ctx, addr, grpc.WithTransportCredentials(tcreds))
+	if err != nil {
+		glog.Exitf("error connecting to %v: %v", addr, err)
+	}
+	return lis, conn, conn.Close
+}
+
+func runSequencer(ctx context.Context, conn *grpc.ClientConn, directoryStorage dir.Storage) error {
+	glog.Infof("Sequencer starting")
 	electionFactory, closeFactory := getElectionFactory()
 	defer closeFactory()
 	signer := sequencer.New(
@@ -241,9 +246,10 @@ func runSequencer(ctx context.Context, conn *grpc.ClientConn,
 		}
 	})
 
-	sequencer.PeriodicallyRun(ctx, time.Tick(*refresh), func(ctx context.Context) {
+	go sequencer.PeriodicallyRun(ctx, time.Tick(*refresh), func(ctx context.Context) {
 		if err := signer.PublishLogForAllMasterships(ctx); err != nil {
 			glog.Errorf("PeriodicallyRun(PublishRevisionsForAllMasterships): %v", err)
 		}
 	})
+	return nil
 }
