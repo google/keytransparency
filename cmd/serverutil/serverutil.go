@@ -46,8 +46,7 @@ func GrpcHandlerFunc(grpcServer http.Handler, otherHandler http.Handler) http.Ha
 type RegisterServiceFromConn func(context.Context, *runtime.ServeMux, *grpc.ClientConn) error
 
 // ServeAPIGatewayAndGRPC serves the given services over HTTP / JSON and gRPC.
-func ServeHTTPAPIAndGRPC(ctx context.Context,
-	lis net.Listener, keyFile, certFile string,
+func ServeHTTPAPIAndGRPC(ctx context.Context, lis net.Listener,
 	grpcServer *grpc.Server, conn *grpc.ClientConn,
 	services ...RegisterServiceFromConn) error {
 	// Wire up gRPC and HTTP servers.
@@ -62,8 +61,7 @@ func ServeHTTPAPIAndGRPC(ctx context.Context,
 	mux := http.NewServeMux()
 	mux.Handle("/", RootHealthHandler(gwmux))
 
-	server := &http.Server{Handler: GrpcHandlerFunc(grpcServer, mux)}
-	return server.ServeTLS(lis, certFile, keyFile)
+	return http.Serve(lis, GrpcHandlerFunc(grpcServer, mux))
 }
 
 // ServeHTTPMetrics serves monitoring APIs
