@@ -32,7 +32,6 @@ type RegisterServiceFromConn func(context.Context, *runtime.ServeMux, *grpc.Clie
 // ServeHTTPAPI serves the given services over HTTP / JSON.
 func ServeHTTPAPI(ctx context.Context, lis net.Listener,
 	conn *grpc.ClientConn, services ...RegisterServiceFromConn) error {
-
 	gwmux := runtime.NewServeMux()
 	for _, s := range services {
 		if err := s(ctx, gwmux, conn); err != nil {
