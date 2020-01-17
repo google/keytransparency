@@ -45,7 +45,7 @@ func GrpcHandlerFunc(grpcServer http.Handler, otherHandler http.Handler) http.Ha
 // RegisterServiceFromConn registers services with a grpc server's ServeMux
 type RegisterServiceFromConn func(context.Context, *runtime.ServeMux, *grpc.ClientConn) error
 
-// ServeAPIGatewayAndGRPC serves
+// ServeAPIGatewayAndGRPC serves the given services over HTTP / JSON and gRPC.
 func ServeHTTPAPIAndGRPC(ctx context.Context,
 	lis net.Listener, keyFile, certFile string,
 	grpcServer *grpc.Server, conn *grpc.ClientConn,
