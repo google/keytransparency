@@ -24,26 +24,26 @@ import (
 )
 
 // Listen binds to listenAddr and returns a gRPC connection to it.
-func Listen(ctx context.Context, listenAddr, certFile string) (net.Listener, *grpc.ClientConn, func()) {
-	// Listen and create empty grpc client connection.
+func Listen(ctx context.Context, listenAddr, certFile string) (net.Listener, *grpc.ClientConn, func(), error) {
 	lis, err := net.Listen("tcp", listenAddr)
 	if err != nil {
-		glog.Exitf("error creating TCP listener: %v", err)
+		return nil, nil, nil, err
 	}
 	addr := lis.Addr().String()
 	glog.Infof("Listening on %v", addr)
+
 	// Non-blocking dial before we start the server.
 	tcreds, err := credentials.NewClientTLSFromFile(certFile, "localhost")
 	if err != nil {
-		glog.Exitf("Failed opening cert file %v: %v", certFile, err)
+		return nil, nil, nil, err
 	}
 	conn, err := grpc.DialContext(ctx, addr, grpc.WithTransportCredentials(tcreds))
 	if err != nil {
-		glog.Exitf("error connecting to %v: %v", addr, err)
+		return nil, nil, nil, err
 	}
 	return lis, conn, func() {
 		if err := conn.Close(); err != nil {
 			glog.Errorf("Failed to close connection: %v", err)
 		}
-	}
+	}, nil
 }
