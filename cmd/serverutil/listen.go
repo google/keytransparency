@@ -33,7 +33,7 @@ func Listen(ctx context.Context, listenAddr, certFile string) (net.Listener, *gr
 	glog.Infof("Listening on %v", addr)
 
 	// Non-blocking dial before we start the server.
-	tcreds, err := credentials.NewClientTLSFromFile(certFile, "localhost")
+	tcreds, err := credentials.NewClientTLSFromFile(certFile, "")
 	if err != nil {
 		return nil, nil, nil, err
 	}
