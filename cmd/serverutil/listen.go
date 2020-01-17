@@ -32,6 +32,7 @@ func ListenTLS(ctx context.Context, listenAddr, certFile, keyFile string) (net.L
 	}
 	config := &tls.Config{
 		Certificates: []tls.Certificate{cert},
+		NextProtos:   []string{"http/1.1", "h2"},
 	}
 	lis, err := tls.Listen("tcp", listenAddr, config)
 	if err != nil {
