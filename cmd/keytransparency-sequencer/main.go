@@ -139,7 +139,10 @@ func main() {
 	)
 
 	// Listen and create empty grpc client connection.
-	lis, conn, done := serverutil.Listen(ctx, *listenAddr, *certFile)
+	lis, conn, done, err := serverutil.Listen(ctx, *listenAddr, *certFile)
+	if err != nil {
+		glog.Fatalf("Listen(%v): %v", *addr, err)
+	}
 	defer done()
 
 	spb.RegisterKeyTransparencySequencerServer(grpcServer, sequencer.NewServer(
