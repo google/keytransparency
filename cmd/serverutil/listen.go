@@ -28,7 +28,7 @@ import (
 func ListenTLS(ctx context.Context, listenAddr, certFile, keyFile string) (net.Listener, *grpc.ClientConn, func(), error) {
 	cert, err := tls.LoadX509KeyPair(certFile, keyFile)
 	if err != nil {
-		glog.Exitf("error reading keypair: %v", err)
+		return nil, nil, nil, err
 	}
 	config := &tls.Config{
 		Certificates: []tls.Certificate{cert},
