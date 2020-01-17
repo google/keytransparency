@@ -227,9 +227,11 @@ func runSequencer(ctx context.Context, conn *grpc.ClientConn, directoryStorage d
 		}
 	})
 
-	sequencer.PeriodicallyRun(ctx, time.Tick(*refresh), func(ctx context.Context) {
+	go sequencer.PeriodicallyRun(ctx, time.Tick(*refresh), func(ctx context.Context) {
 		if err := signer.PublishLogForAllMasterships(ctx); err != nil {
 			glog.Errorf("PeriodicallyRun(PublishRevisionsForAllMasterships): %v", err)
 		}
 	})
+
+	<-ctx.Done() // Block until server exit.
 }
