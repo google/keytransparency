@@ -184,7 +184,7 @@ func main() {
 	g.Go(m.Serve)
 	go runSequencer(gctx, conn, directoryStorage)
 
-	glog.Errorf("Signer exiting: %v", g.Wait())
+	glog.Errorf("Sequencer exiting: %v", g.Wait())
 }
 
 func runSequencer(ctx context.Context, conn *grpc.ClientConn, directoryStorage dir.Storage) {
