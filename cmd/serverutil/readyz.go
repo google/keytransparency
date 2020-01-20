@@ -27,5 +27,6 @@ func Readyz(db *sql.DB) http.HandlerFunc {
 			return
 		}
 		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("ok\n"))
 	}
 }

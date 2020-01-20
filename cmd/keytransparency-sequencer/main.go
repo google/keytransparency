@@ -29,6 +29,7 @@ import (
 	"github.com/google/trillian/monitoring/prometheus"
 	"github.com/google/trillian/util/election2"
 	"github.com/google/trillian/util/etcd"
+	"github.com/soheilhy/cmux"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
@@ -170,16 +171,20 @@ func main() {
 	grpc_prometheus.Register(grpcServer)
 	grpc_prometheus.EnableHandlingTimeHistogram()
 
-	// Run servers
+	m := cmux.New(lis)
+	grpcL := m.MatchWithWriters(cmux.HTTP2MatchHeaderFieldSendSettings("content-type", "application/grpc"))
+	httpL := m.Match(cmux.HTTP1Fast())
+
 	g, gctx := errgroup.WithContext(ctx)
 	g.Go(func() error { return serverutil.ServeHTTPMetrics(*metricsAddr, serverutil.Readyz(sqldb)) })
+	g.Go(func() error { return grpcServer.Serve(grpcL) })
 	g.Go(func() error {
-		return serverutil.ServeHTTPAPIAndGRPC(gctx, lis, grpcServer, conn,
-			pb.RegisterKeyTransparencyAdminHandler)
+		return serverutil.ServeHTTPAPI(gctx, httpL, conn, pb.RegisterKeyTransparencyAdminHandler)
 	})
+	g.Go(m.Serve)
 	go runSequencer(gctx, conn, directoryStorage)
 
-	glog.Errorf("Signer exiting: %v", g.Wait())
+	glog.Errorf("Sequencer exiting: %v", g.Wait())
 }
 
 func runSequencer(ctx context.Context, conn *grpc.ClientConn, directoryStorage dir.Storage) {

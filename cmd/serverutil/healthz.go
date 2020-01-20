@@ -21,7 +21,7 @@ func Healthz() http.HandlerFunc { return healthz }
 
 func healthz(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("ok"))
+	w.Write([]byte("ok\n"))
 }
 
 // RootHeaalthHandler handles liveness checks at "/".
