@@ -47,6 +47,7 @@ require (
 	github.com/prometheus/procfs v0.0.7 // indirect
 	github.com/russross/blackfriday v2.0.0+incompatible // indirect
 	github.com/securego/gosec v0.0.0-20191119104125-df484bfa9e9f // indirect
+	github.com/soheilhy/cmux v0.1.4
 	github.com/spf13/cobra v0.0.5
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.5.0
