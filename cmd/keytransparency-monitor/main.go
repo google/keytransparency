@@ -123,7 +123,7 @@ func main() {
 	grpc_prometheus.Register(grpcServer)
 	grpc_prometheus.EnableHandlingTimeHistogram()
 
-	lis, conn, done, err := serverutil.Listen(ctx, *addr, *certFile)
+	lis, conn, done, err := serverutil.ListenTLS(ctx, *addr, *certFile, *keyFile)
 	if err != nil {
 		glog.Fatalf("Listen(%v): %v", *addr, err)
 	}
@@ -132,8 +132,7 @@ func main() {
 	g, gctx := errgroup.WithContext(ctx)
 	g.Go(func() error { return serverutil.ServeHTTPMetrics(*metricsAddr, serverutil.Healthz()) })
 	g.Go(func() error {
-		return serverutil.ServeHTTPAPIAndGRPC(gctx, lis, *keyFile, *certFile,
-			grpcServer, conn, mopb.RegisterMonitorHandler)
+		return serverutil.ServeHTTPAPIAndGRPC(gctx, lis, grpcServer, conn, mopb.RegisterMonitorHandler)
 	})
 	glog.Errorf("Monitor exiting: %v", g.Wait())
 }

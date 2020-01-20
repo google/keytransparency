@@ -139,7 +139,7 @@ func main() {
 	)
 
 	// Listen and create empty grpc client connection.
-	lis, conn, done, err := serverutil.Listen(ctx, *addr, *certFile)
+	lis, conn, done, err := serverutil.ListenTLS(ctx, *addr, *certFile, *keyFile)
 	if err != nil {
 		glog.Fatalf("Listen(%v): %v", *addr, err)
 	}
@@ -174,15 +174,15 @@ func main() {
 	g, gctx := errgroup.WithContext(ctx)
 	g.Go(func() error { return serverutil.ServeHTTPMetrics(*metricsAddr, serverutil.Readyz(sqldb)) })
 	g.Go(func() error {
-		return serverutil.ServeHTTPAPIAndGRPC(gctx, lis, *keyFile, *certFile,
-			grpcServer, conn, pb.RegisterKeyTransparencyAdminHandler)
+		return serverutil.ServeHTTPAPIAndGRPC(gctx, lis, grpcServer, conn,
+			pb.RegisterKeyTransparencyAdminHandler)
 	})
-	g.Go(func() error { return runSequencer(gctx, conn, directoryStorage) })
+	go runSequencer(gctx, conn, directoryStorage)
 
 	glog.Errorf("Signer exiting: %v", g.Wait())
 }
 
-func runSequencer(ctx context.Context, conn *grpc.ClientConn, directoryStorage dir.Storage) error {
+func runSequencer(ctx context.Context, conn *grpc.ClientConn, directoryStorage dir.Storage) {
 	glog.Infof("Sequencer starting")
 	electionFactory, closeFactory := getElectionFactory()
 	defer closeFactory()
@@ -232,5 +232,6 @@ func runSequencer(ctx context.Context, conn *grpc.ClientConn, directoryStorage d
 			glog.Errorf("PeriodicallyRun(PublishRevisionsForAllMasterships): %v", err)
 		}
 	})
-	return nil
+
+	<-ctx.Done() // Block until server exit.
 }

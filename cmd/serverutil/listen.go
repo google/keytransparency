@@ -16,6 +16,7 @@ package serverutil
 
 import (
 	"context"
+	"crypto/tls"
 	"net"
 
 	"github.com/golang/glog"
@@ -23,12 +24,21 @@ import (
 	"google.golang.org/grpc/credentials"
 )
 
-// Listen binds to listenAddr and returns a gRPC connection to it.
-func Listen(ctx context.Context, listenAddr, certFile string) (net.Listener, *grpc.ClientConn, func(), error) {
-	lis, err := net.Listen("tcp", listenAddr)
+// ListenTLS binds to listenAddr and returns a gRPC connection to it.
+func ListenTLS(ctx context.Context, listenAddr, certFile, keyFile string) (net.Listener, *grpc.ClientConn, func(), error) {
+	cert, err := tls.LoadX509KeyPair(certFile, keyFile)
 	if err != nil {
 		return nil, nil, nil, err
 	}
+	config := &tls.Config{
+		Certificates: []tls.Certificate{cert},
+		NextProtos:   []string{"http/1.1", "h2"},
+	}
+	lis, err := tls.Listen("tcp", listenAddr, config)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
 	addr := lis.Addr().String()
 	glog.Infof("Listening on %v", addr)
 
