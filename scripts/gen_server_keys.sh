@@ -32,9 +32,9 @@ if [[ -n "${COMMONNAME}" ]]; then
 fi
 
 # TODO(ismail): make the IPs configurable as well
-ALTNAMES="[alt_names]\nDNS.1=${SAN_DNS}\nDNS.2=localhost\nIP.1=0.0.0.0"
+ALTNAMES="[alt_names]\nDNS.1=${SAN_DNS}\nDNS.2=localhost\nIP.1=0.0.0.0\nIP.2=::"
 if [[ -n "${ADDRESS}" ]]; then
-    ALTNAMES="${ALTNAMES}\nIP.2=${ADDRESS}"
+    ALTNAMES="${ALTNAMES}\nIP.3=${ADDRESS}"
 fi
 SANEXT="[SAN]\nbasicConstraints=CA:TRUE\nsubjectAltName=@alt_names\n\n${ALTNAMES}"
 
