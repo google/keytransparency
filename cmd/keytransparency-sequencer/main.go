@@ -138,7 +138,7 @@ func main() {
 	)
 
 	// Listen and create empty grpc client connection.
-	lis, conn, done, err := serverutil.Listen(ctx, *listenAddr)
+	lis, conn, done, err := serverutil.Listen(ctx, *addr)
 	if err != nil {
 		glog.Fatalf("Listen(%v): %v", *addr, err)
 	}
