@@ -24,7 +24,6 @@ import (
 	"github.com/soheilhy/cmux"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
 
 	"github.com/google/keytransparency/cmd/serverutil"
@@ -67,11 +66,6 @@ func main() {
 		glog.Exit(err)
 	}
 	defer sqldb.Close()
-
-	creds, err := credentials.NewServerTLSFromFile(*certFile, *keyFile)
-	if err != nil {
-		glog.Exitf("Failed to load server credentials %v", err)
-	}
 
 	authz := &authorization.AuthzPolicy{}
 	var authFunc grpc_auth.AuthFunc
@@ -116,7 +110,6 @@ func main() {
 	ksvr := keyserver.New(tlog, tmap, entry.IsValidEntry, directories, logs, logs,
 		prometheus.MetricFactory{}, int32(*revisionPageSize))
 	grpcServer := grpc.NewServer(
-		grpc.Creds(creds),
 		grpc.StreamInterceptor(grpc_middleware.ChainStreamServer(
 			grpc_prometheus.StreamServerInterceptor,
 			authorization.StreamServerInterceptor(map[string]authorization.AuthPair{
