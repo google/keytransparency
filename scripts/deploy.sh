@@ -51,7 +51,7 @@ echo "Pushing docker images..."
 docker-compose push
 
 echo "Cleaning old docker images..."
-BEFORE_DATE=$(date -v -30d  +%Y-%m-%d)
+BEFORE_DATE=$(date --date="30 days ago" +%Y-%m-%d)
 ./scripts/gcrgc.sh gcr.io/key-transparency/init $BEFORE_DATE
 ./scripts/gcrgc.sh gcr.io/key-transparency/prometheus $BEFORE_DATE
 ./scripts/gcrgc.sh gcr.io/key-transparency/keytransparency-server $BEFORE_DATE
