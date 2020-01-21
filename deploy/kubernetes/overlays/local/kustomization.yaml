@@ -4,3 +4,4 @@ resources:
 - ingress-nginx/baremetal
 patchesStrategicMerge:
 - server-service.yaml
+- ingress.yaml
