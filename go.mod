@@ -7,7 +7,6 @@ require (
 	cloud.google.com/go/spanner v1.1.0 // indirect
 	github.com/Masterminds/semver v1.5.0 // indirect
 	github.com/Masterminds/sprig v2.22.0+incompatible // indirect
-	github.com/benlaurie/objecthash v0.0.0-20180202135721-d1e3d6079fc1
 	github.com/bombsimon/wsl v1.2.8 // indirect
 	github.com/cespare/xxhash/v2 v2.1.1 // indirect
 	github.com/coreos/etcd v3.3.17+incompatible // indirect
