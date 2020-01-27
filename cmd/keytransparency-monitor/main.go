@@ -24,7 +24,6 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/google/trillian/crypto/keys/pem"
-	"github.com/soheilhy/cmux"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -125,15 +124,11 @@ func main() {
 	}
 	defer done()
 
-	m := cmux.New(lis)
-	grpcL := m.MatchWithWriters(cmux.HTTP2MatchHeaderFieldSendSettings("content-type", "application/grpc"))
-	httpL := m.Match(cmux.HTTP1Fast())
-
 	g, gctx := errgroup.WithContext(ctx)
 	g.Go(func() error { return serverutil.ServeHTTPMetrics(*metricsAddr, serverutil.Healthz()) })
-	g.Go(func() error { return grpcServer.Serve(grpcL) })
-	g.Go(func() error { return serverutil.ServeHTTPAPI(gctx, httpL, conn, mopb.RegisterMonitorHandler) })
-	g.Go(m.Serve)
+	g.Go(func() error {
+		return serverutil.ServeHTTPAPIAndGRPC(gctx, lis, grpcServer, conn, mopb.RegisterMonitorHandler)
+	})
 	glog.Errorf("Monitor exiting: %v", g.Wait())
 }
 
