@@ -19,6 +19,7 @@ import (
 	"context"
 	"net"
 	"net/http"
+	"strings"
 
 	"github.com/golang/glog"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
@@ -26,12 +27,30 @@ import (
 	"google.golang.org/grpc"
 )
 
+// gRPCHandlerFunc returns an http.Handler that delegates to grpcServer on incoming gRPC
+// connections or otherHandler otherwise.
+func gRPCHandlerFunc(grpcServer http.Handler, otherHandler http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// This is a partial recreation of gRPC's internal checks.
+		// https://github.com/grpc/grpc-go/blob/v1.26.0/internal/transport/handler_server.go#L62
+		if r.ProtoMajor == 2 && strings.HasPrefix(
+			r.Header.Get("Content-Type"), "application/grpc") {
+			grpcServer.ServeHTTP(w, r)
+		} else {
+			otherHandler.ServeHTTP(w, r)
+		}
+	})
+}
+
 // RegisterServiceFromConn registers services with a grpc server's ServeMux
 type RegisterServiceFromConn func(context.Context, *runtime.ServeMux, *grpc.ClientConn) error
 
-// ServeHTTPAPI serves the given services over HTTP / JSON.
-func ServeHTTPAPI(ctx context.Context, lis net.Listener,
-	conn *grpc.ClientConn, services ...RegisterServiceFromConn) error {
+// ServeAPIGatewayAndGRPC serves the given services over HTTP / JSON and gRPC.
+func ServeHTTPAPIAndGRPC(ctx context.Context, lis net.Listener,
+	grpcServer *grpc.Server, conn *grpc.ClientConn,
+	services ...RegisterServiceFromConn) error {
+	// Wire up gRPC and HTTP servers.
+
 	gwmux := runtime.NewServeMux()
 	for _, s := range services {
 		if err := s(ctx, gwmux, conn); err != nil {
@@ -41,7 +60,8 @@ func ServeHTTPAPI(ctx context.Context, lis net.Listener,
 
 	mux := http.NewServeMux()
 	mux.Handle("/", RootHealthHandler(gwmux))
-	return http.Serve(lis, mux)
+
+	return http.Serve(lis, gRPCHandlerFunc(grpcServer, mux))
 }
 
 // ServeHTTPMetrics serves monitoring APIs
