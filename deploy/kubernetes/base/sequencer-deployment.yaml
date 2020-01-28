@@ -16,7 +16,7 @@ spec:
       volumes:
        - name: secrets
          secret:
-           secretName: kt-secrets
+           secretName: kt-tls
       containers:
       - command:
         - /keytransparency-sequencer
@@ -25,8 +25,8 @@ spec:
         - --addr=0.0.0.0:8080
         - --log-url=log-server:8090
         - --map-url=map-server:8090
-        - --tls-key=/run/secrets/server.key
-        - --tls-cert=/run/secrets/server.crt
+        - --tls-key=/run/secrets/tls.key
+        - --tls-cert=/run/secrets/tls.crt
         - --alsologtostderr
         - --v=5
         image: gcr.io/key-transparency/keytransparency-sequencer:latest

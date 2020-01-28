@@ -16,7 +16,7 @@ spec:
       volumes:
        - name: secrets
          secret:
-           secretName: kt-secrets
+           secretName: kt-tls
       containers:
       - command:
         - /keytransparency-server
@@ -24,8 +24,8 @@ spec:
         - --db=test:zaphod@tcp(db:3306)/test
         - --log-url=log-server:8090
         - --map-url=map-server:8090
-        - --tls-key=/run/secrets/server.key
-        - --tls-cert=/run/secrets/server.crt
+        - --tls-key=/run/secrets/tls.key
+        - --tls-cert=/run/secrets/tls.crt
         - --auth-type=insecure-fake
         - --alsologtostderr
         - --v=5
