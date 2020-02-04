@@ -1,5 +1,7 @@
 bases:
 - ../../base
+resources:
+- managed-cert.yaml
 patchesStrategicMerge:
 - log-server-stackdriver-prometheus-sidecar.yaml
 - log-signer-stackdriver-prometheus-sidecar.yaml

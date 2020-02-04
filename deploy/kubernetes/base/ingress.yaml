@@ -12,6 +12,7 @@ spec:
   - hosts:
     - "localhost"
     - "127.0.0.1"
+    - "sandbox.keytransparency.dev"
     secretName: kt-tls
   rules:
     - http:
