@@ -1,9 +1,9 @@
 version: "3.2"
 secrets:
   server.key:
-    file: ./genfiles/server.key
+    file: ./genfiles/key.pem
   server.crt:
-    file: ./genfiles/server.crt
+    file: ./genfiles/cert.pem
   monitor.key:
     file: ./genfiles/monitor_sign-key.pem
 
