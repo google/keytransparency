@@ -12,6 +12,5 @@ spec:
     - name: https
       port: 443
       targetPort: 443
-      nodePort: 30443
       protocol: TCP
   externalTrafficPolicy: Cluster

@@ -3,4 +3,5 @@ kind: Kustomization
 bases:
 - ../cloud-generic
 patchesStrategicMerge:
+- custom-nodeport.yaml
 - service-nodeport.yaml
