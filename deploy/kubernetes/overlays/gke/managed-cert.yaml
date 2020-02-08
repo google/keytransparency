@@ -1,0 +1,7 @@
+apiVersion: networking.gke.io/v1beta1
+kind: ManagedCertificate
+metadata:
+  name: sandbox-keytransparency-dev
+spec:
+  domains:
+    - sandbox.keytransparency.dev
