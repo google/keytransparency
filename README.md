@@ -89,8 +89,27 @@ $ grpcurl -d '{"directory_id": "default"}' sandbox.keytransparency.dev:443 googl
 ```
 </details>
 
-#### Generate a private key
+#### [Optional] Generate a key signing key
+Key Transparency supports key signing keys for the purpose of making the provenance of public keys explicit.
 
+This feature can be deployed in a variety of configurations:
+1. Only the service provider signs updates.
+   This mode most clearly models most applications today that support account-reset.
+   The service provider authenticates the user using SMS, OAuth, Email, or some other mechanism and then updates the key directory.
+2. The service provider and, optionially, the user sign updates.
+   This mode allows relyinig parties to distinguish between account reset
+   events and new devices that were added by the user from other devices.
+3. The reset providers, and optionally, the user sign updates.
+   This mode removes the power of the service provder to unilaterally update a
+   user's account, while preserving the ability for users to recover their accounts.
+4. Require user signed updates after account setup.
+   This mode requires the user maintain access to their key signing keys in
+   perpetuity or risk loosing access to their account.
+
+If supported by the service provider, each user can select the mode most
+appropriate for their own account by modifying the set of key signing keys in `authorized_keys`.
+
+The sandbox server has been setup in mode 4.
   ```sh
   PASSWORD=[[YOUR-KEYSET-PASSWORD]]
   keytransparency-client authorized-keys create-keyset --password=${PASSWORD}
@@ -98,9 +117,6 @@ $ grpcurl -d '{"directory_id": "default"}' sandbox.keytransparency.dev:443 googl
   ```
 The `create-keyset` command will create a `.keyset` file in the user's working directory.
 To specify custom directory use `--keyset-file` or `-k` shortcut.
-
-NB A default for the Key Transparency server URL is being used here. The default value is "35.202.56.9:443". The flag `--kt-url` may be used to specify the URL of Key Transparency server explicitly.
-
 
 #### Publish the public key
 1. Get an [OAuth client ID](https://console.developers.google.com/apis/credentials) and download the generated JSON file to `client_secret.json`.
