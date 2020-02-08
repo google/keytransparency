@@ -119,12 +119,13 @@ The `create-keyset` command will create a `.keyset` file in the user's working d
 To specify custom directory use `--keyset-file` or `-k` shortcut.
 
 #### Publish the public key
-1. Get an [OAuth client ID](https://console.developers.google.com/apis/credentials) and download the generated JSON file to `client_secret.json`.
+Any number of protocols may be used to prove to the server that a client owns a userID.
+The sandbox server supports a fake authentication string and [OAuth](https://console.developers.google.com/apis/credentials).
 
   ```sh
   keytransparency-client post user@domain.com \
-  --client-secret=client_secret.json \
   --kt-url sandbox.keytransparency.dev \
+  --fake-auth-userid user@domain.com \
   --password=${PASSWORD} \
   --data='dGVzdA==' #Base64
   ```
