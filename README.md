@@ -64,7 +64,7 @@ NB A default for the Key Transparency server URL is being used here. The default
 #### Get and verify a public key
 
   ```
-  keytransparency-client get <email> --insecure --verbose
+  keytransparency-client get <email> --kt-url sandbox.keytransparency.dev:443 --verbose
   ✓ Commitment verified.
   ✓ VRF verified.
   ✓ Sparse tree proof verified.
@@ -79,14 +79,14 @@ NB A default for the Key Transparency server URL is being used here. The default
 
 #### Verify key history
   ```
-  keytransparency-client history <email> --insecure
+  keytransparency-client history user@domain.com --kt-url sandbox.keytransparency.dev:443
   Revision |Timestamp                    |Profile
   4        |Mon Sep 12 22:23:54 UTC 2016 |keys:<key:"app1" value:"test" >
   ```
 
 #### Checks
-- [Proof for foo@bar.com](https://35.202.56.9/v1/directories/default/users/foo@bar.com)
-- [Server configuration info](https://35.202.56.9/v1/directories/default)
+- [Proof for foo@bar.com](https://sandbox.keytransparency.dev/v1/directories/default/users/foo@bar.com)
+- [Server configuration info](https://sandbox.keytransparency.dev/v1/directories/default)
 
 ## Running the server
 
