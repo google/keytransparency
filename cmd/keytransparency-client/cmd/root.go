@@ -77,10 +77,10 @@ func init() {
 	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.keytransparency.yaml)")
 
 	RootCmd.PersistentFlags().String("directory", "default", "Directory within the KT server")
-	RootCmd.PersistentFlags().String("kt-url", "35.202.56.9:443", "URL of Key Transparency server")
-	RootCmd.PersistentFlags().String("kt-cert", "genfiles/server.crt", "Path to public key for Key Transparency")
+	RootCmd.PersistentFlags().String("kt-url", "sandbox.keytransparency.dev:443", "URL of Key Transparency server")
+	RootCmd.PersistentFlags().String("kt-cert", "", "Path to public key for Key Transparency")
 	RootCmd.PersistentFlags().Bool("autoconfig", true, "Fetch config info from the server's /v1/directory/info")
-	RootCmd.PersistentFlags().Bool("insecure", true, "Skip TLS checks")
+	RootCmd.PersistentFlags().Bool("insecure", false, "Skip TLS checks")
 
 	RootCmd.PersistentFlags().String("vrf", "genfiles/vrf-pubkey.pem", "path to vrf public key")
 
