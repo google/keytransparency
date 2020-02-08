@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"net"
 	"os"
 	"time"
 
@@ -154,14 +153,9 @@ func getCreds(ctx context.Context, clientSecretFile string) (credentials.PerRPCC
 	return oauth.NewOauthAccess(tok), nil
 }
 
-func transportCreds(ktURL string) (credentials.TransportCredentials, error) {
+func transportCreds() (credentials.TransportCredentials, error) {
 	ktCert := viper.GetString("kt-cert")
 	insecure := viper.GetBool("insecure")
-
-	host, _, err := net.SplitHostPort(ktURL)
-	if err != nil {
-		return nil, err
-	}
 
 	switch {
 	case insecure: // Impatient insecure.
@@ -170,10 +164,10 @@ func transportCreds(ktURL string) (credentials.TransportCredentials, error) {
 		}), nil
 
 	case ktCert != "": // Custom CA Cert.
-		return credentials.NewClientTLSFromFile(ktCert, host)
+		return credentials.NewClientTLSFromFile(ktCert, "")
 
 	default: // Use the local set of root certs.
-		return credentials.NewClientTLSFromCert(nil, host), nil
+		return credentials.NewClientTLSFromCert(nil, ""), nil
 	}
 }
 
@@ -196,7 +190,7 @@ func userCreds(ctx context.Context) (credentials.PerRPCCredentials, error) {
 
 func dial(ctx context.Context) (pb.KeyTransparencyClient, error) {
 	addr := viper.GetString("kt-url")
-	transportCreds, err := transportCreds(addr)
+	transportCreds, err := transportCreds()
 	if err != nil {
 		return nil, err
 	}
