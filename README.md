@@ -122,12 +122,22 @@ To specify custom directory use `--keyset-file` or `-k` shortcut.
 Any number of protocols may be used to prove to the server that a client owns a userID.
 The sandbox server supports a fake authentication string and [OAuth](https://console.developers.google.com/apis/credentials).
 
+Create or fetch the public key for your specific application.
+  ```sh
+   openssl genpkey -algorithm X25519 -out xkey.pem
+   openssl pkey -in xkey.pem -pubout 
+   -----BEGIN PUBLIC KEY-----
+   MCowBQYDK2VuAyEAtCAsIMDyVUUooA5yhgRefcEr7edVOmyNCUaN1LCYl3s=
+   -----END PUBLIC KEY-----
+  ```
+
   ```sh
   keytransparency-client post user@domain.com \
-  --kt-url sandbox.keytransparency.dev \
+  --kt-url sandbox.keytransparency.dev:443 \
   --fake-auth-userid user@domain.com \
   --password=${PASSWORD} \
-  --data='dGVzdA==' #Base64
+  --verbose \
+  --data='MCowBQYDK2VuAyEAtCAsIMDyVUUooA5yhgRefcEr7edVOmyNCUaN1LCYl3s=' #Your public key in base64
   ```
 
 #### Get and verify a public key
