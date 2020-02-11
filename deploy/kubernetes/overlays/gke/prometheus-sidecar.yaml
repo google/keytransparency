@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    io.kompose.service: prometheus
+  name: prometheus
+spec:
+  template:
+    spec:
+      containers:
+      - name: sidecar
+        image: gcr.io/stackdriver-prometheus/stackdriver-prometheus-sidecar:0.7.3
+        imagePullPolicy: Always
+        args:
+        - "--stackdriver.project-id=${GCP_PROJECT}"
+        - "--prometheus.wal-directory=/data/wal"
+        - "--stackdriver.kubernetes.location=${GCP_REGION}"
+        - "--stackdriver.kubernetes.cluster-name=${KUBE_CLUSTER}"
+        ports:
+        - name: sidecar
+          containerPort: 9091
+        volumeMounts:
+        - name: ${DATA_VOLUME}
+          mountPath: /data
