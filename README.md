@@ -33,7 +33,7 @@ development.
 
 ### Setup
 1. Install [Go 1.13](https://golang.org/doc/install).
-2. `go get github.com/google/keytransparency/cmd/keytransparency-client `
+2. `GO111MODULE=on go get github.com/google/keytransparency/cmd/keytransparency-client`
 
 ### Client operations
 
