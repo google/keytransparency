@@ -51,13 +51,16 @@ NB A default for the Key Transparency server URL is being used here. The default
 
 
 #### Publish the public key
-1. Get an [OAuth client ID](https://console.developers.google.com/apis/credentials) and download the generated JSON file to `client_secret.json`.
+Any number of protocols may be used to prove to the server that a client owns a userID.
+The sandbox server supports a fake authentication string and [OAuth](https://console.developers.google.com/apis/credentials).
 
   ```sh
   keytransparency-client post user@domain.com \
-  --client-secret=client_secret.json \
-  --insecure \
+  --kt-url sandbox.keytransparency.dev:443 \
+  --fake-auth-userid user@domain.com \
   --password=${PASSWORD} \
+  --verboase \
+  --logtostderr \
   --data='dGVzdA==' #Base64
   ```
 
