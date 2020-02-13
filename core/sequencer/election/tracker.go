@@ -121,7 +121,7 @@ func (mt *Tracker) watchOnce(ctx context.Context, e election2.Election, res stri
 	if err := e.Await(ctx); err != nil {
 		return err
 	}
-	glog.Infof("Obtained mastership for %v", res)
+	glog.Infof("Obtained mastership for %q", res)
 
 	// Obtain mastership ctx *before* Masterships runs to avoid racing.
 	mastershipCtx, err := e.WithMastership(ctx)
@@ -137,7 +137,7 @@ func (mt *Tracker) watchOnce(ctx context.Context, e election2.Election, res stri
 	// the parent context was closed. In either case work being done will
 	// be canceled and we will mark ourselves as not-master until we can
 	// acquire mastership again.
-	glog.Warningf("No longer master for %v", res)
+	glog.Warningf("No longer master for %q", res)
 	return nil
 }
 
@@ -184,9 +184,9 @@ func (mt *Tracker) Masterships(ctx context.Context) (map[string]context.Context,
 		// Resign mastership if we've held it for over maxHold.
 		// Resign before attempting to acquire a mastership lock.
 		if held := time.Since(m.acquired); held > mt.maxHold {
-			glog.Infof("Resigning from %v after %v", res, held)
+			glog.Infof("Resigning from %q after %v", res, held)
 			if err := m.e.Resign(ctx); err != nil {
-				glog.Errorf("Resign failed for resource %v: %v", res, err)
+				glog.Errorf("Resign failed for resource %q: %v", res, err)
 			}
 			continue
 		}
