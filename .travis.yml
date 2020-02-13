@@ -21,8 +21,6 @@ env:
 
 jobs:
   include:
-    - name: "build"
-      script: go build ./...
     - name: "lint"
       install: curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b $(go env GOPATH)/bin v1.19.0
       script: golangci-lint run --deadline=7m
