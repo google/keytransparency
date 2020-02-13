@@ -1,4 +1,4 @@
 bases:
 - ../../base
-patchesStrategicMerge:
-- server-service.yaml
+resources:
+- ingress-nginx/baremetal

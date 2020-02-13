@@ -33,7 +33,7 @@ development.
 
 ### Setup
 1. Install [Go 1.13](https://golang.org/doc/install).
-2. `go get github.com/google/keytransparency/cmd/keytransparency-client `
+2. `GO111MODULE=on go get github.com/google/keytransparency/cmd/keytransparency-client`
 
 ### Client operations
 
@@ -51,20 +51,23 @@ NB A default for the Key Transparency server URL is being used here. The default
 
 
 #### Publish the public key
-1. Get an [OAuth client ID](https://console.developers.google.com/apis/credentials) and download the generated JSON file to `client_secret.json`.
+Any number of protocols may be used to prove to the server that a client owns a userID.
+The sandbox server supports a fake authentication string and [OAuth](https://console.developers.google.com/apis/credentials).
 
   ```sh
   keytransparency-client post user@domain.com \
-  --client-secret=client_secret.json \
-  --insecure \
+  --kt-url sandbox.keytransparency.dev:443 \
+  --fake-auth-userid user@domain.com \
   --password=${PASSWORD} \
+  --verboase \
+  --logtostderr \
   --data='dGVzdA==' #Base64
   ```
 
 #### Get and verify a public key
 
   ```
-  keytransparency-client get <email> --insecure --verbose
+  keytransparency-client get <email> --kt-url sandbox.keytransparency.dev:443 --verbose
   ✓ Commitment verified.
   ✓ VRF verified.
   ✓ Sparse tree proof verified.
@@ -79,14 +82,14 @@ NB A default for the Key Transparency server URL is being used here. The default
 
 #### Verify key history
   ```
-  keytransparency-client history <email> --insecure
+  keytransparency-client history user@domain.com --kt-url sandbox.keytransparency.dev:443
   Revision |Timestamp                    |Profile
   4        |Mon Sep 12 22:23:54 UTC 2016 |keys:<key:"app1" value:"test" >
   ```
 
 #### Checks
-- [Proof for foo@bar.com](https://35.202.56.9/v1/directories/default/users/foo@bar.com)
-- [Server configuration info](https://35.202.56.9/v1/directories/default)
+- [Proof for foo@bar.com](https://sandbox.keytransparency.dev/v1/directories/default/users/foo@bar.com)
+- [Server configuration info](https://sandbox.keytransparency.dev/v1/directories/default)
 
 ## Running the server
 
