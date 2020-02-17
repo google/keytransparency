@@ -53,9 +53,10 @@ docker-compose push
 
 echo "Updating jobs..."
 cd deploy/kubernetes/base
-kustomize edit set image gcr.io/${PROJECT_NAME_CI}/prometheus:${TRAVIS_COMMIT}
-kustomize edit set image gcr.io/${PROJECT_NAME_CI}/keytransparency-monitor:${TRAVIS_COMMIT}
-kustomize edit set image gcr.io/${PROJECT_NAME_CI}/keytransparency-sequencer:${TRAVIS_COMMIT}
-kustomize edit set image gcr.io/${PROJECT_NAME_CI}/keytransparency-server:${TRAVIS_COMMIT}
+kustomize edit set image gcr.io/key-transparency/keytransparency-monitor:${TRAVIS_COMMIT}
+kustomize edit set image gcr.io/key-transparency/keytransparency-sequencer:${TRAVIS_COMMIT}
+kustomize edit set image gcr.io/key-transparency/keytransparency-server:${TRAVIS_COMMIT}
+kustomize edit set image gcr.io/key-transparency/prometheus:${TRAVIS_COMMIT}
+kustomize edit set image gcr.io/key-transparency/init:${TRAVIS_COMMIT}
 cd -
 kubectl apply -k deploy/kubernetes/overlays/gke

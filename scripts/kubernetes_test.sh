@@ -13,11 +13,15 @@ docker-compose build --parallel
 kind load docker-image gcr.io/key-transparency/keytransparency-monitor:${TRAVIS_COMMIT}
 kind load docker-image gcr.io/key-transparency/keytransparency-sequencer:${TRAVIS_COMMIT}
 kind load docker-image gcr.io/key-transparency/keytransparency-server:${TRAVIS_COMMIT}
+kind load docker-image gcr.io/key-transparency/prometheus:${TRAVIS_COMMIT}
+kind load docker-image gcr.io/key-transparency/init:${TRAVIS_COMMIT}
 
 cd deploy/kubernetes/base
 kustomize edit set image gcr.io/key-transparency/keytransparency-monitor:${TRAVIS_COMMIT}
 kustomize edit set image gcr.io/key-transparency/keytransparency-sequencer:${TRAVIS_COMMIT}
 kustomize edit set image gcr.io/key-transparency/keytransparency-server:${TRAVIS_COMMIT}
+kustomize edit set image gcr.io/key-transparency/prometheus:${TRAVIS_COMMIT}
+kustomize edit set image gcr.io/key-transparency/init:${TRAVIS_COMMIT}
 cd -
 
 # kubectl exits with 1 if kt-secret does not exist
