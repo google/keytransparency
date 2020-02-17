@@ -26,7 +26,7 @@ require (
 	github.com/google/trillian v1.3.3
 	github.com/gorilla/websocket v1.4.1 // indirect
 	github.com/gostaticanalysis/analysisutil v0.0.3 // indirect
-	github.com/grpc-ecosystem/go-grpc-middleware v1.1.0
+	github.com/grpc-ecosystem/go-grpc-middleware v1.2.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/grpc-ecosystem/grpc-gateway v1.9.4
 	github.com/imdario/mergo v0.3.8 // indirect
