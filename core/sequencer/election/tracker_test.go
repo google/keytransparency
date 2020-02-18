@@ -45,9 +45,11 @@ func TestForceMaster(t *testing.T) {
 	}
 
 	// Advance the clock by pretending we acquired mastersihp a long time ago.
+	mt.masterMu.Lock()
 	mastership := mt.master[res]
 	mastership.acquired = time.Now().Add(-2 * resignTime)
 	mt.master[res] = mastership
+	mt.masterMu.Unlock()
 
 	// Verify that we resign the mastership after the clock as advanced.
 	m2, err := mt.Masterships(ctx)
