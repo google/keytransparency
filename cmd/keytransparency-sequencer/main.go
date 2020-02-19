@@ -39,6 +39,7 @@ import (
 	"github.com/google/keytransparency/core/sequencer/election"
 	"github.com/google/keytransparency/impl/sql/directory"
 	"github.com/google/keytransparency/impl/sql/mutationstorage"
+	"github.com/google/keytransparency/internal/forcemaster"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	dir "github.com/google/keytransparency/core/directory"
@@ -78,7 +79,7 @@ var (
 func getElectionFactory() (election2.Factory, func()) {
 	if *forceMaster {
 		glog.Warning("Acting as master for all directories")
-		return election2.NoopFactory{}, func() {}
+		return forcemaster.Factory{}, func() {}
 	}
 	if len(*etcdServers) == 0 {
 		glog.Exit("Either --force_master or --etcd_servers must be supplied")

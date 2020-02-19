@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"net"
 	"os"
 	"time"
 
@@ -77,10 +76,10 @@ func init() {
 	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.keytransparency.yaml)")
 
 	RootCmd.PersistentFlags().String("directory", "default", "Directory within the KT server")
-	RootCmd.PersistentFlags().String("kt-url", "35.202.56.9:443", "URL of Key Transparency server")
-	RootCmd.PersistentFlags().String("kt-cert", "genfiles/server.crt", "Path to public key for Key Transparency")
+	RootCmd.PersistentFlags().String("kt-url", "sandbox.keytransparency.dev:443", "URL of Key Transparency server")
+	RootCmd.PersistentFlags().String("kt-cert", "", "Path to public key for Key Transparency")
 	RootCmd.PersistentFlags().Bool("autoconfig", true, "Fetch config info from the server's /v1/directory/info")
-	RootCmd.PersistentFlags().Bool("insecure", true, "Skip TLS checks")
+	RootCmd.PersistentFlags().Bool("insecure", false, "Skip TLS checks")
 
 	RootCmd.PersistentFlags().String("vrf", "genfiles/vrf-pubkey.pem", "path to vrf public key")
 
@@ -154,14 +153,9 @@ func getCreds(ctx context.Context, clientSecretFile string) (credentials.PerRPCC
 	return oauth.NewOauthAccess(tok), nil
 }
 
-func transportCreds(ktURL string) (credentials.TransportCredentials, error) {
+func transportCreds() (credentials.TransportCredentials, error) {
 	ktCert := viper.GetString("kt-cert")
 	insecure := viper.GetBool("insecure")
-
-	host, _, err := net.SplitHostPort(ktURL)
-	if err != nil {
-		return nil, err
-	}
 
 	switch {
 	case insecure: // Impatient insecure.
@@ -170,10 +164,10 @@ func transportCreds(ktURL string) (credentials.TransportCredentials, error) {
 		}), nil
 
 	case ktCert != "": // Custom CA Cert.
-		return credentials.NewClientTLSFromFile(ktCert, host)
+		return credentials.NewClientTLSFromFile(ktCert, "")
 
 	default: // Use the local set of root certs.
-		return credentials.NewClientTLSFromCert(nil, host), nil
+		return credentials.NewClientTLSFromCert(nil, ""), nil
 	}
 }
 
@@ -196,7 +190,7 @@ func userCreds(ctx context.Context) (credentials.PerRPCCredentials, error) {
 
 func dial(ctx context.Context) (pb.KeyTransparencyClient, error) {
 	addr := viper.GetString("kt-url")
-	transportCreds, err := transportCreds(addr)
+	transportCreds, err := transportCreds()
 	if err != nil {
 		return nil, err
 	}

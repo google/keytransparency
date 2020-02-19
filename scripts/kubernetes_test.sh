@@ -13,11 +13,15 @@ docker-compose build --parallel
 kind load docker-image gcr.io/key-transparency/keytransparency-monitor:${TRAVIS_COMMIT}
 kind load docker-image gcr.io/key-transparency/keytransparency-sequencer:${TRAVIS_COMMIT}
 kind load docker-image gcr.io/key-transparency/keytransparency-server:${TRAVIS_COMMIT}
+kind load docker-image gcr.io/key-transparency/prometheus:${TRAVIS_COMMIT}
+kind load docker-image gcr.io/key-transparency/init:${TRAVIS_COMMIT}
 
 cd deploy/kubernetes/base
 kustomize edit set image gcr.io/key-transparency/keytransparency-monitor:${TRAVIS_COMMIT}
 kustomize edit set image gcr.io/key-transparency/keytransparency-sequencer:${TRAVIS_COMMIT}
 kustomize edit set image gcr.io/key-transparency/keytransparency-server:${TRAVIS_COMMIT}
+kustomize edit set image gcr.io/key-transparency/prometheus:${TRAVIS_COMMIT}
+kustomize edit set image gcr.io/key-transparency/init:${TRAVIS_COMMIT}
 cd -
 
 # kubectl exits with 1 if kt-secret does not exist
@@ -34,8 +38,8 @@ fi
 # Hack to wait for the default service account's creation. https://github.com/kubernetes/kubernetes/issues/66689
 n=0; until ((n >= 60)); do kubectl -n default get serviceaccount default -o name && break; n=$((n + 1)); sleep 1; done; ((n < 60))
 
-kubectl apply -k deploy/kubernetes/overlays/local 
-trap "kubectl delete -k deploy/kubernetes/overlays/local" INT EXIT
+kustomize build deploy/kubernetes/overlays/local/ | kubectl apply -f -
+trap "kustomize build deploy/kubernetes/overlays/local/ | kubectl delete -f -" INT EXIT
 TIMEOUT=2m
 timeout ${TIMEOUT} kubectl rollout status deployment/db
 timeout ${TIMEOUT} kubectl rollout status deployment/log-server

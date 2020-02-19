@@ -1,0 +1,4 @@
+resources:
+- clusterrole.yaml
+- clusterrolebinding.yaml
+- namespace.yaml
