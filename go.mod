@@ -21,7 +21,7 @@ require (
 	github.com/golangci/golangci-lint v1.21.0 // indirect
 	github.com/google/certificate-transparency-go v1.1.0 // indirect
 	github.com/google/go-cmp v0.4.0
-	github.com/google/tink v1.3.0-rc3
+	github.com/google/tink v1.3.0-rc4
 	github.com/google/trillian v1.3.3
 	github.com/gorilla/websocket v1.4.1 // indirect
 	github.com/gostaticanalysis/analysisutil v0.0.3 // indirect
@@ -43,7 +43,7 @@ require (
 	github.com/prometheus/client_golang v1.4.1
 	github.com/russross/blackfriday v2.0.0+incompatible // indirect
 	github.com/securego/gosec v0.0.0-20191119104125-df484bfa9e9f // indirect
-	github.com/spf13/cobra v0.0.5
+	github.com/spf13/cobra v0.0.6
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.5.0
 	github.com/uber/prototool v1.9.0 // indirect

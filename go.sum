@@ -284,8 +284,11 @@ github.com/google/monologue v0.0.0-20190606152607-4b11a32b5934/go.mod h1:6NTfaQo
 github.com/google/pprof v0.0.0-20181206194817-3ea8567a2e57/go.mod h1:zfwlbNMJ+OItoe0UupaVj+oy1omPYYDuagoSzA8v9mc=
 github.com/google/pprof v0.0.0-20190515194954-54271f7e092f/go.mod h1:zfwlbNMJ+OItoe0UupaVj+oy1omPYYDuagoSzA8v9mc=
 github.com/google/renameio v0.1.0/go.mod h1:KWCgfxg9yswjAJkECMjeO8J8rahYeXnNhOm40UhjYkI=
+github.com/google/tink v1.2.2 h1:NbhoLgm7oNZFSD2RzN6B4jStW7FChkbzo/r69Jc1kzI=
 github.com/google/tink v1.3.0-rc3 h1:cbjX51qfitN4T/g1hoVmfYb7MkPxgVNcEr4t2RWKhIU=
 github.com/google/tink v1.3.0-rc3/go.mod h1:xCAsc4J1ZYTyVncY9QgOTZsU0l+P3ou0VsiLslNjgAo=
+github.com/google/tink v1.3.0-rc4 h1:zALbM4opXSOEf/ykXWMXgRwDPCtJz/KB4lVXHqPeFsA=
+github.com/google/tink v1.3.0-rc4/go.mod h1:xCAsc4J1ZYTyVncY9QgOTZsU0l+P3ou0VsiLslNjgAo=
 github.com/google/trillian v1.2.2-0.20190612132142-05461f4df60a/go.mod h1:YPmUVn5NGwgnDUgqlVyFGMTgaWlnSvH7W5p+NdOG8UA=
 github.com/google/trillian v1.3.3 h1:xwIDDPBdK5I8hvCTZAna9dNCdZc1OUvkPnSSdiwjT8Y=
 github.com/google/trillian v1.3.3/go.mod h1:FFIfFeCKosf1D9mKBxMySFmBI96xHCatmA7NZOXo+qI=
@@ -573,6 +576,8 @@ github.com/spf13/cobra v0.0.2/go.mod h1:1l0Ry5zgKvJasoi3XT1TypsSe7PqH0Sj9dhYf7v3
 github.com/spf13/cobra v0.0.4/go.mod h1:3K3wKZymM7VvHMDS9+Akkh4K60UwM26emMESw8tLCHU=
 github.com/spf13/cobra v0.0.5 h1:f0B+LkLX6DtmRH1isoNA9VTtNUK9K8xYd28JNNfOv/s=
 github.com/spf13/cobra v0.0.5/go.mod h1:3K3wKZymM7VvHMDS9+Akkh4K60UwM26emMESw8tLCHU=
+github.com/spf13/cobra v0.0.6 h1:breEStsVwemnKh2/s6gMvSdMEkwW0sK8vGStnlVBMCs=
+github.com/spf13/cobra v0.0.6/go.mod h1:/6GTrnGXV9HjY+aR4k0oJ5tcvakLuG6EuKReYlHNrgE=
 github.com/spf13/jwalterweatherman v0.0.0-20180109140146-7c0cea34c8ec/go.mod h1:cQK4TGJAtQXfYWX+Ddv3mKDzgVb68N+wFjFa4jdeBTo=
 github.com/spf13/jwalterweatherman v1.0.0 h1:XHEdyB+EcvlqZamSM4ZOMGlc93t6AcsBEu9Gc1vn7yk=
 github.com/spf13/jwalterweatherman v1.0.0/go.mod h1:cQK4TGJAtQXfYWX+Ddv3mKDzgVb68N+wFjFa4jdeBTo=
