@@ -28,9 +28,11 @@ cd -
 if ! kubectl get secret kt-tls; then
   echo "Generating keys..."
   rm -f ./genfiles/*
-  ./scripts/prepare_server.sh -f
+  ./scripts/gen_monitor_keys.sh -f
   kubectl create secret generic kt-monitor --from-file=genfiles/monitor_sign-key.pem
-  kubectl create secret tls kt-tls --cert=genfiles/server.crt --key=genfiles/server.key
+  go run "$(go env GOROOT)/src/crypto/tls/generate_cert.go" --host localhost,127.0.0.1,::
+  kubectl create secret tls kt-tls --cert=cert.pem --key=key.pem
+  rm key.pem cert.pem
 fi
 
 # Hack to wait for the default service account's creation. https://github.com/kubernetes/kubernetes/issues/66689

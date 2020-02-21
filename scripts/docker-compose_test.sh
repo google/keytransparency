@@ -3,7 +3,10 @@ set -ex
 set -o pipefail
 
 if [ ! -f genfiles/server.key ]; then
-	./scripts/prepare_server.sh -f
+	./scripts/gen_monitor_keys.sh -f
+	cd genfiles
+	go run "$(go env GOROOT)/src/crypto/tls/generate_cert.go" --host localhost,127.0.0.1,::
+	cd -
 fi
 
 export TRAVIS_COMMIT=$(git rev-parse HEAD)
