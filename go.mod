@@ -43,7 +43,7 @@ require (
 	github.com/prometheus/client_golang v1.4.1
 	github.com/russross/blackfriday v2.0.0+incompatible // indirect
 	github.com/securego/gosec v0.0.0-20191119104125-df484bfa9e9f // indirect
-	github.com/spf13/cobra v0.0.5
+	github.com/spf13/cobra v0.0.6
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.5.0
 	github.com/uber/prototool v1.9.0 // indirect
