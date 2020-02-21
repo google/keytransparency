@@ -2,8 +2,8 @@
 
 ## Objective
 
-Key Transparency currently sufferes from a design-space tradeoff in two dimentions between
-speed and verification bandwidth.  Each snapshot of the key-value merkle tree creates an additional
+Key Transparency currently suffers from a design-space tradeoff in two dimensions between
+speed and verification bandwidth.  Each snapshot of the key-value Merkle tree creates an additional
 point in time that clients must audit when inspecting their account history. 
 Using Key Transparency in this mode requires the presence of powerful auditors who can verify
 that no information has been lost between all snapshots.
@@ -32,7 +32,7 @@ We expect that many applications will want to prioritize speed and reliability b
 
 ### Gossip Network
 The job of the gossip network is to ensure that there is a single, globally consistent lineage of log roots. 
-To keep $n^2$ communication costs low, and to prevent sybil attacks, clients use a small ~20 set of gossip nodes.
+To keep ![n^2](https://render.githubusercontent.com/render/math?math=n%5E2) communication costs low, and to prevent sybil attacks, clients use a small ~20 set of gossip nodes.
 
 Each gossip node fetches the latest signed log root (SLRs) and verifies consistency with all previously seen roots.
 After verifying, the gossip node signs the log root.
