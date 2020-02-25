@@ -13,10 +13,15 @@ spec:
       labels:
         io.kompose.service: log-server
     spec:
+      restartPolicy: Always
+      volumes:
+       - name: secrets-cloudsql
+         secret:
+           secretName: cloudsql
       containers:
       - name: trillian-logserver
         args: [
-        "--mysql_uri=test:zaphod@tcp(db:3306)/test",
+        "--mysql_uri=test:zaphod@tcp(127.0.0.1:3306)/test",
         "--rpc_endpoint=0.0.0.0:8090",
         "--http_endpoint=0.0.0.0:8091",
         "--alsologtostderr"
@@ -31,5 +36,16 @@ spec:
         - containerPort: 8090
         - containerPort: 8091
         resources: {}
-      restartPolicy: Always
+      - name: cloudsql-proxy
+        image: gcr.io/cloudsql-docker/gce-proxy:1.16
+        command: ["/cloud_sql_proxy",
+                  "-instances=key-transparency:us-central1:keytransparency-sandbox=tcp:3306",
+                  "-credential_file=/secrets/cloudsql/credentials.json"]
+        securityContext:
+          runAsUser: 2  # non-root user
+          allowPrivilegeEscalation: false
+        volumeMounts:
+          - name: secrets-cloudsql
+            mountPath: /secrets/cloudsql
+            readOnly: true
 status: {}
