@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cloud-sql-sidecar
+spec:
+  template:
+    spec:
+      volumes:
+       - name: secrets-cloudsql
+         secret:
+           secretName: cloudsql
+      containers:
+      - name: cloudsql-proxy
+        image: gcr.io/cloudsql-docker/gce-proxy:1.16
+        command: ["/cloud_sql_proxy",
+                  "-instances=key-transparency:us-central1:keytransparency-sandbox=tcp:3306",
+                  "-credential_file=/secrets/cloudsql/credentials.json"]
+        securityContext:
+          runAsUser: 2  # non-root user
+          allowPrivilegeEscalation: false
+        volumeMounts:
+          - name: secrets-cloudsql
+            mountPath: /secrets/cloudsql
+            readOnly: true
+
+

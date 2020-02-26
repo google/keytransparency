@@ -2,6 +2,10 @@ bases:
 - ../../base
 resources:
 - managed-cert.yaml
+patches:
+- path: cloudsql-sidecar.yaml
+  target:
+    kind: Deployment
 patchesStrategicMerge:
 - ingress.yaml
 - log-server-stackdriver-prometheus-sidecar.yaml
@@ -10,5 +14,3 @@ patchesStrategicMerge:
 - sequencer-stackdriver-prometheus-sidecar.yaml
 - server-service.yaml
 - server-stackdriver-prometheus-sidecar.yaml
-
-
