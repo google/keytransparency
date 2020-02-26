@@ -16,7 +16,7 @@ kind load docker-image gcr.io/key-transparency/keytransparency-server:${TRAVIS_C
 kind load docker-image gcr.io/key-transparency/prometheus:${TRAVIS_COMMIT}
 kind load docker-image gcr.io/key-transparency/init:${TRAVIS_COMMIT}
 
-./kustomize_image_tag.sh $TRAVIS_COMMIT
+./scripts/kustomize_image_tag.sh $TRAVIS_COMMIT
 
 # kubectl exits with 1 if kt-secret does not exist
 if ! kubectl get secret kt-tls; then

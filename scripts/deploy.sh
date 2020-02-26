@@ -54,5 +54,5 @@ echo "Pushing docker images..."
 docker-compose push
 
 echo "Updating jobs..."
-./kustomize_image_tag.sh $TRAVIS_COMMIT
+./scripts/kustomize_image_tag.sh $TRAVIS_COMMIT
 kubectl apply -k deploy/kubernetes/overlays/gke
