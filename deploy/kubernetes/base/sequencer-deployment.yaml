@@ -21,7 +21,7 @@ spec:
       - command:
         - /keytransparency-sequencer
         - --force_master
-        - --db=test:zaphod@tcp(db:3306)/test
+        - --db=test:zaphod@tcp($(DB_HOST):3306)/test
         - --addr=0.0.0.0:8080
         - --log-url=log-server:8090
         - --map-url=map-server:8090
@@ -30,6 +30,9 @@ spec:
         - --alsologtostderr
         - --v=5
         image: gcr.io/key-transparency/keytransparency-sequencer:latest
+        envFrom:
+          - configMapRef:
+               name: configmap
         livenessProbe:
          httpGet:
            path: /healthz

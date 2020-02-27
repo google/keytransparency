@@ -2,6 +2,7 @@ commonLabels:
   app.kubernetes.io/name: keytransparency
 
 resources:
+- configmap.yaml
 - ingress.yaml
 - init-pod.yaml
 - log-server-deployment.yaml

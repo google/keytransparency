@@ -16,7 +16,7 @@ spec:
       containers:
       - name: trillian-logsigner
         args: [
-        "--mysql_uri=test:zaphod@tcp(db:3306)/test",
+        "--mysql_uri=test:zaphod@tcp($(DB_HOST):3306)/test",
         "--http_endpoint=0.0.0.0:8091",
         "--sequencer_guard_window=0s",
         "--sequencer_interval=1s",
@@ -26,6 +26,9 @@ spec:
         "--alsologtostderr"
         ]
         image: gcr.io/trillian-opensource-ci/log_signer:latest
+        envFrom:
+          - configMapRef:
+               name: configmap
         livenessProbe:
          httpGet:
            path: /metrics

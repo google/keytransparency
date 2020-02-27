@@ -16,12 +16,15 @@ spec:
       containers:
       - name: trillian-logserver
         args: [
-        "--mysql_uri=test:zaphod@tcp(127.0.0.1:3306)/test",
+        "--mysql_uri=test:zaphod@tcp($(DB_HOST):3306)/test",
         "--rpc_endpoint=0.0.0.0:8090",
         "--http_endpoint=0.0.0.0:8091",
         "--alsologtostderr"
         ]
         image: gcr.io/trillian-opensource-ci/log_server:latest
+        envFrom:
+          - configMapRef:
+               name: configmap
         livenessProbe:
          httpGet:
            path: /metrics
