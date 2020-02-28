@@ -22,6 +22,9 @@ spec:
         "--alsologtostderr"
         ]
         image: gcr.io/trillian-opensource-ci/map_server:latest
+        envFrom:
+          - configMapRef:
+               name: configmap
         livenessProbe:
          httpGet:
            path: /metrics
