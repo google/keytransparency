@@ -40,9 +40,11 @@ test $(basename $(pwd)) == "keytransparency" || exit 1
 if ! kubectl get secret kt-tls; then
   echo "Generating keys..."
   rm -f ./genfiles/*
-  ./scripts/prepare_server.sh -f
+  ./scripts/gen_monitor_keys.sh -f
   kubectl create secret generic kt-monitor --from-file=genfiles/monitor_sign-key.pem
-  kubectl create secret tls kt-tls --cert=genfiles/server.crt --key=genfiles/server.key
+  go run "$(go env GOROOT)/src/crypto/tls/generate_cert.go" --host localhost,127.0.0.1,::
+  kubectl create secret tls kt-tls --cert=cert.pem --key=key.pem
+  rm key.pem cert.pem
 fi
 
 echo "Building docker images..."
@@ -52,10 +54,5 @@ echo "Pushing docker images..."
 docker-compose push
 
 echo "Updating jobs..."
-cd deploy/kubernetes/base
-kustomize edit set image gcr.io/${PROJECT_NAME_CI}/prometheus:${TRAVIS_COMMIT}
-kustomize edit set image gcr.io/${PROJECT_NAME_CI}/keytransparency-monitor:${TRAVIS_COMMIT}
-kustomize edit set image gcr.io/${PROJECT_NAME_CI}/keytransparency-sequencer:${TRAVIS_COMMIT}
-kustomize edit set image gcr.io/${PROJECT_NAME_CI}/keytransparency-server:${TRAVIS_COMMIT}
-cd -
-kubectl apply -k deploy/kubernetes/overlays/gke
+./scripts/kustomize_image_tag.sh $TRAVIS_COMMIT
+kustomize build deploy/kubernetes/overlays/gke/ | kubectl apply -f -

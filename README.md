@@ -37,6 +37,60 @@ development.
 
 ### Client operations
 
+## View a Directory's Public Keys
+The Key Transparency server publishes a separate set of public keys for each directory that it hosts.
+By hosting multiple directores, a single domain can host directories for multiple apps or customers.
+A standardized pattern for discovering domains and directores is a TODO in issue #389.
+
+Within a directory the server uses the following public keys to sign its responses:
+1. `log.public_key` signs the top-most merkle tree root, covering the ordered list of map roots.
+2. `map.public_key` signs each snapshot of the key-value database in the form of a sparse merkle tree.
+3. `vrf.der` signs outputs of the [Verifiable Random Function](https://en.wikipedia.org/wiki/Verifiable_random_function)
+    which obscures the key values in the key-value database.
+
+A directory's public keys can be retrieved over HTTPS/JSON with curl
+or over gRPC with [grpcurl](https://github.com/fullstorydev/grpcurl).
+The sandboxserver has been initalized with a domain named `default`.
+```sh
+$ curl -s https://sandbox.keytransparency.dev/v1/directories/default | json_pp
+$ grpcurl -d '{"directory_id": "default"}' sandbox.keytransparency.dev:443 google.keytransparency.v1.KeyTransparency/GetDirectory
+```
+
+<details>
+  <summary>Show output</summary>
+
+```sh
+{
+   "directory_id" : "default",
+   "log" : {
+      "hash_algorithm" : "SHA256",
+      "hash_strategy" : "RFC6962_SHA256",
+      "public_key" : {
+         "der" : "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEXPi4Ut3cRY3OCXWvcSnE/sk6tbDEgBeZapfEy/BIKfsMbj3hPLG+WEjzh1IP2TDirc9GpQ+r9HVGR81KqRpbjw=="
+      },
+      "signature_algorithm" : "ECDSA",
+      "tree_id" : "4565568921879890247",
+      "tree_type" : "PREORDERED_LOG"
+   },
+   "map" : {
+      "hash_algorithm" : "SHA256",
+      "hash_strategy" : "CONIKS_SHA256",
+      "public_key" : {
+         "der" : "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEgX6ITeFrqLmclqH+3XVhbaEeJO37vy1dZYRFxpKScERdeeu3XRirJszc5KJgaZs0LdvJqOccfNc2gJfInLGIuA=="
+      },
+      "signature_algorithm" : "ECDSA",
+      "tree_id" : "5601540825264769688",
+      "tree_type" : "MAP"
+   },
+   "max_interval" : "60s",
+   "min_interval" : "1s",
+   "vrf" : {
+      "der" : "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEvuqCkY9rM/jq/8hAoQn2PClvlNvVeV0MSUqzc67q6W+MzY/YZKmPLY5t/n/VUEqeSgwU+/sXgER3trsL6nZu+A=="
+   }
+}
+```
+</details>
+
 #### Generate a private key
 
   ```sh
@@ -54,14 +108,23 @@ NB A default for the Key Transparency server URL is being used here. The default
 Any number of protocols may be used to prove to the server that a client owns a userID.
 The sandbox server supports a fake authentication string and [OAuth](https://console.developers.google.com/apis/credentials).
 
+Create or fetch the public key for your specific application.
+  ```sh
+   openssl genpkey -algorithm X25519 -out xkey.pem
+   openssl pkey -in xkey.pem -pubout 
+   -----BEGIN PUBLIC KEY-----
+   MCowBQYDK2VuAyEAtCAsIMDyVUUooA5yhgRefcEr7edVOmyNCUaN1LCYl3s=
+   -----END PUBLIC KEY-----
+  ```
+
   ```sh
   keytransparency-client post user@domain.com \
   --kt-url sandbox.keytransparency.dev:443 \
   --fake-auth-userid user@domain.com \
   --password=${PASSWORD} \
-  --verboase \
+  --verbose \
   --logtostderr \
-  --data='dGVzdA==' #Base64
+  --data='MCowBQYDK2VuAyEAtCAsIMDyVUUooA5yhgRefcEr7edVOmyNCUaN1LCYl3s=' #Your public key in base64
   ```
 
 #### Get and verify a public key

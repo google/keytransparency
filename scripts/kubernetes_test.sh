@@ -13,20 +13,20 @@ docker-compose build --parallel
 kind load docker-image gcr.io/key-transparency/keytransparency-monitor:${TRAVIS_COMMIT}
 kind load docker-image gcr.io/key-transparency/keytransparency-sequencer:${TRAVIS_COMMIT}
 kind load docker-image gcr.io/key-transparency/keytransparency-server:${TRAVIS_COMMIT}
+kind load docker-image gcr.io/key-transparency/prometheus:${TRAVIS_COMMIT}
+kind load docker-image gcr.io/key-transparency/init:${TRAVIS_COMMIT}
 
-cd deploy/kubernetes/base
-kustomize edit set image gcr.io/key-transparency/keytransparency-monitor:${TRAVIS_COMMIT}
-kustomize edit set image gcr.io/key-transparency/keytransparency-sequencer:${TRAVIS_COMMIT}
-kustomize edit set image gcr.io/key-transparency/keytransparency-server:${TRAVIS_COMMIT}
-cd -
+./scripts/kustomize_image_tag.sh $TRAVIS_COMMIT
 
 # kubectl exits with 1 if kt-secret does not exist
 if ! kubectl get secret kt-tls; then
   echo "Generating keys..."
   rm -f ./genfiles/*
-  ./scripts/prepare_server.sh -f
+  ./scripts/gen_monitor_keys.sh -f
   kubectl create secret generic kt-monitor --from-file=genfiles/monitor_sign-key.pem
-  kubectl create secret tls kt-tls --cert=genfiles/server.crt --key=genfiles/server.key
+  go run "$(go env GOROOT)/src/crypto/tls/generate_cert.go" --host localhost,127.0.0.1,::
+  kubectl create secret tls kt-tls --cert=cert.pem --key=key.pem
+  rm key.pem cert.pem
 fi
 
 # Hack to wait for the default service account's creation. https://github.com/kubernetes/kubernetes/issues/66689
