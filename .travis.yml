@@ -53,8 +53,7 @@ jobs:
       install:
       - curl -LO "https://storage.googleapis.com/kubernetes-release/release/v1.16.3/bin/linux/amd64/kubectl" && chmod +x kubectl && sudo mv kubectl /usr/local/bin/
       - curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash && sudo mv kustomize /usr/local/bin/
-      - openssl aes-256-cbc -K $encrypted_555d9b2948d2_key -iv $encrypted_555d9b2948d2_iv
-        -in client_secrets.json.enc -d | gcloud auth activate-service-account --key-file /dev/stdin
+      - openssl aes-256-cbc -K $encrypted_555d9b2948d2_key -iv $encrypted_555d9b2948d2_iv -in client_secret.json.enc -d | gcloud auth activate-service-account --key-file /dev/stdin
       script:
       - ./scripts/deploy.sh
       - ./scripts/cleanup_images.sh
