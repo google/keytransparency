@@ -4,9 +4,6 @@ metadata:
   name: cloud-sql-sidecar
 spec:
   template:
-    metadata:
-      labels:
-        io.kompose.service: cloud-sql-sidecar
     spec:
       volumes:
        - name: secrets-cloudsql
