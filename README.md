@@ -227,3 +227,13 @@ The directory structure of Key Transparency is as follows:
 
 - [Mailing list](https://groups.google.com/forum/#!forum/keytransparency).
 
+# Related
+
+* [Google Security Blog Post](https://security.googleblog.com/2017/01/security-through-transparency.html)
+* [CONIKS Project](https://coniks.cs.princeton.edu/)
+* [Why Making Johnny's Key Management Transparent is So Challenging](https://freedom-to-tinker.com/2016/03/31/why-making-johnnys-key-management-transparent-is-so-challenging/)
+* [Google Launches Key Transparency While a Trade-Off in WhatsApp Is Called a Backdoor](https://www.eff.org/deeplinks/2017/01/google-launches-key-transparency-while-tradeoff-whatsapp-called-backdoor)
+* [On Ghost Users and Messaging Backdoors](https://blog.cryptographyengineering.com/2018/12/17/on-ghost-users-and-messaging-backdoors/)
+* [Verifiable Random Functions](https://www.cs.bu.edu/~goldbe/projects/vrf)
+* [Message Layer Security](https://tools.ietf.org/html/draft-ietf-mls-architecture)
+* [OpenPGP Email Summit 2019](https://wiki.gnupg.org/OpenPGPEmailSummit201910Notes#Workshop:_Key_Transparency)
