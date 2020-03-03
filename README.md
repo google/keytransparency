@@ -91,18 +91,31 @@ $ grpcurl -d '{"directory_id": "default"}' sandbox.keytransparency.dev:443 googl
 ```
 </details>
 
-#### Generate a private key
+#### Generate Update Signing Keys
+Every update to a user record in key transparency must be signed by an `authorized-key`.
 
-  ```sh
-  PASSWORD=[[YOUR-KEYSET-PASSWORD]]
-  keytransparency-client authorized-keys create-keyset --password=${PASSWORD}
-  keytransparency-client authorized-keys list-keyset --password=${PASSWORD}
-  ```
-The `create-keyset` command will create a `.keyset` file in the user's working directory.
-To specify custom directory use `--keyset-file` or `-k` shortcut.
+Update signatures are saved in the merkle tree data structure, producing a record of *who* made each change to a user's
+account, allowing products to distinguish between changes signed by a user key, the provider's key, or a reset-provider's key.
 
-NB A default for the Key Transparency server URL is being used here. The default value is "35.202.56.9:443". The flag `--kt-url` may be used to specify the URL of Key Transparency server explicitly.
+Each account has an updatable policy that lists the current set of authorized public keys that are allowed to make updates to the user's record.
 
+To create an initial set of update signing keys, run the `authorized-keys create-keyset` command.
+Keys will be saved in a `.keyset` file in the current working directory.
+```sh
+$ PASSWORD=[[YOUR-KEYSET-PASSWORD]]
+$ keytransparency-client authorized-keys create-keyset --password=${PASSWORD}
+```
+<details>
+  <summary>Show output</summary>
+
+```sh
+$ PASSWORD=[[YOUR-KEYSET-PASSWORD]]
+$ keytransparency-client authorized-keys create-keyset --password=${PASSWORD}
+$ keytransparency-client authorized-keys list-keyset --password=${PASSWORD}
+My Authorized Keys:
+primary_key_id:17445529 key_info:<type_url:"type.googleapis.com/google.crypto.tink.EcdsaPrivateKey" status:ENABLED key_id:17445529 output_prefix_type:TINK >
+```
+</details>
 
 #### Publish the public key
 Any number of protocols may be used to prove to the server that a client owns a userID.
@@ -111,7 +124,7 @@ The sandbox server supports a fake authentication string and [OAuth](https://con
 Create or fetch the public key for your specific application.
   ```sh
    openssl genpkey -algorithm X25519 -out xkey.pem
-   openssl pkey -in xkey.pem -pubout 
+   openssl pkey -in xkey.pem -pubout
    -----BEGIN PUBLIC KEY-----
    MCowBQYDK2VuAyEAtCAsIMDyVUUooA5yhgRefcEr7edVOmyNCUaN1LCYl3s=
    -----END PUBLIC KEY-----
