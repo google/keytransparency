@@ -20,5 +20,5 @@ spec:
         - name: sidecar
           containerPort: 9091
         volumeMounts:
-        - name: ${DATA_VOLUME}
+        - name: prometheus-data-volume
           mountPath: /data

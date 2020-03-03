@@ -9,6 +9,7 @@ patches:
 - path: prometheus-sidecar.yaml
   target:
     kind: Deployment
+    name: prometheus
 patchesStrategicMerge:
 - configmap.yaml
 - ingress.yaml
