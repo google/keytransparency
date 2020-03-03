@@ -6,11 +6,8 @@ patches:
 - path: cloudsql-sidecar.yaml
   target:
     kind: Deployment
-- path: prometheus-sidecar.yaml
-  target:
-    kind: Deployment
-    name: prometheus
 patchesStrategicMerge:
 - configmap.yaml
 - ingress.yaml
 - server-service.yaml
+- prometheus-sidecar.yaml
