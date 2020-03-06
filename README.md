@@ -26,12 +26,8 @@ authenticating users with public keys, including [Universal Second Factor Securi
 * [Design document](docs/design.md)
 * [API](docs/api.md)
 
-Key Transparency is inspired by [CONIKS](https://eprint.iacr.org/2014/1004.pdf)
-and [Certificate Transparency](https://www.certificate-transparency.org/).
-It is a work-in-progress with the [following
-milestones](https://github.com/google/keytransparency/milestones) under
-development.
-
+### Project Status
+Key Transparency is a work-in-progress with the [following milestones](https://github.com/google/keytransparency/milestones) under development.
 
 ## Key Transparency Client
 
@@ -231,7 +227,13 @@ The directory structure of Key Transparency is as follows:
 
 - [Mailing list](https://groups.google.com/forum/#!forum/keytransparency).
 
-# Related
+## Acknowledgements
+
+Key Transparency would not have been possible without a whole host of collaborators including researachers, interns, and [open source contributors](https://github.com/google/keytransparency/graphs/contributors).
+
+Key Transparency was inspired by [CONIKS](https://eprint.iacr.org/2014/1004.pdf) and [Certificate Transparency](https://www.certificate-transparency.org/).
+
+## Related
 
 * [Google Security Blog Post](https://security.googleblog.com/2017/01/security-through-transparency.html)
 * [CONIKS Project](https://coniks.cs.princeton.edu/)
