@@ -39,18 +39,18 @@ Key Transparency is a work-in-progress with the [following milestones](https://g
 
 ## View a Directory's Public Keys
 The Key Transparency server publishes a separate set of public keys for each directory that it hosts.
-By hosting multiple directores, a single domain can host directories for multiple apps or customers.
-A standardized pattern for discovering domains and directores is a TODO in issue #389.
+By hosting multiple directories, a single domain can host directories for multiple apps or customers.
+A standardized pattern for discovering domains and directories is a TODO in issue #389.
 
 Within a directory the server uses the following public keys to sign its responses:
-1. `log.public_key` signs the top-most merkle tree root, covering the ordered list of map roots.
-2. `map.public_key` signs each snapshot of the key-value database in the form of a sparse merkle tree.
+1. `log.public_key` signs the top-most Merkle tree root, covering the ordered list of map roots.
+2. `map.public_key` signs each snapshot of the key-value database in the form of a sparse Merkle tree.
 3. `vrf.der` signs outputs of the [Verifiable Random Function](https://en.wikipedia.org/wiki/Verifiable_random_function)
     which obscures the key values in the key-value database.
 
 A directory's public keys can be retrieved over HTTPS/JSON with curl
 or over gRPC with [grpcurl](https://github.com/fullstorydev/grpcurl).
-The sandboxserver has been initalized with a domain named `default`.
+The sandboxserver has been initialized with a domain named `default`.
 ```sh
 $ curl -s https://sandbox.keytransparency.dev/v1/directories/default | json_pp
 $ grpcurl -d '{"directory_id": "default"}' sandbox.keytransparency.dev:443 google.keytransparency.v1.KeyTransparency/GetDirectory
@@ -94,7 +94,7 @@ $ grpcurl -d '{"directory_id": "default"}' sandbox.keytransparency.dev:443 googl
 #### Generate Update Signing Keys
 Every update to a user record in key transparency must be signed by an `authorized-key`.
 
-Update signatures are saved in the merkle tree data structure, producing a record of *who* made each change to a user's
+Update signatures are saved in the Merkle tree data structure, producing a record of *who* made each change to a user's
 account, allowing products to distinguish between changes signed by a user key, the provider's key, or a reset-provider's key.
 
 Each account has an updatable policy that lists the current set of authorized public keys that are allowed to make updates to the user's record.
@@ -202,7 +202,7 @@ The directory structure of Key Transparency is as follows:
     * [keytransparency-sequencer](cmd/keytransparency-sequencer): Key Transparency backend.
     * [keytransparency-server](cmd/keytransparency-sequencer): Key Transparency frontend.
 * [**core**](core): main library source code. Core libraries do not import [impl](impl).
-    * [adminserver](core/adminserver): private api for creating new directories.
+    * [adminserver](core/adminserver): private API for creating new directories.
     * [**api**](core/api): gRPC API definitions.
     * [**crypto**](core/crypto): verifiable random function and commitment implementations.
     * [directory](core/directory): interface for retrieving directory info from storage.
@@ -229,7 +229,7 @@ The directory structure of Key Transparency is as follows:
 
 ## Acknowledgements
 
-Key Transparency would not have been possible without a whole host of collaborators including researachers, interns, and [open source contributors](https://github.com/google/keytransparency/graphs/contributors).
+Key Transparency would not have been possible without a whole host of collaborators including researchers, interns, and [open source contributors](https://github.com/google/keytransparency/graphs/contributors).
 
 Key Transparency was inspired by [CONIKS](https://eprint.iacr.org/2014/1004.pdf) and [Certificate Transparency](https://www.certificate-transparency.org/).
 
