@@ -13,10 +13,14 @@ tamper-proof audit log of all record changes. While being publicly auditable,
 individual records are only revealed in response to queries for specific IDs.
 
 Key Transparency can be used as a public key discovery service to authenticate
-users and provides a mechanism to keep the service accountable.  It can be used
-by account owners to [reliably see](docs/verification.md) what keys have been
+users and provides a mechanism to keep the service accountable.  
+
+Key Transparency empowers account owners to [reliably see](docs/verification.md) what public keys have been
 associated with their account, and it can be used by senders to see how long an
 account has been active and stable before trusting it.
+
+Key Transparency can add [verifiable](docs/verification.md) and user-friendly auditing to any [scenario](docs/scenarios.md) that involves 
+authenticating users with public keys, including [Universal Second Factor Security Keys](https://en.wikipedia.org/wiki/Universal_2nd_Factor) and end-to-end encryption.
 
 * [Overview](docs/overview.md)
 * [Design document](docs/design.md)
