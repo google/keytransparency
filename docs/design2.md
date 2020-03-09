@@ -63,7 +63,7 @@ Log servers offer the following API:
 
 ### Map Root Snapshots
 Each Map Root represents a snapshot of a key-value dictionary.
-The map is implemented as a sparse Merkle tree of fixed depth.
+The map is implemented as a sparse Merkle tree.
 
 * Indexes in the map are randomized and privacy protected via a Verifiable Random Function.
 * Values in the map represent the full history of values that have ever been stored at this index. This is accomplished by storing the Merkle root of a mini log of these values.
