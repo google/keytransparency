@@ -39,19 +39,10 @@ before using fresh public keys from their peers.
 
 ### Gossip Network
 The job of the gossip network is to ensure that there is a single, globally consistent, lineage of log roots.
-To keep communication costs low, and to prevent Sybil attacks, clients use a small (e.g. 20) set of gossip nodes.
 
-Each gossip node fetches the latest signed log root (SLR) and verifies
-consistency with the last seen root using a consistency proof.
-After verifying, the gossip node signs the log root.
-
-Gossip nodes offer the following API:
-
-1. Get Signed Root
+The exact solution is TBD. 
 
 ### Log of Map Roots
-
-The log server collects signatures from the gossip nodes to produce a Signed Log Root that has a quorum of gossip signatures.
 
 The log server contains a list of map roots representing sequential snapshots of a key-value directory.
 
