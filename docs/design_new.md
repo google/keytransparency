@@ -35,7 +35,7 @@ before using fresh public keys from their peers.
 | s              | 40Kb             | ~2Kb       |
 
 
-## Data Structures
+## Verifiable Data Structures
 
 ### Gossip Network
 The job of the gossip network is to ensure that there is a single, globally consistent, lineage of log roots.
