@@ -17,7 +17,7 @@ auditors who can verify that no information has been lost or tampered with betwe
 
 Table: *Based on 1B users, updating 200 keys per second*
 
-Key Transparency 2.0 is a new set of algorithms that removes this fundamental trade-off by sharing
+Key Transparency v0.5 is a new set of algorithms that removes this fundamental trade-off by sharing
 the task of auditing between pairs of clients. As a result, all configurations have efficiently
 auditable data structures that do not require the presence of 3rd party auditors.
 
