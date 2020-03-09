@@ -14,8 +14,8 @@ auditors who can verify that no information has been lost or tampered with betwe
 | hr             | 45 Kb/day         | ~2Kb       |
 | min            | 2.7 Mb/day        | ~2Kb       |
 | s              | 160 Mb/day        | ~2Kb       |
-*Based on 1B users, updating 200 keys per second*
 
+Table: *Based on 1B users, updating 200 keys per second*
 
 Key Transparency 2.0 is a new set of algorithms that removes this fundamental trade-off by sharing
 the task of auditing between pairs of clients. As a result, all configurations have efficiently
