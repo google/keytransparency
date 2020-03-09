@@ -95,7 +95,7 @@ An append-only proof between two snapshots containing `M` changes per snapshot i
 
 1. Migrate to use Trillian mini logs for user updates.
     1. Switch from `int64` treeIDs to `[]byte` to support deriving the `treeID` from the VRF.
-    1. Sequence and sign mini-logs synchronously rather than relying on a separate process.
+    1. Sequence and sign mini logs synchronously rather than relying on a separate process.
 1. Write a batching algorithm to accumulate updates across many mini logs.
 1. Write new mini logs roots to the map instead of the current, direct value approach.
 1. Update client verification algorithms.
