@@ -1,4 +1,4 @@
-# Key Transparency v0.5
+# Key Transparency New Design
 
 ## Objective
 
