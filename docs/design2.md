@@ -1,4 +1,4 @@
-# Key Transparency 2.0
+# Key Transparency v0.5
 
 ## Objective
 
@@ -7,18 +7,19 @@ low latency key updates and verification bandwidth; each snapshot of the
 key-value Merkle tree creates an additional point in time that clients must
 audit when inspecting their account history.
 Using Key Transparency v0.4.0 and below requires the presence of powerful
-auditors who can verify that no information has been lost between all snapshots.
+auditors who can verify that no information has been lost or tampered with between all snapshots.
 
-| Update Latency | History Audit    | Key Lookup |
-|----------------|------------------|------------|
-| hr             | 45Kb/day         | ~2Kb       |
-| min            | 2Mb/day          | ~2Kb       |
-| s              | 150Mb/day        | ~2Kb       |
+| Update Latency | History Audit `O(T * log N)`  | Key Lookup |
+|----------------|------------------|-------------|
+| hr             | 45 Kb/day         | ~2Kb       |
+| min            | 2.7 Mb/day        | ~2Kb       |
+| s              | 160 Mb/day        | ~2Kb       |
+*Based on 1B users, updating 200 keys per second*
 
 
 Key Transparency 2.0 is a new set of algorithms that removes this fundamental trade-off by sharing
 the task of auditing between pairs of clients. As a result, all configurations have efficiently
-auditable data structures that no not require the presence of 3rd party auditors.
+auditable data structures that do not require the presence of 3rd party auditors.
 
 We expect that many applications will want to prioritize lower latency and
 reliability by using a *trust, then verify* mode whereby clients receive key
@@ -27,24 +28,24 @@ state.  However, this does not preclude individual clients that have a lower
 tolerance for risk from waiting for full, globally consistent verification
 before using fresh public keys from their peers.
 
-| Update Latency | History Audit    | Key Lookup |
+| Update Latency | History Audit `O(log T * log N)` | Key Lookup |
 |----------------|------------------|------------|
-| hr             | 18Kb O(1)        | ~2Kb       |
-| min            | 30Kb O(1)        | ~2Kb       |
-| s              | 40Kb O(1)        | ~2Kb       |
+| hr             | 18Kb             | ~2Kb       |
+| min            | 30Kb             | ~2Kb       |
+| s              | 40Kb             | ~2Kb       |
 
 
 ## Data Structures
 
 ### Gossip Network
 The job of the gossip network is to ensure that there is a single, globally consistent, lineage of log roots.
-To keep ![n^2](https://render.githubusercontent.com/render/math?math=n%5E2) communication costs low, and to prevent sybil attacks, clients use a small ~20 set of gossip nodes.
+To keep ![n^2](https://render.githubusercontent.com/render/math?math=n%5E2) communication costs low, and to prevent Sybil attacks, clients use a small (e.g. 20) set of gossip nodes.
 
 Each gossip node fetches the latest signed log root (SLR) and verifies
-consistency with all previously seen roots with a single consistency proof.
+consistency with the last seen root with a consistency proof.
 After verifying, the gossip node signs the log root.
 
-Gossip nodes offer the following APIs:
+Gossip nodes offer the following API:
 
 1. Get Signed Root
 
@@ -54,7 +55,7 @@ The log server collects signatures from the gossip nodes to produce a Signed Log
 
 The log server contains a list of map roots representing sequential snapshots of a key-value directory.
 
-Log servers offer the following APIs:
+Log servers offer the following API:
 
 1. Latest Signed Log Root
 1. Get consistency proof between log size a and b.
@@ -65,9 +66,9 @@ Each Map Root represents a snapshot of a key-value dictionary.
 The map is implemented as a sparse Merkle tree of fixed depth.
 
 * Indexes in the map are randomized and privacy protected via a Verifiable Random Function.
-* Values in the map represent the full history of values that have ever been stored at this index. This is accomplished by storing the Merkle root of a mini-log of these values.
+* Values in the map represent the full history of values that have ever been stored at this index. This is accomplished by storing the Merkle root of a mini log of these values.
 
-The map offers the following APIs:
+The map offers the following API:
 
 1. Get map value at index j with inclusion proof to snapshot a.
 
@@ -79,31 +80,31 @@ They are what users query when looking up their own key history, and they are wh
 The value log offers the following API:
 
 1. Get latest value at snapshot z with inclusion proof.
-2. Get consistency proof between snapshot roots y and z.
-3. Get range of historical values between snapshots y and z.
+1. Get consistency proof between snapshot roots y and z.
+1. Get range of historical values between snapshots y and z.
 
 ## Client Verification
 
 Key Transparency clients store:
 1. The root of the log of map roots. This ensures that the client is using the same snapshots as the rest of the world.
-1. The root of every (proven consistent) mini-log they have queried. This ensures that snapshots represent append-only representations of the world.
+1. The root of every (proven consistent) mini log they have queried. This ensures that snapshots represent append-only representations of the world.
 
 When querying, Key Transparency clients ask for proof that the current snapshot and value are consistent with previous values that the client has observed.
 
 ## Efficiency Innovations
 
 Generating append-only proofs for large sparse Merkle trees is not efficient.
-An append-only proof between two snapshots containing `N` changes per snapshot in a map of size `M` over `T` snapshots contains roughly `O(T * N log M)` hashes.
-1. Instead of verifying that the entire map is an append-only operation from previous values, we isolate the work of verification to individual sub-trees. `O(T * 1 log M)`
-1. Rather than verifying every single snapshot, we only verify the snapshots that the sender and receiver used. `O(1 * 1 log M)`
-1. But the snapshots that the sender and receiver used are unknown, so we use a meet-in-the-middle algorithm to sample log T of them. `O( log T * log M)`
+An append-only proof between two snapshots containing `M` changes per snapshot in a map of size `N` over `T` snapshots contains roughly `O(T * M log N)` hashes.
+1. Instead of verifying that the entire map is an append-only operation from previous values, we isolate the work of verification to individual sub-trees. `O(T * 1 log N)`
+1. Rather than verifying every single snapshot, we only verify the snapshots that the sender and receiver used. `O(1 * 1 log N)`
+1. But the snapshots that the sender and receiver used are unknown, so we use a meet-in-the-middle algorithm to sample log T of them. `O(log T * log N)`
 
 
 # Work Plan
 
-1. Migrate to use Trillian Logs mini logs for user updates
-    1. Switch from `int64` treeIDs to `[]byte` to support billions of users.
+1. Migrate to use Trillian mini logs for user updates.
+    1. Switch from `int64` treeIDs to `[]byte` to support deriving the `treeID` from the VRF.
     1. Sequence and sign mini-logs synchronously rather than relying on a separate process.
-1. Write a batching algorithm to accumulate updates across many mini-logs.
-1. Write new mini-logs roots to the map instead of the current, direct value approach.
+1. Write a batching algorithm to accumulate updates across many mini logs.
+1. Write new mini logs roots to the map instead of the current, direct value approach.
 1. Update client verification algorithms.
