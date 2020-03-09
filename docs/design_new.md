@@ -42,7 +42,7 @@ The job of the gossip network is to ensure that there is a single, globally cons
 To keep communication costs low, and to prevent Sybil attacks, clients use a small (e.g. 20) set of gossip nodes.
 
 Each gossip node fetches the latest signed log root (SLR) and verifies
-consistency with the last seen root with a consistency proof.
+consistency with the last seen root using a consistency proof.
 After verifying, the gossip node signs the log root.
 
 Gossip nodes offer the following API:
