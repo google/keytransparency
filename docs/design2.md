@@ -39,7 +39,7 @@ before using fresh public keys from their peers.
 
 ### Gossip Network
 The job of the gossip network is to ensure that there is a single, globally consistent, lineage of log roots.
-To keep ![n^2](https://render.githubusercontent.com/render/math?math=n%5E2) communication costs low, and to prevent Sybil attacks, clients use a small (e.g. 20) set of gossip nodes.
+To keep communication costs low, and to prevent Sybil attacks, clients use a small (e.g. 20) set of gossip nodes.
 
 Each gossip node fetches the latest signed log root (SLR) and verifies
 consistency with the last seen root with a consistency proof.
