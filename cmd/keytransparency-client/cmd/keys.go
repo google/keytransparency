@@ -67,7 +67,7 @@ var createCmd = &cobra.Command{
 			return err
 		}
 
-		f, err := os.Open(keysetFile)
+		f, err := os.OpenFile(keysetFile, os.O_WRONLY|os.O_CREATE, 0600)
 		if err != nil {
 			return err
 		}
