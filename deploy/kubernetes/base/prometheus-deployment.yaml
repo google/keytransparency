@@ -31,6 +31,13 @@ spec:
             mountPath: /etc/prometheus
           - name: prometheus-data-volume
             mountPath: /data
+     # - name: watch
+     #   image: weaveworks/watch:master-5b2a6e5
+     #   imagePullPolicy: IfNotPresent
+     #   args: ["-v", "-t", "-p=/etc/prometheus", "curl", "-X", "POST", "--fail", "-o", "-", "-sS", "http://localhost:9090/-/reload"]
+     #   volumeMounts:
+     #   - name: config-volume
+     #     mountPath: /etc/prometheus
       volumes:
         - name: config-volume
           configMap:
