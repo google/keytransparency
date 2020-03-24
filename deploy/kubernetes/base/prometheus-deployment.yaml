@@ -22,6 +22,8 @@ spec:
         args:
           - "--config.file=/etc/prometheus/prometheus.yml"
           - "--storage.tsdb.path=/data/"
+          - "--web.enable-lifecycle"
+          # - "--log.level=debug" # Uncomment this to enable debug logs. Can be very verbose.
         ports:
         - containerPort: 9090
         volumeMounts:
