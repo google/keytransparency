@@ -40,7 +40,7 @@ jobs:
     - name: "kubernetes test"
       install:
       - curl -LO "https://storage.googleapis.com/kubernetes-release/release/v1.16.3/bin/linux/amd64/kubectl" && chmod +x kubectl && sudo mv kubectl /usr/local/bin/
-      - curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash && sudo mv kustomize /usr/local/bin/
+      - curl -s -O -L https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize/v3.5.4/kustomize_v3.5.4_linux_amd64.tar.gz && tar xzf ./kustomize_v3.5.4_linux_amd64.tar.gz && sudo mv kustomize /usr/local/bin/
       - go get sigs.k8s.io/kind@v0.6.1
       - kind create cluster --config deploy/kubernetes/kind-config.yaml
       - kubectl cluster-info --context kind-kind
@@ -50,7 +50,7 @@ jobs:
       if: branch = master AND type != pull_request
       install:
       - curl -LO "https://storage.googleapis.com/kubernetes-release/release/v1.16.3/bin/linux/amd64/kubectl" && chmod +x kubectl && sudo mv kubectl /usr/local/bin/
-      - curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash && sudo mv kustomize /usr/local/bin/
+      - curl -s -O -L https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize/v3.5.4/kustomize_v3.5.4_linux_amd64.tar.gz && tar xzf ./kustomize_v3.5.4_linux_amd64.tar.gz && sudo mv kustomize /usr/local/bin/
       - openssl aes-256-cbc -K $encrypted_555d9b2948d2_key -iv $encrypted_555d9b2948d2_iv -in client_secret.json.enc -d | gcloud auth activate-service-account --key-file /dev/stdin
       script:
       - ./scripts/deploy.sh
