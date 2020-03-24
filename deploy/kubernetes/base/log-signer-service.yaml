@@ -1,6 +1,11 @@
 apiVersion: v1
 kind: Service
 metadata:
+  annotations:
+    prometheus.io/scrape: 'true'
+    prometheus.io/path: '/metrics'
+    prometheus.io/port: '8091'
+    prometheus.io/scheme: 'http'
   labels:
     io.kompose.service: log-signer
   name: log-signer
