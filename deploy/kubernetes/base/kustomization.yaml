@@ -14,7 +14,9 @@ resources:
 - monitor-deployment.yaml
 - monitor-service.yaml
 - prometheus-deployment.yaml
+- prometheus-configmap.yaml
 - prometheus-service.yaml
+- prometheus-rbac.yaml
 - sequencer-deployment.yaml
 - sequencer-service.yaml
 - server-deployment.yaml

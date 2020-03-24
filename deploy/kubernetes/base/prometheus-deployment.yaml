@@ -13,19 +13,26 @@ spec:
       labels:
         io.kompose.service: prometheus
     spec:
+      serviceAccountName: prometheus
       restartPolicy: Always
       containers:
       - name: prometheus
-        image: gcr.io/key-transparency/prometheus:latest
+        image: prom/prometheus:v2.11.0
+        imagePullPolicy: Always
         args:
           - "--config.file=/etc/prometheus/prometheus.yml"
           - "--storage.tsdb.path=/data/"
         ports:
         - containerPort: 9090
         volumeMounts:
+          - name: config-volume
+            mountPath: /etc/prometheus
           - name: prometheus-data-volume
             mountPath: /data
       volumes:
+        - name: config-volume
+          configMap:
+            name: prometheus
         - name: prometheus-data-volume
           emptyDir: {}
 status: {}
