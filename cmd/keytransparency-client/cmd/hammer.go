@@ -18,6 +18,7 @@ import (
 	"context"
 	"flag"
 	"log"
+	"os"
 	"strings"
 	"time"
 
@@ -72,9 +73,12 @@ var hammerCmd = &cobra.Command{
 		if err != nil {
 			log.Fatal(err)
 		}
-		handle, err := keyset.Read(
-			&tinkio.ProtoKeysetFile{File: keysetFile},
-			masterKey)
+		f, err := os.Open(keysetFile)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer f.Close()
+		handle, err := keyset.Read(keyset.NewBinaryReader(f), masterKey)
 		if err != nil {
 			log.Fatal(err)
 		}
