@@ -9,12 +9,6 @@ services:
     environment:
       MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
 
-  prometheus:
-    image: gcr.io/key-transparency/prometheus:${TRAVIS_COMMIT}
-    build:
-      context: .
-      dockerfile: deploy/prometheus/Dockerfile
-
   server:
     image: gcr.io/key-transparency/keytransparency-server:${TRAVIS_COMMIT}
     build:

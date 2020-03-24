@@ -13,7 +13,6 @@ docker-compose build --parallel
 kind load docker-image gcr.io/key-transparency/keytransparency-monitor:${TRAVIS_COMMIT}
 kind load docker-image gcr.io/key-transparency/keytransparency-sequencer:${TRAVIS_COMMIT}
 kind load docker-image gcr.io/key-transparency/keytransparency-server:${TRAVIS_COMMIT}
-kind load docker-image gcr.io/key-transparency/prometheus:${TRAVIS_COMMIT}
 kind load docker-image gcr.io/key-transparency/init:${TRAVIS_COMMIT}
 
 ./scripts/kustomize_image_tag.sh $TRAVIS_COMMIT
