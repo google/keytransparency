@@ -7,15 +7,25 @@ secrets:
   monitor.key:
     file: ./genfiles/monitor_sign-key.pem
 
+volumes:
+    prometheus_data:
+      driver_opts:
+        type: tmpfs
+        device: tmpfs
+
 services:
   prometheus:
-    depends_on:
-      - server
-      - sequencer
-    image: gcr.io/key-transparency/prometheus:${TRAVIS_COMMIT}
+    image: prom/prometheus:v2.11.0
+    volumes:
+      - ./deploy/prometheus/:/etc/prometheus/
+      - prometheus_data:/data/
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/data'
+      - '--web.enable-lifecycle'
+    restart: unless-stopped
     ports:
       - 9090:9090
-
   db:
     # TODO(gbelvin): Select a better tag for Trillian
     image: gcr.io/trillian-opensource-ci/db_server:latest

@@ -1,6 +1,11 @@
 apiVersion: v1
 kind: Service
 metadata:
+  annotations:
+    prometheus.io/scrape: 'true'
+    prometheus.io/path: '/metrics'
+    prometheus.io/port: '8071'
+    prometheus.io/scheme: 'http'
   labels:
     io.kompose.service: monitor
   name: monitor
