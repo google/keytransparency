@@ -17,16 +17,19 @@ package mutationstorage
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"time"
 
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/water"
+	"github.com/google/keytransparency/internal/backoff"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
+	ktsql "github.com/google/keytransparency/impl/sql"
 )
 
 // SetWritable enables or disables new writes from going to logID.
@@ -79,10 +82,17 @@ func (m *Mutations) Send(ctx context.Context, directoryID string, logID int64, u
 		}
 		updateData = append(updateData, data)
 	}
-	// TODO(gbelvin): Implement retry with backoff for retryable errors if
-	// we get timestamp contention.
-	wm := water.NewMark(uint64(time.Duration(time.Now().UnixNano()) * time.Nanosecond / time.Microsecond))
-	if err := m.send(ctx, wm, directoryID, logID, updateData...); err != nil {
+
+	b := backoff.Backoff{Min: 10 * time.Millisecond, Max: time.Second, Factor: 1.2, Jitter: true}
+	var wm water.Mark
+	if err := b.Retry(ctx, func() error {
+		wm = water.NewMark(uint64(time.Duration(time.Now().UnixNano()) * time.Nanosecond / time.Microsecond))
+		err := m.send(ctx, wm, directoryID, logID, updateData...)
+		if ktsql.IsDeadlock(err) {
+			return backoff.RetriableErrorf("send failed: %w", err)
+		}
+		return err
+	}); err != nil {
 		return water.Mark{}, err
 	}
 	return wm, nil
@@ -99,19 +109,19 @@ func (m *Mutations) ListLogs(ctx context.Context, directoryID string, writable b
 	var logIDs []int64
 	rows, err := m.db.QueryContext(ctx, query, directoryID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("query logs: %w", err)
 	}
 
 	defer rows.Close()
 	for rows.Next() {
 		var logID int64
 		if err := rows.Scan(&logID); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("rows.Scan(): %w", err)
 		}
 		logIDs = append(logIDs, logID)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("rows.Err(): %w", err)
 	}
 	if len(logIDs) == 0 {
 		return nil, status.Errorf(codes.NotFound, "no log found for directory %v", directoryID)
@@ -122,15 +132,14 @@ func (m *Mutations) ListLogs(ctx context.Context, directoryID string, writable b
 // ts must be greater than all other timestamps currently recorded for directoryID.
 func (m *Mutations) send(ctx context.Context, wm water.Mark, directoryID string,
 	logID int64, mData ...[]byte) (ret error) {
-	tx, err := m.db.BeginTx(ctx,
-		&sql.TxOptions{Isolation: sql.LevelSerializable})
+	tx, err := m.db.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelSerializable})
 	if err != nil {
-		return err
+		return fmt.Errorf("begin tx: %w", err)
 	}
 	defer func() {
 		if ret != nil {
 			if err := tx.Rollback(); err != nil {
-				ret = status.Errorf(codes.Internal, "%v, and could not rollback: %v", ret, err)
+				ret = fmt.Errorf("%v, and could not rollback: %w", ret, err)
 			}
 		}
 	}()
@@ -139,7 +148,7 @@ func (m *Mutations) send(ctx context.Context, wm water.Mark, directoryID string,
 	if err := tx.QueryRowContext(ctx,
 		`SELECT COALESCE(MAX(TimeMicros), 0) FROM Queue WHERE DirectoryID = ? AND LogID = ?;`,
 		directoryID, logID).Scan(&maxTimestamp); err != nil {
-		return status.Errorf(codes.Internal, "could not find max timestamp: %v", err)
+		return fmt.Errorf("could not find max timestamp: %w", err)
 	}
 
 	if wm.Value() <= uint64(maxTimestamp) {
@@ -151,10 +160,13 @@ func (m *Mutations) send(ctx context.Context, wm water.Mark, directoryID string,
 		if _, err = tx.ExecContext(ctx,
 			`INSERT INTO Queue (DirectoryID, LogID, TimeMicros, LocalID, Mutation) VALUES (?, ?, ?, ?, ?);`,
 			directoryID, logID, wm.Value(), i, data); err != nil {
-			return status.Errorf(codes.Internal, "failed inserting into queue: %v", err)
+			return fmt.Errorf("failed inserting into queue: %w", err)
 		}
 	}
-	return tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit: %w", err)
+	}
+	return nil
 }
 
 // HighWatermark returns the highest watermark +1 in logID that is less than or

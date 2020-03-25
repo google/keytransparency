@@ -18,12 +18,14 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"sync"
 	"testing"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/keytransparency/core/keyserver"
 	"github.com/google/keytransparency/core/water"
+	"golang.org/x/sync/errgroup"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 )
@@ -154,5 +156,39 @@ func (mutationLogsTests) TestReadLogExact(ctx context.Context, t *testing.T, new
 				t.Fatalf("ReadLog(%v,%v): got %v, want %v", tc.low, tc.high, got, tc.want)
 			}
 		})
+	}
+}
+
+func (mutationLogsTests) TestConcurrentWrites(ctx context.Context, t *testing.T, newForTest mutationLogsFactory) {
+	directoryID := "TestConcurrentWrites"
+	logID := int64(5)
+	m, done := newForTest(ctx, t, directoryID, logID)
+	defer done(ctx)
+	for i, concurrency := range []int{1, 2, 4, 8, 16, 32, 64} {
+		var g errgroup.Group
+		entry := &pb.EntryUpdate{Mutation: &pb.SignedEntry{Entry: mustMarshal(t, &pb.Entry{Index: []byte{byte(i)}})}}
+		high := water.Mark{}
+		var highMu sync.Mutex
+		for i := 0; i < concurrency; i++ {
+			g.Go(func() error {
+				wm, err := m.Send(ctx, directoryID, logID, entry)
+				highMu.Lock()
+				defer highMu.Unlock()
+				if wm.Value() > high.Value() {
+					high = wm
+				}
+				return err
+			})
+		}
+		if err := g.Wait(); err != nil {
+			t.Errorf("concurrency: %d, err: %v", concurrency, err)
+		}
+		rows, err := m.ReadLog(ctx, directoryID, logID, water.Mark{}, high, 100)
+		if err != nil {
+			t.Errorf("ReadLog: err: %v", err)
+		}
+		if got := len(rows); got != concurrency {
+			t.Errorf("ReadLog() returned %d rows, want %v", got, concurrency)
+		}
 	}
 }
