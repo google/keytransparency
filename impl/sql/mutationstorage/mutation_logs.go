@@ -109,14 +109,14 @@ func (m *Mutations) ListLogs(ctx context.Context, directoryID string, writable b
 	var logIDs []int64
 	rows, err := m.db.QueryContext(ctx, query, directoryID)
 	if err != nil {
-		return nil, fmt.Errorf("query writable logs: %w", err)
+		return nil, fmt.Errorf("query logs: %w", err)
 	}
 
 	defer rows.Close()
 	for rows.Next() {
 		var logID int64
 		if err := rows.Scan(&logID); err != nil {
-			return nil, fmt.Errorf("query writable logs: %w", err)
+			return nil, fmt.Errorf("rows.Scan(): %w", err)
 		}
 		logIDs = append(logIDs, logID)
 	}
