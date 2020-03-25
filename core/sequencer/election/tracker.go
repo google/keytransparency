@@ -177,8 +177,8 @@ func (mt *Tracker) setNotMaster(res string) {
 // Callers should cancel ctx when they no longer are actively using mastership.
 // If Masterships is not called periodically, we may retain masterships for longer than maxHold.
 func (mt *Tracker) Masterships(ctx context.Context) (map[string]context.Context, error) {
-	mt.masterMu.RLock()
-	defer mt.masterMu.RUnlock()
+	mt.masterMu.Lock()
+	defer mt.masterMu.Unlock()
 	mastershipCtx := make(map[string]context.Context)
 	for res, m := range mt.master {
 		// Resign mastership if we've held it for over maxHold.
