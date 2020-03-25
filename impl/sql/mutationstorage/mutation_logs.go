@@ -83,7 +83,7 @@ func (m *Mutations) Send(ctx context.Context, directoryID string, logID int64, u
 		updateData = append(updateData, data)
 	}
 
-	b := backoff.Backoff{Min: time.Millisecond, Max: time.Second, Factor: 1.2, Jitter: true}
+	b := backoff.Backoff{Min: 10 * time.Millisecond, Max: time.Second, Factor: 1.2, Jitter: true}
 	var wm water.Mark
 	if err := b.Retry(ctx, func() error {
 		wm = water.NewMark(uint64(time.Duration(time.Now().UnixNano()) * time.Nanosecond / time.Microsecond))

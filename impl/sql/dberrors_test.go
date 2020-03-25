@@ -23,7 +23,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func TestErrorf(t *testing.T) {
+func TestIsDeadlock(t *testing.T) {
 	for _, test := range []struct {
 		want bool
 		err  error
