@@ -17,6 +17,7 @@ package backoff
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/rand"
 	"time"
@@ -26,16 +27,13 @@ import (
 )
 
 // RetriableError explicitly instructs Backoff to retry.
-type RetriableError string
-
-// Error returns string representation of the retriable error.
-func (re RetriableError) Error() string {
-	return string(re)
+type RetriableError struct {
+	error
 }
 
-// RetriableErrorf wraps a formatted string into a RetriableError.
+// RetriableErrorf wraps a formatted error into a RetriableError.
 func RetriableErrorf(format string, a ...interface{}) error {
-	return RetriableError(fmt.Sprintf(format, a...))
+	return RetriableError{error: fmt.Errorf(format, a...)}
 }
 
 // Backoff specifies the parameters of the backoff algorithm. Works correctly
@@ -125,6 +123,6 @@ func IsRetryable(err error, retry ...codes.Code) bool {
 	}
 
 	// Don't retry for all other errors, unless it is a RetriableError.
-	_, ok := err.(RetriableError)
-	return ok
+	var re RetriableError
+	return errors.As(err, &re)
 }
