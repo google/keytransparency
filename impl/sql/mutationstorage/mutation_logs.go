@@ -17,6 +17,7 @@ package mutationstorage
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"time"
 
 	"github.com/golang/glog"
@@ -86,7 +87,11 @@ func (m *Mutations) Send(ctx context.Context, directoryID string, logID int64, u
 	var wm water.Mark
 	if err := b.Retry(ctx, func() error {
 		wm = water.NewMark(uint64(time.Duration(time.Now().UnixNano()) * time.Nanosecond / time.Microsecond))
-		return m.send(ctx, wm, directoryID, logID, updateData...)
+		err := m.send(ctx, wm, directoryID, logID, updateData...)
+		if ktsql.IsDeadlock(err) {
+			return backoff.RetriableErrorf("send failed: %w", err)
+		}
+		return err
 	}); err != nil {
 		return water.Mark{}, err
 	}
@@ -104,19 +109,19 @@ func (m *Mutations) ListLogs(ctx context.Context, directoryID string, writable b
 	var logIDs []int64
 	rows, err := m.db.QueryContext(ctx, query, directoryID)
 	if err != nil {
-		return nil, ktsql.Errorf(err, "Query writable logs")
+		return nil, fmt.Errorf("query writable logs: %w", err)
 	}
 
 	defer rows.Close()
 	for rows.Next() {
 		var logID int64
 		if err := rows.Scan(&logID); err != nil {
-			return nil, ktsql.Errorf(err, "Query writable logs")
+			return nil, fmt.Errorf("query writable logs: %w", err)
 		}
 		logIDs = append(logIDs, logID)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, ktsql.Errorf(err, "rows.Err()")
+		return nil, fmt.Errorf("rows.Err(): %w", err)
 	}
 	if len(logIDs) == 0 {
 		return nil, status.Errorf(codes.NotFound, "no log found for directory %v", directoryID)
@@ -129,12 +134,12 @@ func (m *Mutations) send(ctx context.Context, wm water.Mark, directoryID string,
 	logID int64, mData ...[]byte) (ret error) {
 	tx, err := m.db.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelSerializable})
 	if err != nil {
-		return ktsql.Errorf(err, "BeginTx")
+		return fmt.Errorf("begin tx: %w", err)
 	}
 	defer func() {
 		if ret != nil {
 			if err := tx.Rollback(); err != nil {
-				ret = ktsql.Errorf(err, "%v, and could not rollback", ret)
+				ret = fmt.Errorf("%v, and could not rollback: %w", ret, err)
 			}
 		}
 	}()
@@ -143,7 +148,7 @@ func (m *Mutations) send(ctx context.Context, wm water.Mark, directoryID string,
 	if err := tx.QueryRowContext(ctx,
 		`SELECT COALESCE(MAX(TimeMicros), 0) FROM Queue WHERE DirectoryID = ? AND LogID = ?;`,
 		directoryID, logID).Scan(&maxTimestamp); err != nil {
-		return status.Errorf(codes.Internal, "could not find max timestamp: %w", err)
+		return fmt.Errorf("could not find max timestamp: %w", err)
 	}
 
 	if wm.Value() <= uint64(maxTimestamp) {
@@ -155,10 +160,13 @@ func (m *Mutations) send(ctx context.Context, wm water.Mark, directoryID string,
 		if _, err = tx.ExecContext(ctx,
 			`INSERT INTO Queue (DirectoryID, LogID, TimeMicros, LocalID, Mutation) VALUES (?, ?, ?, ?, ?);`,
 			directoryID, logID, wm.Value(), i, data); err != nil {
-			return ktsql.Errorf(err, "failed inserting into queue: %w", err)
+			return fmt.Errorf("failed inserting into queue: %w", err)
 		}
 	}
-	return ktsql.Errorf(tx.Commit(), "commit")
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit: %w", err)
+	}
+	return nil
 }
 
 // HighWatermark returns the highest watermark +1 in logID that is less than or
