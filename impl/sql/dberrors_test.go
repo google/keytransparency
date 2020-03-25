@@ -25,8 +25,8 @@ import (
 
 func TestIsDeadlock(t *testing.T) {
 	for _, test := range []struct {
-		want bool
 		err  error
+		want bool
 	}{
 		{want: false, err: nil},
 		{want: false, err: fmt.Errorf("foobar")},

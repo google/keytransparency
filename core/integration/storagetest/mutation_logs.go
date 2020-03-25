@@ -188,7 +188,7 @@ func (mutationLogsTests) TestConcurrentWrites(ctx context.Context, t *testing.T,
 			t.Errorf("ReadLog: err: %v", err)
 		}
 		if got := len(rows); got != concurrency {
-			t.Errorf("ReadLog() %d rows, want %v", got, concurrency)
+			t.Errorf("ReadLog() returned %d rows, want %v", got, concurrency)
 		}
 	}
 }

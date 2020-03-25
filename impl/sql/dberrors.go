@@ -21,7 +21,7 @@ import (
 	"github.com/go-sql-driver/mysql"
 )
 
-// IsDeadlock returns true if the error reports that a deadlock was found when trying to get lock.
+// IsDeadlock returns true if the error reports that a deadlock occurred.
 func IsDeadlock(err error) bool {
 	if err == nil {
 		return false
