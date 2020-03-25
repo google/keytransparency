@@ -15,32 +15,20 @@
 package sql
 
 import (
-	"fmt"
+	"errors"
 
 	"github.com/VividCortex/mysqlerr"
 	"github.com/go-sql-driver/mysql"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
-// Errorf tries to extract a meaningful error code from err, the err returned from the database.
-func Errorf(err error, format string, a ...interface{}) error {
+// IsDeadlock returns true if the error reports that a deadlock was found when trying to get lock.
+func IsDeadlock(err error) bool {
 	if err == nil {
-		return nil
+		return false
 	}
-	msg := fmt.Sprintf(format, a...)
-	if st, ok := status.FromError(err); ok {
-		return status.Errorf(st.Code(), "%v: %v", msg, st.Message())
+	var mysqlErr *mysql.MySQLError
+	if errors.As(err, &mysqlErr) {
+		return mysqlErr.Number == mysqlerr.ER_LOCK_DEADLOCK
 	}
-	if mysqlErr, ok := err.(*mysql.MySQLError); ok {
-		var code codes.Code
-		switch mysqlErr.Number {
-		case mysqlerr.ER_LOCK_DEADLOCK:
-			code = codes.Aborted
-		default:
-			code = codes.Internal
-		}
-		return status.Errorf(code, "%v: %v", msg, err)
-	}
-	return status.Errorf(codes.Internal, "%v, unknown db engine err: %v", msg, err)
+	return false
 }
