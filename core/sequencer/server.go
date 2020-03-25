@@ -362,7 +362,9 @@ func (s *Server) ApplyRevisions(ctx context.Context, in *spb.ApplyRevisionsReque
 			return nil, err
 		}
 	}
-	glog.Infof("ApplyRevisions: applied revision(s) [%d, %d]", firstRev, highestApplied+i)
+	if i > 0 {
+		glog.Infof("ApplyRevisions: applied revision(s) [%d, %d]", firstRev, highestApplied+i)
+	}
 	return &empty.Empty{}, nil
 }
 
@@ -539,7 +541,9 @@ func (s *Server) PublishRevisions(ctx context.Context,
 		leaves[int64(mapRoot.Revision)] = rawMapRoot.GetMapRoot()
 		revs = append(revs, int64(mapRoot.Revision))
 	}
-	glog.Infof("Publishing revisions %d-%d", logRoot.TreeSize-1, end)
+	if len(leaves) > 0 {
+		glog.Infof("Publishing revisions %d-%d", logRoot.TreeSize-1, end)
+	}
 	if err := logClient.AddSequencedLeaves(ctx, leaves); err != nil {
 		glog.Errorf("AddSequencedLeaves(revs: %v): %v", revs, err)
 		return nil, err
