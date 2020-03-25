@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strconv"
 	"sync"
 	"time"
 
@@ -34,6 +35,7 @@ import (
 	"github.com/google/keytransparency/core/sequencer/mapper"
 	"github.com/google/keytransparency/core/sequencer/metadata"
 	"github.com/google/keytransparency/core/sequencer/runner"
+	"github.com/google/keytransparency/core/water"
 
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 	tpb "github.com/google/trillian"
@@ -57,18 +59,12 @@ var (
 	watermarkWritten   monitoring.Gauge
 	watermarkDefined   monitoring.Gauge
 	watermarkApplied   monitoring.Gauge
+	appliedLatency     monitoring.Histogram
 	mutationFailures   monitoring.Counter
 	fnLatency          monitoring.Histogram
 	logRootTrail       monitoring.Gauge
 	unappliedRevisions monitoring.Gauge
 )
-
-// zero is the time to use for the beginning edge of new watermarks.
-// When getting the watermark for a new log that is not in the lastMeta set,
-// we need to pick a lower bound starting point for reading.  time.Time{} is
-// not a valid choice here because it is too low to represent with metadata.New()
-// so we need to pick a different, low sentinel value that the tests know about.
-var zero = time.Unix(0, 0)
 
 func createMetrics(mf monitoring.MetricFactory) {
 	knownDirectories = mf.NewGauge(
@@ -107,6 +103,11 @@ func createMetrics(mf monitoring.MetricFactory) {
 		"watermark_applied",
 		"High watermark of each input log that has been committed in a map revision",
 		directoryIDLabel, logIDLabel)
+	appliedLatency = mf.NewHistogramWithBuckets(
+		"applied_latency",
+		"Latency between creating a mutation entry and putting it to a map revision, in seconds",
+		monitoring.LatencyBuckets(),
+		directoryIDLabel, logIDLabel)
 	mutationFailures = mf.NewCounter(
 		"mutation_failures",
 		"Number of invalid mutations the signer has processed for directoryid since process start",
@@ -130,17 +131,34 @@ type Watermarks map[int64]int64
 
 // LogsReader reads messages in multiple logs.
 type LogsReader interface {
-	// HighWatermark returns the number of items and the highest primary
-	// key up to batchSize items after start (exclusive).
-	HighWatermark(ctx context.Context, directoryID string, logID int64, start time.Time,
-		batchSize int32) (count int32, watermark time.Time, err error)
+	// HighWatermark counts up to `batchSize` entries in the specified log,
+	// located at or after the given `start` watermark. Returns the number of
+	// entries found, and the watermark "just beyond" the last entry found.
+	//
+	// Guarantees:
+	// - The returned `count` is normally between 0 and `batchSize`. It can be
+	//   more if the storage supports batching multiple entries with the same
+	//   watermark key. The `batchSize` is a hint rather than a hard limit.
+	// - The returned `high` watermark is at least equal to `start`.
+	// - There are exactly `count` entries in the [`start`, `high`) range.
+	// - The content of the [`start`, `high`) range will never change. The caller
+	//   can take it as a promise, and set `start` for the next HighWatermark
+	//   call to be the returned `high`.
+	// - If `high` == `start` then there are no entries found, i.e. `count` is 0.
+	//   Note that it's also possible that `high` > `start` but there are still
+	//   no entries found.
+	HighWatermark(ctx context.Context, directoryID string, logID int64,
+		start water.Mark, batchSize int32) (count int32, high water.Mark, err error)
 
 	// ListLogs returns the logIDs associated with directoryID that have their write bits set,
 	// or all logIDs associated with directoryID if writable is false.
 	ListLogs(ctx context.Context, directoryID string, writable bool) ([]int64, error)
 
-	// ReadLog returns the lowest messages in the [low, high) range stored in the specified log, up to batchSize.
-	ReadLog(ctx context.Context, directoryID string, logID int64, low, high time.Time,
+	// ReadLog returns up to `batchSize` lowest messages in the [low, high)
+	// watermarks range of the specified log. Some implementations may return
+	// more because there can be multiple entries with the same watermark, but
+	// different local IDs. The entries are ordered by (watermark, local ID).
+	ReadLog(ctx context.Context, directoryID string, logID int64, low, high water.Mark,
 		batchSize int32) ([]*mutator.LogMessage, error)
 }
 
@@ -156,13 +174,14 @@ type Batcher interface {
 
 // Server implements KeyTransparencySequencerServer.
 type Server struct {
-	directories         directory.Storage
-	batcher             Batcher
-	trillian            trillianFactory
-	logs                LogsReader
-	loopback            spb.KeyTransparencySequencerClient
-	BatchSize           int32
-	LogPublishBatchSize uint64
+	directories            directory.Storage
+	batcher                Batcher
+	trillian               trillianFactory
+	logs                   LogsReader
+	loopback               spb.KeyTransparencySequencerClient
+	BatchSize              int32
+	ApplyRevisionBatchSize uint64
+	LogPublishBatchSize    uint64
 }
 
 // NewServer creates a new KeyTransparencySequencerServer.
@@ -185,47 +204,46 @@ func NewServer(
 			tlog:        tlog,
 			twrite:      twrite,
 		},
-		batcher:             batcher,
-		logs:                logs,
-		loopback:            loopback,
-		BatchSize:           10000,
-		LogPublishBatchSize: 10,
+		batcher:                batcher,
+		logs:                   logs,
+		loopback:               loopback,
+		BatchSize:              10000,
+		ApplyRevisionBatchSize: 2,
+		LogPublishBatchSize:    10,
 	}
 }
 
-func (s *Server) UpdateMetrics(ctx context.Context, in *spb.UpdateMetricsRequest) (*spb.UpdateMetricsResponse, error) {
-	if err := s.unappliedMetric(ctx, in.DirectoryId, in.MaxUnappliedCount); err != nil {
-		glog.Errorf("unappliedMetric(%v): %v", in.DirectoryId, err)
-		return nil, err
-	}
-	return &spb.UpdateMetricsResponse{}, nil
-}
+// EstimateBacklog updates the log_entryunapplied metric for directoryID
+func (s *Server) EstimateBacklog(ctx context.Context, in *spb.EstimateBacklogRequest) (*spb.EstimateBacklogResponse, error) {
+	directoryID := in.GetDirectoryId()
+	maxCount := in.GetMaxUnappliedCount()
 
-// unappliedMetric updates the log_entryunapplied metric for directoryID
-func (s *Server) unappliedMetric(ctx context.Context, directoryID string, maxCount int32) error {
 	// Get the previous and current high water marks.
 	mapClient, err := s.trillian.MapClient(ctx, directoryID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	_, latestMapRoot, err := mapClient.GetAndVerifyLatestMapRoot(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	var lastMeta spb.MapMetadata
 	if err := proto.Unmarshal(latestMapRoot.Metadata, &lastMeta); err != nil {
-		return err
+		return nil, err
 	}
 	// Query metadata about outstanding log items.
 	count, meta, err := s.HighWatermarks(ctx, directoryID, &lastMeta, maxCount)
 	if err != nil {
-		return status.Errorf(codes.Internal, "HighWatermarks(): %v", err)
+		return nil, status.Errorf(codes.Internal, "HighWatermarks(): %v", err)
 	}
 	logEntryUnapplied.Set(float64(count), directoryID)
 	for _, source := range meta.Sources {
 		watermarkWritten.Set(float64(source.HighestExclusive), directoryID, fmt.Sprintf("%v", source.LogId))
 	}
-	return nil
+	return &spb.EstimateBacklogResponse{
+		DirectoryId:    directoryID,
+		UnappliedCount: count,
+	}, nil
 }
 
 // DefineRevisions returns the set of outstanding revisions that have not been
@@ -255,8 +273,8 @@ func (s *Server) DefineRevisions(ctx context.Context,
 
 	// Query metadata about outstanding log items.
 	lastMeta, err := s.batcher.ReadBatch(ctx, in.DirectoryId, resp.HighestDefined)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "ReadBatch(): %v", err)
+	if st := status.Convert(err); st.Code() != codes.OK {
+		return nil, status.Errorf(st.Code(), "ReadBatch(): %v", st.Message())
 	}
 	// Advance the watermarks forward, to define a new batch.
 	count, meta, err := s.HighWatermarks(ctx, in.DirectoryId, lastMeta, in.MaxBatch)
@@ -278,7 +296,7 @@ func (s *Server) DefineRevisions(ctx context.Context,
 			return nil, status.Errorf(codes.Internal, "WriteBatchSources(): %v", err)
 		}
 		for _, source := range meta.Sources {
-			watermarkDefined.Set(float64(source.HighestExclusive),
+			watermarkDefined.Set(float64(metadata.FromProto(source).HighMark().Value()),
 				in.DirectoryId, fmt.Sprintf("%v", source.LogId))
 		}
 	}
@@ -291,53 +309,60 @@ func (s *Server) DefineRevisions(ctx context.Context,
 func (s *Server) GetDefinedRevisions(ctx context.Context,
 	in *spb.GetDefinedRevisionsRequest) (*spb.GetDefinedRevisionsResponse, error) {
 	// Get the last processed revision number.
-	mapClient, err := s.trillian.MapClient(ctx, in.DirectoryId)
-	if err != nil {
-		return nil, err
-	}
-	_, root, err := mapClient.GetAndVerifyLatestMapRoot(ctx)
+	highestApplied, err := s.highestAppliedRev(ctx, in.DirectoryId)
 	if err != nil {
 		return nil, err
 	}
 	// Get the highest defined revision number.
 	// TODO(pavelkalinnikov): Run this in parallel with getting the root.
-	rev, err := s.batcher.HighestRev(ctx, in.DirectoryId)
+	highestDefined, err := s.batcher.HighestRev(ctx, in.DirectoryId)
 	if err != nil {
 		return nil, err
 	}
+
+	unappliedRevisions.Set(float64(highestDefined - highestApplied))
 	return &spb.GetDefinedRevisionsResponse{
-		HighestApplied: int64(root.Revision),
-		HighestDefined: rev,
+		HighestApplied: highestApplied,
+		HighestDefined: highestDefined,
 	}, nil
+}
+
+func (s *Server) highestAppliedRev(ctx context.Context, dirID string) (int64, error) {
+	mapClient, err := s.trillian.MapClient(ctx, dirID)
+	if err != nil {
+		return 0, err
+	}
+	_, root, err := mapClient.GetAndVerifyLatestMapRoot(ctx)
+	if err != nil {
+		return 0, err
+	}
+	return int64(root.Revision), nil
 }
 
 // ApplyRevisions builds multiple outstanding revisions of a single directory's
 // map by integrating the corresponding mutations.
 func (s *Server) ApplyRevisions(ctx context.Context, in *spb.ApplyRevisionsRequest) (*empty.Empty, error) {
-	resp, err := s.loopback.GetDefinedRevisions(ctx,
-		&spb.GetDefinedRevisionsRequest{DirectoryId: in.DirectoryId})
+	highestApplied, err := s.highestAppliedRev(ctx, in.DirectoryId)
 	if err != nil {
 		return nil, err
 	}
 
-	cnt := resp.HighestDefined - resp.HighestApplied
-	unappliedRevisions.Set(float64(cnt))
-	if cnt < 0 {
-		cnt = 0
-	}
-
-	if mx := int64(s.LogPublishBatchSize); cnt > mx {
-		glog.Warningf("ApplyRevisions: too many outstanding revisions: %d; applying %d", cnt, mx)
-		cnt = mx
-	}
-	glog.Infof("Applying revisions %d-%d", resp.HighestApplied+1, resp.HighestApplied+cnt)
-	for i := int64(1); i <= cnt; i++ {
+	firstRev := highestApplied + int64(1)
+	i := int64(0)
+	for ; i < int64(s.ApplyRevisionBatchSize); i++ {
 		req := &spb.ApplyRevisionRequest{
-			DirectoryId: in.DirectoryId, Revision: resp.HighestApplied + i}
-		if _, err := s.loopback.ApplyRevision(ctx, req); err != nil {
+			DirectoryId: in.DirectoryId,
+			Revision:    highestApplied + i + 1,
+		}
+		_, err := s.loopback.ApplyRevision(ctx, req)
+		if st := status.Convert(err); st.Code() == codes.NotFound {
+			unappliedRevisions.Set(0) // All revisions have been applied.
+			break
+		} else if err != nil {
 			return nil, err
 		}
 	}
+	glog.Infof("ApplyRevisions: applied revision(s) [%d, %d]", firstRev, highestApplied+i)
 	return &empty.Empty{}, nil
 }
 
@@ -347,8 +372,7 @@ func (s *Server) readMessages(ctx context.Context, source *spb.MapMetadata_Sourc
 	directoryID string, chunkSize int32,
 	emit func(*mutator.LogMessage)) error {
 	ss := metadata.FromProto(source)
-	low := ss.StartTime()
-	high := ss.EndTime()
+	low, high := ss.LowMark(), ss.HighMark()
 	for moreToRead := true; moreToRead; {
 		// Request one more item than chunkSize so we can find the next page token.
 		batch, err := s.logs.ReadLog(ctx, directoryID, source.LogId, low, high, chunkSize+1)
@@ -376,8 +400,9 @@ func (s *Server) ApplyRevision(ctx context.Context, in *spb.ApplyRevisionRequest
 	defer func() { fnLatency.Observe(time.Since(start).Seconds(), in.DirectoryId, "ApplyRevision") }()
 	meta, err := s.batcher.ReadBatch(ctx, in.DirectoryId, in.Revision)
 	fnLatency.Observe(time.Since(start).Seconds(), in.DirectoryId, "ReadBatch")
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "ReadBatch(%v, %v): %v", in.DirectoryId, in.Revision, err)
+	if st := status.Convert(err); st.Code() != codes.OK {
+		// Preserve codes.NotFound error from ReadBatch.
+		return nil, status.Errorf(st.Code(), "ReadBatch(%v, %v): %v", in.DirectoryId, in.Revision, st.Message())
 	}
 	glog.Infof("ApplyRevision(): dir: %v, rev: %v, sources: %v", in.DirectoryId, in.Revision, meta)
 
@@ -386,7 +411,6 @@ func (s *Server) ApplyRevision(ctx context.Context, in *spb.ApplyRevisionRequest
 	logSlices := runner.DoMapMetaFn(mapper.MapMetaFn, meta, incMetricFn)
 	logItems, err := runner.DoReadFn(ctx, s.readMessages, logSlices, in.DirectoryId, s.BatchSize, incMetricFn)
 	if err != nil {
-		mutationFailures.Inc(err.Error())
 		return nil, err
 	}
 
@@ -438,22 +462,27 @@ func (s *Server) ApplyRevision(ctx context.Context, in *spb.ApplyRevisionRequest
 	fnLatency.Observe(time.Since(computeStart).Seconds(), in.DirectoryId, "ProcessMutations")
 
 	// Serialize metadata
-	metadata, err := proto.Marshal(meta)
+	serializedMeta, err := proto.Marshal(meta)
 	if err != nil {
 		return nil, err
 	}
 
 	// Set new leaf values.
 	setRevisionStart := time.Now()
-	err = mapClient.WriteLeaves(ctx, in.Revision, newLeaves, metadata)
+	err = mapClient.WriteLeaves(ctx, in.Revision, newLeaves, serializedMeta)
 	fnLatency.Observe(time.Since(setRevisionStart).Seconds(), in.DirectoryId, "WriteLeaves")
 	if err != nil {
 		return nil, err
 	}
 	glog.V(2).Infof("CreateRevision: WriteLeaves:{Revision: %v}", in.Revision)
 
+	writtenAt := time.Now()
+	for _, li := range logItems {
+		appliedLatency.Observe(writtenAt.Sub(li.CreatedAt).Seconds(), in.DirectoryId, strconv.FormatInt(li.LogID, 10))
+	}
+
 	for _, s := range meta.Sources {
-		watermarkApplied.Set(float64(s.HighestExclusive), in.DirectoryId, fmt.Sprintf("%v", s.LogId))
+		watermarkApplied.Set(float64(metadata.FromProto(s).HighMark().Value()), in.DirectoryId, fmt.Sprintf("%v", s.LogId))
 	}
 	mapLeafCount.Add(float64(len(newLeaves)), in.DirectoryId)
 	mapRevisionCount.Inc(in.DirectoryId)
@@ -537,11 +566,11 @@ func (s *Server) HighWatermarks(ctx context.Context, directoryID string, lastMet
 	// revision.
 	// TODO(gbelvin): Separate end watermarks for the sequencer's needs
 	// from ranges of watermarks for the verifier's needs.
-	ends := make(map[int64]time.Time)
-	starts := make(map[int64]time.Time)
+	ends := make(map[int64]water.Mark)
+	starts := make(map[int64]water.Mark)
 	for _, source := range lastMeta.GetSources() {
-		highest := metadata.FromProto(source).EndTime()
-		if ends[source.LogId].Before(highest) {
+		highest := metadata.FromProto(source).HighMark()
+		if ends[source.LogId].Compare(highest) < 0 {
 			ends[source.LogId] = highest
 			starts[source.LogId] = highest
 		}
@@ -554,10 +583,7 @@ func (s *Server) HighWatermarks(ctx context.Context, directoryID string, lastMet
 	}
 	// TODO(gbelvin): Get HighWatermarks in parallel.
 	for _, logID := range logIDs {
-		low, ok := ends[logID]
-		if !ok {
-			low = zero // Here be dragons. See comment on zero.
-		}
+		low := ends[logID]
 		count, high, err := s.logs.HighWatermark(ctx, directoryID, logID, low, batchSize)
 		if err != nil {
 			return 0, nil, status.Errorf(codes.Internal,
@@ -571,10 +597,7 @@ func (s *Server) HighWatermarks(ctx context.Context, directoryID string, lastMet
 
 	meta := &spb.MapMetadata{}
 	for logID, end := range ends {
-		src, err := metadata.New(logID, starts[logID], end)
-		if err != nil {
-			return 0, nil, err
-		}
+		src := metadata.New(logID, starts[logID], end)
 		meta.Sources = append(meta.Sources, src.Proto())
 	}
 	// Deterministic results are nice.

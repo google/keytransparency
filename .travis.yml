@@ -1,6 +1,7 @@
+version: ~> 1.0
 language: go
 go:
-- 1.x
+- "1.13.x"
 dist: bionic
 
 go_import_path: github.com/google/keytransparency
@@ -20,8 +21,6 @@ env:
 
 jobs:
   include:
-    - name: "build"
-      script: go build ./...
     - name: "lint"
       install: curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b $(go env GOPATH)/bin v1.19.0
       script: golangci-lint run --deadline=7m
@@ -33,16 +32,29 @@ jobs:
     - name: "race"
       script:
       - go test -race ./... -v
-    - name: "docker integration test"
-      install: skip
-      script: ./scripts/integration.sh
+    - name: "docker-compose test"
+      install:
+       - docker swarm init
+       - docker node ls
+      script: ./scripts/docker-compose_test.sh
+    - name: "kubernetes test"
+      install:
+      - curl -LO "https://storage.googleapis.com/kubernetes-release/release/v1.16.3/bin/linux/amd64/kubectl" && chmod +x kubectl && sudo mv kubectl /usr/local/bin/
+      - curl -s -O -L https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize/v3.5.4/kustomize_v3.5.4_linux_amd64.tar.gz && tar xzf ./kustomize_v3.5.4_linux_amd64.tar.gz && sudo mv kustomize /usr/local/bin/
+      - go get sigs.k8s.io/kind@v0.6.1
+      - kind create cluster --config deploy/kubernetes/kind-config.yaml
+      - kubectl cluster-info --context kind-kind
+      - kubectl version
+      script: ./scripts/kubernetes_test.sh
     - stage: deploy
       if: branch = master AND type != pull_request
       install:
-      - gcloud -q components install kubectl
-      - openssl aes-256-cbc -K $encrypted_555d9b2948d2_key -iv $encrypted_555d9b2948d2_iv
-        -in client_secrets.json.enc -d | gcloud auth activate-service-account --key-file /dev/stdin
-      script: ./scripts/deploy.sh
+      - curl -LO "https://storage.googleapis.com/kubernetes-release/release/v1.16.3/bin/linux/amd64/kubectl" && chmod +x kubectl && sudo mv kubectl /usr/local/bin/
+      - curl -s -O -L https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize/v3.5.4/kustomize_v3.5.4_linux_amd64.tar.gz && tar xzf ./kustomize_v3.5.4_linux_amd64.tar.gz && sudo mv kustomize /usr/local/bin/
+      - openssl aes-256-cbc -K $encrypted_555d9b2948d2_key -iv $encrypted_555d9b2948d2_iv -in client_secret.json.enc -d | gcloud auth activate-service-account --key-file /dev/stdin
+      script:
+      - ./scripts/deploy.sh
+      - ./scripts/cleanup_images.sh
 
 before_install:
   - |

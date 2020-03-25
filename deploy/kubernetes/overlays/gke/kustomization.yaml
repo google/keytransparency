@@ -1,0 +1,13 @@
+bases:
+- ../../base
+resources:
+- managed-cert.yaml
+patches:
+- path: cloudsql-sidecar.yaml
+  target:
+    kind: Deployment
+patchesStrategicMerge:
+- configmap.yaml
+- ingress.yaml
+- server-service.yaml
+- prometheus-sidecar.yaml

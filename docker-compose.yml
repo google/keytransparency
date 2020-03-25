@@ -1,45 +1,34 @@
-version: "3.1"
+version: "3.2"
 secrets:
   server.key:
-    file: ./genfiles/server.key
+    file: ./genfiles/key.pem
   server.crt:
-    file: ./genfiles/server.crt
+    file: ./genfiles/cert.pem
   monitor.key:
     file: ./genfiles/monitor_sign-key.pem
 
-services:
-  # Only works when when replicas = 1 for reach monitored service.
-  # Kubernetes sidecars are needed for replicas > 1. 
-  prometheus-to-sd:
-    container_name: prometheus-to-sd
-    image: gcr.io/google-containers/prometheus-to-sd:v0.2.6
-    entrypoint:
-      - /monitor
-      - --stackdriver-prefix=custom.googleapis.com
-      - --source=logserver:http://log-server:8091/metrics
-      - --source=logsigner:http://log-signer:8091/metrics
-      - --source=mapserver:http://map-server:8091/metrics
-      - --source=keyserver:http://server:8081/metrics
-      - --source=sequencer:http://sequencer:8081/metrics
-      - --pod-id=prometheus-to-sd
-      - --namespace-id=default
-      - --metrics-resolution=5s
+volumes:
+    prometheus_data:
+      driver_opts:
+        type: tmpfs
+        device: tmpfs
 
+services:
   prometheus:
-    depends_on:
-      - server
-      - sequencer
-    image: gcr.io/key-transparency/prometheus:${TRAVIS_COMMIT}
-    build:
-      context: .
-      dockerfile: deploy/prometheus/Dockerfile
-    restart: always
+    image: prom/prometheus:v2.11.0
+    volumes:
+      - ./deploy/prometheus/:/etc/prometheus/
+      - prometheus_data:/data/
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/data'
+      - '--web.enable-lifecycle'
+    restart: unless-stopped
     ports:
       - 9090:9090
-
   db:
+    # TODO(gbelvin): Select a better tag for Trillian
     image: gcr.io/trillian-opensource-ci/db_server:latest
-    restart: always
     ports:
       - "3306"
     environment:
@@ -50,8 +39,8 @@ services:
   log-server:
     depends_on:
       - db
+    # TODO(gbelvin): Select a better tag for Trillian
     image: gcr.io/trillian-opensource-ci/log_server:latest
-    restart: always
     command: 
       - --mysql_uri=test:zaphod@tcp(db:3306)/test
       - --rpc_endpoint=0.0.0.0:8090
@@ -60,17 +49,12 @@ services:
     ports:
       - "8090"
       - "8091"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8091/metrics"]
-      interval: 30s
-      timeout: 30s
-      retries: 3
 
   log-signer:
     depends_on:
       - db
+    # TODO(gbelvin): Select a better tag for Trillian
     image: gcr.io/trillian-opensource-ci/log_signer:latest
-    restart: always
     command:
       - --mysql_uri=test:zaphod@tcp(db:3306)/test
       - --http_endpoint=0.0.0.0:8091
@@ -82,17 +66,12 @@ services:
       - --alsologtostderr
     ports:
       - "8091"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8091/metrics"]
-      interval: 30s
-      timeout: 30s
-      retries: 3
 
   map-server:
     depends_on:
       - db
+    # TODO(gbelvin): Select a better tag for Trillian
     image: gcr.io/trillian-opensource-ci/map_server:latest
-    restart: always
     command:
       - --mysql_uri=test:zaphod@tcp(db:3306)/test
       - --rpc_endpoint=0.0.0.0:8090
@@ -101,11 +80,6 @@ services:
     ports:
       - "8090"
       - "8091"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8091/metrics"]
-      interval: 30s
-      timeout: 30s
-      retries: 3
 
   server:
     depends_on:
@@ -113,10 +87,6 @@ services:
       - log-server
       - map-server
     image: gcr.io/key-transparency/keytransparency-server:${TRAVIS_COMMIT}
-    build:
-      context: .
-      dockerfile: ./cmd/keytransparency-server/Dockerfile
-    restart: always
     ports:
       - "443:8080" # json & grpc
       - "8081:8081" # metrics
@@ -132,11 +102,6 @@ services:
       - --v=1
     labels:
       kompose.service.type: LoadBalancer
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8081/metrics"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
     secrets:
       - server.key
       - server.crt
@@ -147,10 +112,6 @@ services:
       - log-server
       - map-server
     image: gcr.io/key-transparency/keytransparency-sequencer:${TRAVIS_COMMIT}
-    build:
-      context: .
-      dockerfile: ./cmd/keytransparency-sequencer/Dockerfile
-    restart: always
     command:
       - --force_master
       - --db=test:zaphod@tcp(db:3306)/test
@@ -164,38 +125,21 @@ services:
     ports:
       - "8080"
       - "8081"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8081/metrics"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
     secrets:
       - server.key
       - server.crt
-
-  init:
-    image: gcr.io/key-transparency/init:latest
-    restart: "on-failure"
-    deploy:
-      restart_policy:
-        condition: on-failure
-    build:
-      context: .
-      dockerfile: ./deploy/docker/init/Dockerfile
-    depends_on:
-      - sequencer
-    command:  sequencer:8080 -- curl -k https://sequencer:8080/v1/directories -d'{"directory_id":"default","min_interval":"1s","max_interval":"60s"}'
+    networks:
+      - attachable
+      - default
 
   monitor:
     depends_on:
       - server
       - sequencer
     image: gcr.io/key-transparency/keytransparency-monitor:${TRAVIS_COMMIT}
-    build:
-      context: .
-      dockerfile: ./cmd/keytransparency-monitor/Dockerfile
     command:
-      - --addr=0.0.0.0:8099
+      - --addr=0.0.0.0:8070
+      - --metrics-addr=0.0.0.0:8071
       - --kt-url=server:8080
       - --insecure
       - --directoryid=default
@@ -205,10 +149,15 @@ services:
       - --password=towel
       - --alsologtostderr
       - --v=3
-    restart: always
     ports:
-    - "8099:8099" # gRPC / HTTPS
+    - "8070:8070" # gRPC / HTTPS
+    - "8071:8071" # HTTP metrics
     secrets:
       - server.key
       - server.crt
       - monitor.key
+
+networks:
+  attachable:
+    driver: overlay
+    attachable: true

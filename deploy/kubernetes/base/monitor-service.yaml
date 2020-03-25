@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    prometheus.io/scrape: 'true'
+    prometheus.io/path: '/metrics'
+    prometheus.io/port: '8071'
+    prometheus.io/scheme: 'http'
+  labels:
+    io.kompose.service: monitor
+  name: monitor
+spec:
+  ports:
+  - name: "8099"
+    port: 8099
+    targetPort: 8099
+  selector:
+    io.kompose.service: monitor
+status:
+  loadBalancer: {}

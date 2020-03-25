@@ -17,14 +17,12 @@ package main
 import (
 	"context"
 	"flag"
-	"net/http"
 
 	"github.com/golang/glog"
 	"github.com/google/trillian"
 	"github.com/google/trillian/monitoring/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
 
 	"github.com/google/keytransparency/cmd/serverutil"
@@ -67,11 +65,6 @@ func main() {
 		glog.Exit(err)
 	}
 	defer sqldb.Close()
-
-	creds, err := credentials.NewServerTLSFromFile(*certFile, *keyFile)
-	if err != nil {
-		glog.Exitf("Failed to load server credentials %v", err)
-	}
 
 	authz := &authorization.AuthzPolicy{}
 	var authFunc grpc_auth.AuthFunc
@@ -116,7 +109,6 @@ func main() {
 	ksvr := keyserver.New(tlog, tmap, entry.IsValidEntry, directories, logs, logs,
 		prometheus.MetricFactory{}, int32(*revisionPageSize))
 	grpcServer := grpc.NewServer(
-		grpc.Creds(creds),
 		grpc.StreamInterceptor(grpc_middleware.ChainStreamServer(
 			grpc_prometheus.StreamServerInterceptor,
 			authorization.StreamServerInterceptor(map[string]authorization.AuthPair{
@@ -138,34 +130,17 @@ func main() {
 	grpc_prometheus.Register(grpcServer)
 	grpc_prometheus.EnableHandlingTimeHistogram()
 
-	// Create HTTP handlers and gRPC gateway.
-	tcreds, err := credentials.NewClientTLSFromFile(*certFile, "")
+	lis, conn, done, err := serverutil.ListenTLS(ctx, *addr, *certFile, *keyFile)
 	if err != nil {
-		glog.Exitf("Failed opening cert file %v: %v", *certFile, err)
+		glog.Fatalf("Listen(%v): %v", *addr, err)
 	}
-	dopts := []grpc.DialOption{grpc.WithTransportCredentials(tcreds)}
-	gwmux, err := serverutil.GrpcGatewayMux(ctx, *addr, dopts,
-		pb.RegisterKeyTransparencyHandlerFromEndpoint)
-	if err != nil {
-		glog.Exitf("Failed setting up REST proxy: %v", err)
-	}
+	defer done()
 
-	// Insert handlers for other http paths here.
-	mux := http.NewServeMux()
-	mux.Handle("/", gwmux)
+	g, gctx := errgroup.WithContext(ctx)
+	g.Go(func() error { return serverutil.ServeHTTPMetrics(*metricsAddr, serverutil.Readyz(sqldb)) })
+	g.Go(func() error {
+		return serverutil.ServeHTTPAPIAndGRPC(gctx, lis, grpcServer, conn, pb.RegisterKeyTransparencyHandler)
+	})
 
-	metricMux := http.NewServeMux()
-	metricMux.Handle("/metrics", promhttp.Handler())
-	go func() {
-		glog.Infof("Hosting metrics on %v", *metricsAddr)
-		if err := http.ListenAndServe(*metricsAddr, metricMux); err != nil {
-			glog.Fatalf("ListenAndServeTLS(%v): %v", *metricsAddr, err)
-		}
-	}()
-	// Serve HTTP2 server over TLS.
-	glog.Infof("Listening on %v", *addr)
-	if err := http.ListenAndServeTLS(*addr, *certFile, *keyFile,
-		serverutil.GrpcHandlerFunc(grpcServer, mux)); err != nil {
-		glog.Errorf("ListenAndServeTLS: %v", err)
-	}
+	glog.Errorf("Key Transparency Server exiting: %v", g.Wait())
 }

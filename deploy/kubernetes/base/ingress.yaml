@@ -1,0 +1,23 @@
+apiVersion: networking.k8s.io/v1beta1
+kind: Ingress
+metadata:
+  name: kt-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/backend-protocol: "GRPCS"
+spec:
+  backend:
+    serviceName: server
+    servicePort: grpc-api
+  tls:
+  - hosts:
+    - "localhost"
+    - "127.0.0.1"
+    - "sandbox.keytransparency.dev"
+    secretName: kt-tls
+  rules:
+    - http:
+       paths:
+       - path: /
+         backend:
+           serviceName: server
+           servicePort: grpc-api

@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    prometheus.io/scrape: 'true'
+    prometheus.io/path: '/metrics'
+    prometheus.io/port: '8091'
+    prometheus.io/scheme: 'http'
+  labels:
+    io.kompose.service: log-server
+  name: log-server
+spec:
+  ports:
+  - name: "8090"
+    port: 8090
+    targetPort: 8090
+  - name: "8091"
+    port: 8091
+    targetPort: 8091
+  selector:
+    io.kompose.service: log-server
+status:
+  loadBalancer: {}

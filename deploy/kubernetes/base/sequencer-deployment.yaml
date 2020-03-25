@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    io.kompose.service: sequencer
+  name: sequencer
+spec:
+  replicas: 1
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        io.kompose.service: sequencer
+    spec:
+      volumes:
+       - name: secrets
+         secret:
+           secretName: kt-tls
+      containers:
+      - command:
+        - /keytransparency-sequencer
+        - --force_master
+        - --db=test:zaphod@tcp($(DB_HOST):3306)/test
+        - --addr=0.0.0.0:8080
+        - --log-url=log-server:8090
+        - --map-url=map-server:8090
+        - --tls-key=/run/secrets/tls.key
+        - --tls-cert=/run/secrets/tls.crt
+        - --alsologtostderr
+        - --v=5
+        image: gcr.io/key-transparency/keytransparency-sequencer:latest
+        envFrom:
+          - configMapRef:
+               name: configmap
+        livenessProbe:
+         httpGet:
+           path: /healthz
+           port: 8081
+        readinessProbe:
+         httpGet:
+           path: /readyz
+           port: 8081
+        name: sequencer
+        ports:
+        - containerPort: 8080
+        - containerPort: 8081
+        resources: {}
+        volumeMounts:
+        - name: secrets
+          mountPath: "/run/secrets"
+          readOnly: true
+      restartPolicy: Always
+status: {}

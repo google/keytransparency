@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    io.kompose.service: map-server
+  name: map-server
+spec:
+  replicas: 1
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        io.kompose.service: map-server
+    spec:
+      containers:
+      - name: trillian-mapserver
+        args: [
+        "--mysql_uri=test:zaphod@tcp($(DB_HOST):3306)/test",
+        "--rpc_endpoint=0.0.0.0:8090",
+        "--http_endpoint=0.0.0.0:8091",
+        "--alsologtostderr"
+        ]
+        image: gcr.io/trillian-opensource-ci/map_server:latest
+        envFrom:
+          - configMapRef:
+               name: configmap
+        livenessProbe:
+         httpGet:
+           path: /metrics
+           port: 8091
+        name: map-server
+        ports:
+        - containerPort: 8090
+        - containerPort: 8091
+        resources: {}
+      restartPolicy: Always
+status: {}

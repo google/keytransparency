@@ -24,7 +24,6 @@ import (
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
 	"github.com/google/trillian/types"
-	"github.com/kr/pretty"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -120,7 +119,7 @@ func (v *Verifier) VerifyMapLeaf(directoryID, userID string,
 	if mapRoot == nil {
 		return status.Errorf(codes.Internal, "nil MapRoot")
 	}
-	glog.V(5).Infof("VerifyMapLeaf(%v/%v): %# v", directoryID, userID, pretty.Formatter(in))
+	glog.V(5).Infof("VerifyMapLeaf(%v/%v): %# v", directoryID, userID, in)
 
 	// Unpack the merkle tree leaf value.
 	leafValue := in.GetMapInclusion().GetLeaf().GetLeafValue()

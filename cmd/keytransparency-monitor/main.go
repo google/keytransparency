@@ -16,16 +16,17 @@ package main
 
 import (
 	"context"
+	"crypto"
 	"crypto/tls"
 	"flag"
 	"net"
-	"net/http"
+	"time"
 
 	"github.com/golang/glog"
-	"github.com/google/trillian/crypto"
 	"github.com/google/trillian/crypto/keys/pem"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
 
@@ -33,25 +34,25 @@ import (
 	"github.com/google/keytransparency/core/fake"
 	"github.com/google/keytransparency/core/monitor"
 	"github.com/google/keytransparency/core/monitorserver"
+	"github.com/google/keytransparency/internal/backoff"
 
 	mopb "github.com/google/keytransparency/core/api/monitor/v1/monitor_go_proto"
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
+	tcrypto "github.com/google/trillian/crypto"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 )
 
 var (
-	addr     = flag.String("addr", ":8099", "The ip:port combination to listen on")
-	keyFile  = flag.String("tls-key", "genfiles/server.key", "TLS private key file")
-	certFile = flag.String("tls-cert", "genfiles/server.pem", "TLS cert file")
+	addr        = flag.String("addr", ":8070", "The ip:port combination to listen on")
+	metricsAddr = flag.String("metrics-addr", ":8071", "The ip:port to publish metrics on")
+	keyFile     = flag.String("tls-key", "genfiles/server.key", "TLS private key file")
+	certFile    = flag.String("tls-cert", "genfiles/server.pem", "TLS cert file")
 
 	signingKey         = flag.String("sign-key", "genfiles/monitor_sign-key.pem", "Path to private key PEM for SMH signing")
 	signingKeyPassword = flag.String("password", "towel", "Password of the private key PEM file for SMH signing")
-	ktURL              = flag.String("kt-url", "localhost:8080", "URL of key-server.")
+	ktURL              = flag.String("kt-url", "localhost:443", "URL of key-server.")
 	insecure           = flag.Bool("insecure", false, "Skip TLS checks")
 	directoryID        = flag.String("directoryid", "", "KT Directory identifier to monitor")
-
-	// TODO(ismail): expose prometheus metrics: a variable that tracks valid/invalid MHs
-	// metricsAddr = flag.String("metrics-addr", ":8081", "The ip:port to publish metrics on")
 )
 
 func main() {
@@ -65,8 +66,22 @@ func main() {
 	}
 	ktClient := pb.NewKeyTransparencyClient(cc)
 
-	config, err := ktClient.GetDirectory(ctx, &pb.GetDirectoryRequest{DirectoryId: *directoryID})
-	if err != nil {
+	// The first gRPC command might fail while the keyserver is starting up. Retry for up to 1 minute.
+	cctx, cancel := context.WithTimeout(ctx, time.Minute)
+	defer cancel()
+	b := backoff.Backoff{
+		Min:    time.Millisecond,
+		Max:    time.Second,
+		Factor: 1.5,
+	}
+	var config *pb.Directory
+	if err := b.Retry(cctx, func() (err error) {
+		config, err = ktClient.GetDirectory(ctx, &pb.GetDirectoryRequest{DirectoryId: *directoryID})
+		if err != nil {
+			glog.Errorf("GetDirectory(%v/%v): %v", *ktURL, *directoryID, err)
+		}
+		return
+	}, codes.Unavailable); err != nil {
 		glog.Exitf("Could not read directory info %v:", err)
 	}
 
@@ -75,7 +90,7 @@ func main() {
 	if err != nil {
 		glog.Exitf("Could not create signer from %v: %v", *signingKey, err)
 	}
-	signer := crypto.NewSHA256Signer(key)
+	signer := tcrypto.NewSigner(0, key, crypto.SHA256)
 	store := fake.NewMonitorStorage()
 
 	// Create monitoring background process.
@@ -94,12 +109,7 @@ func main() {
 	srv := monitorserver.New(store)
 
 	// Create gRPC server.
-	creds, err := credentials.NewServerTLSFromFile(*certFile, *keyFile)
-	if err != nil {
-		glog.Exitf("Failed to load server credentials %v", err)
-	}
 	grpcServer := grpc.NewServer(
-		grpc.Creds(creds),
 		grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
 		grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor),
 	)
@@ -108,29 +118,18 @@ func main() {
 	grpc_prometheus.Register(grpcServer)
 	grpc_prometheus.EnableHandlingTimeHistogram()
 
-	// Create HTTP handlers and gRPC gateway.
-	tcreds, err := credentials.NewClientTLSFromFile(*certFile, "")
+	lis, conn, done, err := serverutil.ListenTLS(ctx, *addr, *certFile, *keyFile)
 	if err != nil {
-		glog.Exitf("Failed opening cert file %v: %v", *certFile, err)
+		glog.Fatalf("Listen(%v): %v", *addr, err)
 	}
-	dopts := []grpc.DialOption{grpc.WithTransportCredentials(tcreds)}
-	gwmux, err := serverutil.GrpcGatewayMux(ctx, *addr, dopts,
-		mopb.RegisterMonitorHandlerFromEndpoint)
-	if err != nil {
-		glog.Exitf("Failed setting up REST proxy: %v", err)
-	}
+	defer done()
 
-	// Insert handlers for other http paths here.
-	mux := http.NewServeMux()
-	mux.Handle("/metrics", promhttp.Handler())
-	mux.Handle("/", gwmux)
-
-	// Serve HTTP2 server over TLS.
-	glog.Infof("Listening on %v", *addr)
-	if err := http.ListenAndServeTLS(*addr, *certFile, *keyFile,
-		serverutil.GrpcHandlerFunc(grpcServer, mux)); err != nil {
-		glog.Errorf("ListenAndServeTLS: %v", err)
-	}
+	g, gctx := errgroup.WithContext(ctx)
+	g.Go(func() error { return serverutil.ServeHTTPMetrics(*metricsAddr, serverutil.Healthz()) })
+	g.Go(func() error {
+		return serverutil.ServeHTTPAPIAndGRPC(gctx, lis, grpcServer, conn, mopb.RegisterMonitorHandler)
+	})
+	glog.Errorf("Monitor exiting: %v", g.Wait())
 }
 
 func dial(url string, insecure bool) (*grpc.ClientConn, error) {

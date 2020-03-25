@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    io.kompose.service: monitor
+  name: monitor
+spec:
+  replicas: 1
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        io.kompose.service: monitor
+    spec:
+      volumes:
+       - name: secrets
+         secret:
+           secretName: kt-monitor
+       - name: tls
+         secret:
+           secretName: kt-tls
+      containers:
+      - command:
+        - /keytransparency-monitor
+        - --addr=0.0.0.0:8070
+        - --metrics-addr=0.0.0.0:8071
+        - --kt-url=server:443
+        - --insecure
+        - --directoryid=default
+        - --tls-key=/run/tls/tls.key
+        - --tls-cert=/run/tls/tls.crt
+        - --sign-key=/run/secrets/monitor_sign-key.pem
+        - --password=towel
+        - --alsologtostderr
+        - --v=3
+        image: gcr.io/key-transparency/keytransparency-monitor:latest
+        livenessProbe:
+         httpGet:
+           path: /healthz
+           port: 8071
+           scheme: HTTP
+        readinessProbe:
+         httpGet:
+           path: /readyz
+           port: 8071
+           scheme: HTTP
+        name: monitor
+        ports:
+        - containerPort: 8070
+        - containerPort: 8071
+        resources: {}
+        volumeMounts:
+        - name: secrets
+          mountPath: "/run/secrets"
+          readOnly: true
+        - name: tls
+          mountPath: "/run/tls"
+          readOnly: true
+      restartPolicy: Always
+status: {}

@@ -19,7 +19,6 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
-	"github.com/golang/protobuf/ptypes"
 	"github.com/google/trillian/types"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -27,6 +26,7 @@ import (
 	"github.com/google/keytransparency/core/directory"
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/sequencer/metadata"
+	"github.com/google/keytransparency/core/water"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	tpb "github.com/google/trillian"
@@ -141,12 +141,9 @@ func (s *Server) ListMutations(ctx context.Context, in *pb.ListMutationsRequest)
 	}
 
 	// Read PageSize + 1 messages from the log to see if there is another page.
-	high := metadata.FromProto(meta.Sources[rt.SliceIndex]).EndTime()
+	high := metadata.FromProto(meta.Sources[rt.SliceIndex]).HighMark()
 	logID := meta.Sources[rt.SliceIndex].LogId
-	low, err := ptypes.Timestamp(rt.StartTime)
-	if err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, "Invalid start timestamp: %v", err)
-	}
+	low := water.NewMark(rt.StartWatermark)
 	msgs, err := s.logs.ReadLog(ctx, d.DirectoryID, logID, low, high, in.PageSize+1)
 	if st := status.Convert(err); st.Code() != codes.OK {
 		glog.Errorf("ListMutations(): ReadLog(%v, log: %v/(%v, %v], batchSize: %v): %v",

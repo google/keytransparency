@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    io.kompose.service: init
+  name: init
+spec:
+  containers:
+  - args:
+    - sequencer:8080
+    - --
+    - curl
+    - -k
+    - https://sequencer:8080/v1/directories
+    - -d{"directory_id":"default","min_interval":"1s","max_interval":"60s"}
+    image: gcr.io/key-transparency/init:latest
+    name: init
+    resources: {}
+  restartPolicy: OnFailure
+status: {}

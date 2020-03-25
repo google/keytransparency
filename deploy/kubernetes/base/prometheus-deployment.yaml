@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    io.kompose.service: prometheus
+  name: prometheus
+spec:
+  replicas: 1
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        io.kompose.service: prometheus
+    spec:
+      serviceAccountName: prometheus
+      restartPolicy: Always
+      containers:
+      - name: prometheus
+        image: prom/prometheus:v2.11.0
+        imagePullPolicy: Always
+        args:
+          - "--config.file=/etc/prometheus/prometheus.yml"
+          - "--storage.tsdb.path=/data/"
+          - "--web.enable-lifecycle"
+          # - "--log.level=debug" # Uncomment this to enable debug logs. Can be very verbose.
+        ports:
+        - containerPort: 9090
+        volumeMounts:
+          - name: config-volume
+            mountPath: /etc/prometheus
+          - name: prometheus-data-volume
+            mountPath: /data
+     # - name: watch
+     #   image: weaveworks/watch:master-5b2a6e5
+     #   imagePullPolicy: IfNotPresent
+     #   args: ["-v", "-t", "-p=/etc/prometheus", "curl", "-X", "POST", "--fail", "-o", "-", "-sS", "http://localhost:9090/-/reload"]
+     #   volumeMounts:
+     #   - name: config-volume
+     #     mountPath: /etc/prometheus
+      volumes:
+        - name: config-volume
+          configMap:
+            name: prometheus
+        - name: prometheus-data-volume
+          emptyDir: {}
+status: {}

@@ -19,6 +19,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/google/tink/go/keyset"
 	"github.com/google/tink/go/signature"
@@ -59,9 +60,12 @@ User email MUST match the OAuth account used to authorize the update.
 		if err != nil {
 			log.Fatal(err)
 		}
-		handle, err := keyset.Read(
-			&tinkio.ProtoKeysetFile{File: keysetFile},
-			masterKey)
+		f, err := os.Open(keysetFile)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer f.Close()
+		handle, err := keyset.Read(keyset.NewBinaryReader(f), masterKey)
 		if err != nil {
 			log.Fatal(err)
 		}

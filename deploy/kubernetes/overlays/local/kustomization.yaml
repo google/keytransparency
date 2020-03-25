@@ -1,0 +1,6 @@
+bases:
+- ../../base
+resources:
+- ingress-nginx/baremetal
+- db-deployment.yaml
+- db-service.yaml

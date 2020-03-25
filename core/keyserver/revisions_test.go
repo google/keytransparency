@@ -22,17 +22,16 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/golang/protobuf/proto"
-	"github.com/golang/protobuf/ptypes"
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/keytransparency/core/sequencer/metadata"
+	"github.com/google/keytransparency/core/water"
+	"github.com/google/keytransparency/impl/memory"
+	"github.com/google/trillian/testonly/matchers"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/google/go-cmp/cmp"
-	"github.com/google/keytransparency/impl/memory"
-
-	protopb "github.com/golang/protobuf/ptypes/timestamp"
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	rtpb "github.com/google/keytransparency/core/keyserver/readtoken_go_proto"
-	"github.com/google/keytransparency/core/sequencer/metadata"
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 	tpb "github.com/google/trillian"
 )
@@ -71,15 +70,6 @@ func genEntryUpdates(t *testing.T, start, end int64) []*pb.EntryUpdate {
 	return entries
 }
 
-func timestamp(t *testing.T, ts time.Time) *protopb.Timestamp {
-	t.Helper()
-	ret, err := ptypes.TimestampProto(ts)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return ret
-}
-
 func TestGetRevisionStream(t *testing.T) {
 	srv := &Server{}
 	err := srv.GetRevisionStream(nil, nil)
@@ -88,13 +78,8 @@ func TestGetRevisionStream(t *testing.T) {
 	}
 }
 
-func newSource(t *testing.T, logID int64, low, high time.Time) *spb.MapMetadata_SourceSlice {
-	t.Helper()
-	s, err := metadata.New(logID, low, high)
-	if err != nil {
-		t.Fatalf("Invalid source: %v", err)
-	}
-	return s.Proto()
+func newSource(logID int64, low, high water.Mark) *spb.MapMetadata_SourceSlice {
+	return metadata.New(logID, low, high).Proto()
 }
 
 type batchStorage map[int64]SourceList // Map of Revision to Sources
@@ -103,16 +88,12 @@ func (b batchStorage) ReadBatch(ctx context.Context, dirID string, rev int64) (*
 	return &spb.MapMetadata{Sources: b[rev]}, nil
 }
 
-func MustEncodeToken(t *testing.T, low time.Time) string {
+func MustEncodeToken(t *testing.T, low water.Mark) string {
 	t.Helper()
 
-	st, err := ptypes.TimestampProto(low)
-	if err != nil {
-		t.Fatal(err)
-	}
 	rt := &rtpb.ReadToken{
-		SliceIndex: 0,
-		StartTime:  st,
+		SliceIndex:     0,
+		StartWatermark: low.Value(),
 	}
 	token, err := EncodeToken(rt)
 	if err != nil {
@@ -126,19 +107,19 @@ func TestListMutations(t *testing.T) {
 	dirID := "TestListMutations"
 	logID := int64(0)
 	fakeLogs := memory.NewMutationLogs()
-	idx := make([]time.Time, 0, 12)
+	idx := make([]water.Mark, 0, 12)
 	for i := int64(0); i < 12; i++ {
 		// Send one entry.
-		ts, err := fakeLogs.Send(ctx, dirID, logID, genEntryUpdates(t, i, i+1)...)
+		ws, err := fakeLogs.Send(ctx, dirID, logID, genEntryUpdates(t, i, i+1)...)
 		if err != nil {
 			t.Fatal(err)
 		}
-		idx = append(idx, ts)
+		idx = append(idx, ws)
 	}
 
 	fakeBatches := batchStorage{
-		1: SourceList{newSource(t, 0, idx[2], idx[7])},
-		2: SourceList{newSource(t, 0, idx[7], idx[11])},
+		1: SourceList{newSource(0, idx[2], idx[7])},
+		2: SourceList{newSource(0, idx[7], idx[11])},
 	}
 
 	for _, tc := range []struct {
@@ -151,10 +132,10 @@ func TestListMutations(t *testing.T) {
 	}{
 		{desc: "first page", pageSize: 6, start: 2, end: 7, wantNext: &rtpb.ReadToken{}},
 		{desc: "large page", pageSize: 10, start: 2, end: 7, wantNext: &rtpb.ReadToken{}},
-		{desc: "partial", pageSize: 4, start: 2, end: 6, wantNext: &rtpb.ReadToken{StartTime: timestamp(t, idx[6])}},
+		{desc: "partial", pageSize: 4, start: 2, end: 6, wantNext: &rtpb.ReadToken{StartWatermark: idx[6].Value()}},
 		{desc: "large page with token", token: MustEncodeToken(t, idx[3]), pageSize: 10, start: 3, end: 7, wantNext: &rtpb.ReadToken{}},
 		{desc: "small page with token", token: MustEncodeToken(t, idx[3]), pageSize: 2, start: 3, end: 5,
-			wantNext: &rtpb.ReadToken{StartTime: timestamp(t, idx[5])}},
+			wantNext: &rtpb.ReadToken{StartWatermark: idx[5].Value()}},
 		{desc: "invalid page token", token: "some_token", pageSize: 0, wantErr: true},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
@@ -171,10 +152,11 @@ func TestListMutations(t *testing.T) {
 
 			if !tc.wantErr {
 				e.s.Map.EXPECT().GetLeavesByRevision(gomock.Any(),
-					&tpb.GetMapLeavesByRevisionRequest{
-						MapId: mapID,
-						Index: genIndexes(tc.start, tc.end),
-					}).Return(&tpb.GetMapLeavesResponse{
+					matchers.ProtoEqual(
+						&tpb.GetMapLeavesByRevisionRequest{
+							MapId: mapID,
+							Index: genIndexes(tc.start, tc.end),
+						})).Return(&tpb.GetMapLeavesResponse{
 					MapLeafInclusion: genInclusions(tc.start, tc.end),
 				}, nil)
 			}

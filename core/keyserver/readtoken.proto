@@ -19,16 +19,15 @@ package google.keytransparency.v1;
 option go_package = "github.com/google/keytransparency/core/keyserver/readtoken_go_proto";
 
 import "v1/keytransparency.proto";
-import "google/protobuf/timestamp.proto";
 
 
 // ReadToken can be serialized and handed to users for pagination.
 message ReadToken {
   // slice_index identifies the source for reading.
   int64 slice_index = 1;
-  reserved 2;
-  // start_time identifies the lowest (exclusive) row to return.
-  google.protobuf.Timestamp start_time = 3;
+  reserved 2, 3;
+  // start_watermark identifies the lowest (exclusive) row to return.
+  uint64 start_watermark = 4;
 }
 
 // ListUserRevisions token can be serialized and handed to users for pagination

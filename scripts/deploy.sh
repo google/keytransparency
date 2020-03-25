@@ -25,7 +25,7 @@ set -eufx
 export PROJECT_NAME_CI=key-transparency
 export CLOUDSDK_COMPUTE_ZONE=us-central1-a
 export CLUSTER_NAME_CI=ci-cluster
-
+export TRAVIS_COMMIT=$(git rev-parse HEAD)
 
 gcloud --quiet config set project ${PROJECT_NAME_CI}
 gcloud --quiet config set compute/zone ${CLOUDSDK_COMPUTE_ZONE}
@@ -36,35 +36,23 @@ gcloud --quiet auth configure-docker
 # Test current directory before deleting anything
 test $(basename $(pwd)) == "keytransparency" || exit 1
 
-echo "Generating keys..."
-rm -f ./genfiles/*
-./scripts/prepare_server.sh -f
 # kubectl exits with 1 if kt-secret does not exist
-kubectl get secret kt-secrets
-if [ $? -ne 0 ]; then
-  kubectl create secret generic kt-secrets --from-file=genfiles/server.crt --from-file=genfiles/server.key
+if ! kubectl get secret kt-tls; then
+  echo "Generating keys..."
+  rm -f ./genfiles/*
+  ./scripts/gen_monitor_keys.sh -f
+  kubectl create secret generic kt-monitor --from-file=genfiles/monitor_sign-key.pem
+  go run "$(go env GOROOT)/src/crypto/tls/generate_cert.go" --host localhost,127.0.0.1,::
+  kubectl create secret tls kt-tls --cert=cert.pem --key=key.pem
+  rm key.pem cert.pem
 fi
 
 echo "Building docker images..."
-docker-compose build
-
+docker-compose build --parallel
 
 echo "Pushing docker images..."
 docker-compose push
 
-echo "Tagging docker images..."
-gcloud --quiet container images add-tag gcr.io/${PROJECT_NAME_CI}/prometheus:${TRAVIS_COMMIT} gcr.io/${PROJECT_NAME_CI}/prometheus:latest
-gcloud --quiet container images add-tag gcr.io/${PROJECT_NAME_CI}/keytransparency-server:${TRAVIS_COMMIT} gcr.io/${PROJECT_NAME_CI}/keytransparency-server:latest
-gcloud --quiet container images add-tag gcr.io/${PROJECT_NAME_CI}/keytransparency-sequencer:${TRAVIS_COMMIT} gcr.io/${PROJECT_NAME_CI}/keytransparency-sequencer:latest
-gcloud --quiet container images add-tag gcr.io/${PROJECT_NAME_CI}/keytransparency-monitor:${TRAVIS_COMMIT} gcr.io/${PROJECT_NAME_CI}/keytransparency-monitor:latest
-
-
 echo "Updating jobs..."
-kubectl apply -f deploy/kubernetes/.
-kubectl set image deploy/prometheus prometheus=gcr.io/${PROJECT_NAME_CI}/prometheus:${TRAVIS_COMMIT}
-kubectl set image deploy/log-server log-server=gcr.io/${PROJECT_NAME_CI}/log-server:${TRAVIS_COMMIT}
-kubectl set image deploy/log-signer log-signer=gcr.io/${PROJECT_NAME_CI}/log-signer:${TRAVIS_COMMIT}
-kubectl set image deploy/map-server map-server=gcr.io/${PROJECT_NAME_CI}/map-server:${TRAVIS_COMMIT}
-kubectl set image deploy/server server=gcr.io/${PROJECT_NAME_CI}/keytransparency-server:${TRAVIS_COMMIT}
-kubectl set image deploy/sequencer sequencer=gcr.io/${PROJECT_NAME_CI}/keytransparency-sequencer:${TRAVIS_COMMIT}
-kubectl set image deploy/monitor monitor=gcr.io/${PROJECT_NAME_CI}/keytransparency-monitor:${TRAVIS_COMMIT}
+./scripts/kustomize_image_tag.sh $TRAVIS_COMMIT
+kustomize build deploy/kubernetes/overlays/gke/ | kubectl apply -f -

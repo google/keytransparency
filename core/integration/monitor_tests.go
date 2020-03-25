@@ -16,6 +16,7 @@ package integration
 
 import (
 	"context"
+	"crypto"
 	"sync"
 	"testing"
 	"time"
@@ -28,7 +29,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/google/trillian/crypto"
+	tcrypto "github.com/google/trillian/crypto"
 	"github.com/google/trillian/crypto/keys/pem"
 
 	tpb "github.com/google/keytransparency/core/testdata/transcript_go_proto"
@@ -49,7 +50,7 @@ func TestMonitor(ctx context.Context, env *Env, t *testing.T) []*tpb.Action {
 	if err != nil {
 		t.Fatalf("Couldn't create signer: %v", err)
 	}
-	signer := crypto.NewSHA256Signer(privKey)
+	signer := tcrypto.NewSigner(0, privKey, crypto.SHA256)
 	store := fake.NewMonitorStorage()
 	mon, err := monitor.NewFromDirectory(env.Cli, env.Directory, signer, store)
 	if err != nil {

@@ -18,7 +18,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"net"
 	"os"
 	"time"
 
@@ -30,15 +29,17 @@ import (
 	"github.com/google/trillian/monitoring/prometheus"
 	"github.com/google/trillian/util/election2"
 	"github.com/google/trillian/util/etcd"
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
 
+	"github.com/google/keytransparency/cmd/serverutil"
 	"github.com/google/keytransparency/core/adminserver"
 	"github.com/google/keytransparency/core/sequencer"
 	"github.com/google/keytransparency/core/sequencer/election"
 	"github.com/google/keytransparency/impl/sql/directory"
 	"github.com/google/keytransparency/impl/sql/mutationstorage"
+	"github.com/google/keytransparency/internal/forcemaster"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	dir "github.com/google/keytransparency/core/directory"
@@ -55,7 +56,7 @@ import (
 var (
 	keyFile     = flag.String("tls-key", "genfiles/server.key", "TLS private key file")
 	certFile    = flag.String("tls-cert", "genfiles/server.crt", "TLS cert file")
-	listenAddr  = flag.String("addr", ":8080", "The ip:port to serve on")
+	addr        = flag.String("addr", ":8080", "The ip:port to serve on")
 	metricsAddr = flag.String("metrics-addr", ":8081", "The ip:port to publish metrics on")
 
 	forceMaster = flag.Bool("force_master", false, "If true, assume master for all directories")
@@ -78,7 +79,7 @@ var (
 func getElectionFactory() (election2.Factory, func()) {
 	if *forceMaster {
 		glog.Warning("Acting as master for all directories")
-		return election2.NoopFactory{}, func() {}
+		return forcemaster.Factory{}, func() {}
 	}
 	if len(*etcdServers) == 0 {
 		glog.Exit("Either --force_master or --etcd_servers must be supplied")
@@ -139,23 +140,11 @@ func main() {
 	)
 
 	// Listen and create empty grpc client connection.
-	lis, err := net.Listen("tcp", *listenAddr)
+	lis, conn, done, err := serverutil.ListenTLS(ctx, *addr, *certFile, *keyFile)
 	if err != nil {
-		glog.Exitf("error creating TCP listener: %v", err)
+		glog.Fatalf("Listen(%v): %v", *addr, err)
 	}
-	glog.Infof("Listening on %v", lis.Addr().String())
-	// Non-blocking dial before we start the server.
-	tcreds, err := credentials.NewClientTLSFromFile(*certFile, "localhost")
-	if err != nil {
-		glog.Exitf("Failed opening cert file %v: %v", *certFile, err)
-	}
-	dopts := []grpc.DialOption{grpc.WithTransportCredentials(tcreds)}
-	addr := lis.Addr().String()
-	conn, err := grpc.DialContext(ctx, addr, dopts...)
-	if err != nil {
-		glog.Exitf("error connecting to %v: %v", addr, err)
-	}
-	defer conn.Close()
+	defer done()
 
 	spb.RegisterKeyTransparencySequencerServer(grpcServer, sequencer.NewServer(
 		directoryStorage,
@@ -182,21 +171,19 @@ func main() {
 	grpc_prometheus.Register(grpcServer)
 	grpc_prometheus.EnableHandlingTimeHistogram()
 
-	glog.Infof("Signer starting")
+	g, gctx := errgroup.WithContext(ctx)
+	g.Go(func() error { return serverutil.ServeHTTPMetrics(*metricsAddr, serverutil.Readyz(sqldb)) })
+	g.Go(func() error {
+		return serverutil.ServeHTTPAPIAndGRPC(gctx, lis, grpcServer, conn,
+			pb.RegisterKeyTransparencyAdminHandler)
+	})
+	go runSequencer(gctx, conn, directoryStorage)
 
-	// Run servers
-	go serveHTTPMetric(*metricsAddr)
-	go serveHTTPGateway(ctx, lis, dopts, grpcServer,
-		pb.RegisterKeyTransparencyAdminHandlerFromEndpoint,
-	)
-	runSequencer(ctx, conn, directoryStorage)
-
-	// Shutdown.
-	glog.Errorf("Signer exiting")
+	glog.Errorf("Sequencer exiting: %v", g.Wait())
 }
 
-func runSequencer(ctx context.Context, conn *grpc.ClientConn,
-	directoryStorage dir.Storage) {
+func runSequencer(ctx context.Context, conn *grpc.ClientConn, directoryStorage dir.Storage) {
+	glog.Infof("Sequencer starting")
 	electionFactory, closeFactory := getElectionFactory()
 	defer closeFactory()
 	signer := sequencer.New(
@@ -210,7 +197,7 @@ func runSequencer(ctx context.Context, conn *grpc.ClientConn,
 	go sequencer.PeriodicallyRun(ctx, time.Tick(*refresh), func(ctx context.Context) {
 		if err := signer.ForAllMasterships(ctx, func(ctx context.Context, dirID string) error {
 			_, err := spb.NewKeyTransparencySequencerClient(conn).
-				UpdateMetrics(ctx, &spb.UpdateMetricsRequest{
+				EstimateBacklog(ctx, &spb.EstimateBacklogRequest{
 					DirectoryId:       dirID,
 					MaxUnappliedCount: 100000,
 				})
@@ -240,9 +227,11 @@ func runSequencer(ctx context.Context, conn *grpc.ClientConn,
 		}
 	})
 
-	sequencer.PeriodicallyRun(ctx, time.Tick(*refresh), func(ctx context.Context) {
+	go sequencer.PeriodicallyRun(ctx, time.Tick(*refresh), func(ctx context.Context) {
 		if err := signer.PublishLogForAllMasterships(ctx); err != nil {
 			glog.Errorf("PeriodicallyRun(PublishRevisionsForAllMasterships): %v", err)
 		}
 	})
+
+	<-ctx.Done() // Block until server exit.
 }

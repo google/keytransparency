@@ -17,7 +17,6 @@
 package gobindclient
 
 import (
-	"bytes"
 	"context"
 	"crypto/tls"
 	"crypto/x509"
@@ -32,7 +31,6 @@ import (
 	"github.com/google/keytransparency/core/client/tracker"
 	"github.com/google/keytransparency/core/client/verifier"
 
-	"github.com/benlaurie/objecthash/go/objecthash"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 
@@ -72,7 +70,7 @@ func SetTimeout(ms int32) {
 }
 
 // AddKtServer creates a new grpc client to handle connections to the ktURL server and adds it to the global map of clients.
-func AddKtServer(ktURL string, insecureTLS bool, ktTLSCertPEM []byte, directoryInfoHash []byte) error {
+func AddKtServer(ktURL string, insecureTLS bool, ktTLSCertPEM []byte) error {
 	if _, exists := clients[ktURL]; exists {
 		return fmt.Errorf("the KtServer connection for %v already exists", ktURL)
 	}
@@ -93,22 +91,8 @@ func AddKtServer(ktURL string, insecureTLS bool, ktTLSCertPEM []byte, directoryI
 		return fmt.Errorf("error getting config: %v", err)
 	}
 
-	if len(directoryInfoHash) == 0 {
-		Vlog.Print("Warning: no directoryInfoHash provided. Key material from the server will be trusted.")
-	} else {
-		cj, err := objecthash.CommonJSONify(config)
-		if err != nil {
-			return fmt.Errorf("commonJSONify(): %v", err)
-		}
-		got, err := objecthash.ObjectHash(cj)
-		if err != nil {
-			return fmt.Errorf("objectHash(): %v", err)
-		}
-		if !bytes.Equal(got[:], directoryInfoHash) {
-			return fmt.Errorf("server %v returned a directoryInfoResponse inconsistent with the provided directoryInfoHash",
-				ktURL)
-		}
-	}
+	// TODO(gbelvin): Supply the config externally so that it can be built into the client.
+	Vlog.Print("Warning: Key material from the server will be trusted.")
 
 	client, err := client.NewFromConfig(ktClient, config,
 		func(lv *tclient.LogVerifier) verifier.LogTracker { return tracker.NewSynchronous(lv) },
