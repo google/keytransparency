@@ -51,7 +51,7 @@ func RunBatchStorageTests(t *testing.T, factory batchStorageFactory) {
 type BatchTests struct{}
 
 func (*BatchTests) TestNotFound(ctx context.Context, t *testing.T, f batchStorageFactory) {
-	domainID := "TestNotFound"
+	domainID := "testnotfounddir"
 	b, done := f(ctx, t, domainID)
 	defer done(ctx)
 	_, err := b.ReadBatch(ctx, domainID, 0)
@@ -62,7 +62,7 @@ func (*BatchTests) TestNotFound(ctx context.Context, t *testing.T, f batchStorag
 }
 
 func (*BatchTests) TestWriteBatch(ctx context.Context, t *testing.T, f batchStorageFactory) {
-	domainID := "TestWriteBatch"
+	domainID := "writebatchtest"
 	b, done := f(ctx, t, domainID)
 	defer done(ctx)
 	for _, tc := range []struct {
@@ -87,7 +87,7 @@ func (*BatchTests) TestWriteBatch(ctx context.Context, t *testing.T, f batchStor
 }
 
 func (*BatchTests) TestReadBatch(ctx context.Context, t *testing.T, f batchStorageFactory) {
-	domainID := "TestReadBatch"
+	domainID := "readbatchtest"
 	b, done := f(ctx, t, domainID)
 	defer done(ctx)
 	for _, tc := range []struct {
@@ -117,7 +117,7 @@ func (*BatchTests) TestReadBatch(ctx context.Context, t *testing.T, f batchStora
 }
 
 func (*BatchTests) TestHighestRev(ctx context.Context, t *testing.T, f batchStorageFactory) {
-	domainID := "TestHighestRev"
+	domainID := "writebatchtest"
 	b, done := f(ctx, t, domainID)
 	defer done(ctx)
 	for _, tc := range []struct {
