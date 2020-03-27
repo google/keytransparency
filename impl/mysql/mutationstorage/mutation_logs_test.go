@@ -24,7 +24,7 @@ import (
 	"github.com/google/keytransparency/core/integration/storagetest"
 	"github.com/google/keytransparency/core/keyserver"
 	"github.com/google/keytransparency/core/water"
-	"github.com/google/keytransparency/impl/sql/testdb"
+	"github.com/google/keytransparency/impl/mysql/testdb"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 

@@ -17,6 +17,7 @@ package cmd
 import (
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/google/tink/go/keyset"
 	"github.com/google/tink/go/signature"
@@ -66,7 +67,12 @@ var createCmd = &cobra.Command{
 			return err
 		}
 
-		return handle.Write(&tinkio.ProtoKeysetFile{File: keysetFile}, masterKey)
+		f, err := os.OpenFile(keysetFile, os.O_WRONLY|os.O_CREATE, 0600)
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+		return handle.Write(keyset.NewBinaryWriter(f), masterKey)
 	},
 }
 
@@ -98,9 +104,12 @@ The actual keys are not listed, only their corresponding metadata.
 		if err != nil {
 			log.Fatal(err)
 		}
-		handle, err := keyset.Read(
-			&tinkio.ProtoKeysetFile{File: keysetFile},
-			masterKey)
+		f, err := os.Open(keysetFile)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer f.Close()
+		handle, err := keyset.Read(keyset.NewBinaryReader(f), masterKey)
 		if err != nil {
 			log.Fatal(err)
 		}

@@ -112,12 +112,11 @@ func (c *MapWriteClient) GetLeavesByRevision(ctx context.Context, rev int64, ind
 	return mapLeaves.GetLeaves(), err
 }
 
-func (c *MapWriteClient) WriteLeaves(ctx context.Context, rev int64, leaves []*tpb.MapLeaf, metadata []byte) error {
+func (c *MapWriteClient) WriteLeaves(ctx context.Context, rev int64, leaves []*tpb.MapLeaf) error {
 	_, err := c.twrite.WriteLeaves(ctx, &tpb.WriteMapLeavesRequest{
 		MapId:          c.MapID,
 		Leaves:         leaves,
 		ExpectRevision: rev,
-		Metadata:       metadata,
 	})
 	return err
 }

@@ -37,14 +37,14 @@ import (
 	"github.com/google/keytransparency/core/adminserver"
 	"github.com/google/keytransparency/core/sequencer"
 	"github.com/google/keytransparency/core/sequencer/election"
-	"github.com/google/keytransparency/impl/sql/directory"
-	"github.com/google/keytransparency/impl/sql/mutationstorage"
+	"github.com/google/keytransparency/impl/mysql/directory"
+	"github.com/google/keytransparency/impl/mysql/mutationstorage"
 	"github.com/google/keytransparency/internal/forcemaster"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	dir "github.com/google/keytransparency/core/directory"
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
-	ktsql "github.com/google/keytransparency/impl/sql"
+	ktsql "github.com/google/keytransparency/impl/mysql"
 	etcdelect "github.com/google/trillian/util/election2/etcd"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 
