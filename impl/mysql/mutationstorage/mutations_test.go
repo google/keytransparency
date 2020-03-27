@@ -19,7 +19,7 @@ import (
 
 	"github.com/google/keytransparency/core/integration/storagetest"
 	"github.com/google/keytransparency/core/sequencer"
-	"github.com/google/keytransparency/impl/sql/testdb"
+	"github.com/google/keytransparency/impl/mysql/testdb"
 )
 
 func TestBatchIntegration(t *testing.T) {

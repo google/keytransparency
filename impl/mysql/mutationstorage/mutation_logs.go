@@ -29,7 +29,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
-	ktsql "github.com/google/keytransparency/impl/sql"
+	ktsql "github.com/google/keytransparency/impl/mysql"
 )
 
 // SetWritable enables or disables new writes from going to logID.
