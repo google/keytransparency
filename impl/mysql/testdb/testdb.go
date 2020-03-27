@@ -24,7 +24,7 @@ import (
 	"testing"
 	"time"
 
-	ktsql "github.com/google/keytransparency/impl/sql"
+	ktsql "github.com/google/keytransparency/impl/mysql"
 )
 
 var dataSourceURI = flag.String("kt_test_mysql_uri", "root@tcp(127.0.0.1)/", "The MySQL URI to use when running tests")
