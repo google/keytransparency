@@ -69,9 +69,6 @@ User email MUST match the OAuth account used to authorize the update.
 		if err != nil {
 			log.Fatal(err)
 		}
-		if !viper.IsSet("client-secret") {
-			return fmt.Errorf("no client secret provided")
-		}
 		profileData, err := base64.StdEncoding.DecodeString(data)
 		if err != nil {
 			return fmt.Errorf("hex.Decode(%v): %v", data, err)
