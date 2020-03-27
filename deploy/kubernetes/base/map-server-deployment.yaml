@@ -19,6 +19,7 @@ spec:
         "--mysql_uri=test:zaphod@tcp($(DB_HOST):3306)/test",
         "--rpc_endpoint=0.0.0.0:8090",
         "--http_endpoint=0.0.0.0:8091",
+        "--single_transaction",
         "--alsologtostderr"
         ]
         image: gcr.io/trillian-opensource-ci/map_server:latest

@@ -27,6 +27,8 @@ spec:
         - --map-url=map-server:8090
         - --tls-key=/run/secrets/tls.key
         - --tls-cert=/run/secrets/tls.crt
+        - --batch-size=500
+        - --refresh=1s
         - --alsologtostderr
         - --v=5
         image: gcr.io/key-transparency/keytransparency-sequencer:latest
