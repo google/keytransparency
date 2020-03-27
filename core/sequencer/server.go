@@ -463,15 +463,9 @@ func (s *Server) ApplyRevision(ctx context.Context, in *spb.ApplyRevisionRequest
 	newLeaves := runner.DoMarshalIndexedValues(newIndexedLeaves, emitErrFn, incMetricFn)
 	fnLatency.Observe(time.Since(computeStart).Seconds(), in.DirectoryId, "ProcessMutations")
 
-	// Serialize metadata
-	serializedMeta, err := proto.Marshal(meta)
-	if err != nil {
-		return nil, err
-	}
-
 	// Set new leaf values.
 	setRevisionStart := time.Now()
-	err = mapClient.WriteLeaves(ctx, in.Revision, newLeaves, serializedMeta)
+	err = mapClient.WriteLeaves(ctx, in.Revision, newLeaves)
 	fnLatency.Observe(time.Since(setRevisionStart).Seconds(), in.DirectoryId, "WriteLeaves")
 	if err != nil {
 		return nil, err
