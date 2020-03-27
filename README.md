@@ -31,13 +31,12 @@ development.
 
 Key Transparency aims to make key management in the context of end-to-end encryption secure *and* user friendly.
 The current status-quo of many consumer products gives the service provider (the server) the power to redirect messages to unintended recipients, even if the product uses end-to-end encryption, because the first step of sending a message requires the sender to ask the server to provide the correct encryption key for the recipient. Simply put, servers can lie about the identity of your friends.
-If users never forgot their passwords, private keys, reinstalled apps, and never changed phones it would be easy to meet once in-person with every contact to establish a secure identity, but in practice, users change keys as often as every two months.
+If users never forgot their passwords, private keys, reinstalled apps, and never changed phones it would be easy to meet once in-person with every contact to establish a secure identity, but in practice, users change keys regularly.
 
 ## What Key Transparency Does
 
 * Key Transparency allows users to recover their accounts with the assistance of the server.
-* Key Transparency gives users the power to know, with certainty, about all the changes that have occured in their account,
-preventing the server from making changes to user accounts without detection.
+* Key Transparency gives users the power to know, with certainty, about all the public keys that have ever been in their account, preventing the server from making changes to user accounts without detection.
 
 ## Key Transparency Client
 
