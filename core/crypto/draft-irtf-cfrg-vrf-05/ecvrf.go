@@ -1,6 +1,7 @@
 package vrf
 
 import (
+	"bytes"
 	"crypto/elliptic"
 	"math/big"
 )
@@ -67,25 +68,73 @@ type ECVRF struct {
 // SK - VRF private key
 // alpha - input alpha, an octet string
 // Returns pi - VRF proof, octet string of length ptLen+n+qLen
-func (v *ECVRF) Prove(SK PrivateKey, alpha []byte) []byte {
+func (v *ECVRF) Prove(sk *PrivateKey, alpha []byte) []byte {
 	// 1.  Use SK to derive the VRF secret scalar x and the VRF public key Y = x*B
-	//Y := SK.Public()
+	x := sk.x
+	pk := sk.Public()
 
 	// 2.  H = ECVRF_hash_to_curve(suite_string, Y, alpha_string)
-	//Hx, Hy := v.HashToCurve(&v.ECVRFSuite, Y, alpha)
+	Hx, Hy, _ := HashToCurveTryAndIncrement(&v.ECVRFSuite, pk, alpha)
 
 	// 3.  h_string = point_to_string(H)
-	//hStr := v.Point2String(v.EC, Hx, Hy)
+	hString := v.Point2String(v.EC, Hx, Hy)
 
 	// 4.  Gamma = x*H
+	Gx, Gy := v.EC.ScalarMult(Hx, Hy, x.Bytes())
 
 	// 5.  k = ECVRF_nonce_generation(SK, h_string)
+	k := v.GenerateNonce(v.Hash, sk, hString)
 
 	// 6.  c = ECVRF_hash_points(H, Gamma, k*B, k*H)
+	Ux, Uy := v.EC.ScalarBaseMult(k.Bytes())
+	Vx, Vy := v.EC.ScalarMult(Hx, Hy, k.Bytes())
+	c := v.ECVRFHashPoints(Hx, Hy, Gx, Gy, Ux, Uy, Vx, Vy)
 
 	// 7.  s = (k + c*x) mod q
+	s1 := new(big.Int).Mul(c, x)
+	s2 := new(big.Int).Add(k, s1)
+	s := new(big.Int).Mod(s2, v.EC.Params().N)
 
-	// 8.  pi_string = point_to_string(Gamma) || int_to_string(c, n) ||
-	//     int_to_string(s, qLen)
-	return nil
+	// 8.  pi_string = point_to_string(Gamma) || int_to_string(c, n) || int_to_string(s, qLen)
+	pi := new(bytes.Buffer)
+	pi.Write(v.Point2String(v.EC, Gx, Gy))
+	pi.Write(c.Bytes())
+	pi.Write(s.Bytes())
+
+	return pi.Bytes()
+}
+
+// ECVRF_hash_points(P1x P1y, P2x, P2y, ..., PMx, PMy)
+//
+// Input:
+//
+//    P1...PM - EC points in G
+//
+// Output:
+//
+//    c - hash value, integer between 0 and 2^(8n)-1
+// https://tools.ietf.org/html/draft-irtf-cfrg-vrf-06#section-5.4.3
+func (v *ECVRF) ECVRFHashPoints(pm ...*big.Int) *big.Int {
+	// 1.  two_string = 0x02 = int_to_string(2, 1), a single octet with value 2
+	two_string := byte(0x02)
+
+	// 2.  Initialize str = suite_string || two_string
+	str := append(v.SuiteString, two_string)
+
+	// 3.  for PJ in [P1, P2, ... PM]:
+	for i := 0; i < len(pm); i += 2 {
+		// str = str || point_to_string(PJ)
+		str = append(str, v.Point2String(v.EC, pm[i], pm[i+1])...)
+	}
+
+	// 4.  c_string = Hash(str)
+	hc := v.Hash.New()
+	hc.Write(str)
+	cString := hc.Sum(nil)
+
+	// 5.  truncated_c_string = c_string[0]...c_string[n-1]
+	n := v.EC.Params().BitSize / 8 / 2 //   2n = qLen = 32
+	// 6.  c = string_to_int(truncated_c_string)
+	c := new(big.Int).SetBytes(cString[:n])
+	return c
 }
