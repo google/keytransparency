@@ -34,19 +34,21 @@ type Conversions struct {
 }
 
 type ECVRFSuite struct {
-	// EC - elliptic curve defined over F which fixes
+	EC elliptic.Curve // elliptic curve defined over F which fixes
 	//   F - finite field
-	//   2n - length, in octets, of a field element in F, rounded up to the
-	//   nearest even integer
-	//   ptLen - length, in octets, of an EC point encoded as an octet string
+	n     int // 2n - length, in octets, of a field element in F, rounded up to the nearest even integer
+	ptLen int // length, in octets, of an EC point encoded as an octet string
 	//   G - subgroup of E of large prime order
 	//   q - prime order of group G
-	//   qLen - length of q in octets, i.e., smallest integer such that
+	//       q = EC.Params().N
+	qLen int // length of q in octets, i.e., smallest integer such that
 	//   2^(8qLen)>q (note that in the typical case, qLen equals 2n or is
 	//   close to 2n)
-	//   cofactor - number of points on E divided by q
+	//
+
+	cofactor int //number of points on E divided by q
+
 	//   B - generator of group G
-	EC elliptic.Curve
 	// suite is a single nonzero octet specifying the ECVRF
 	// ciphersuite, which determines the options below.
 	SuiteString   []byte
@@ -67,9 +69,13 @@ func ECVRF_P256_SHA256_TAI() *ECVRF {
 		SuiteString: []byte{0x01}, // int_to_string(1, 1)
 		// E group G is the NIST P-256 elliptic curve, with curve
 		// parameters as specified in [FIPS-186-4] (Section D.1.2.3)
-		// and [RFC5114] (Section 2.6).  For this group, 2n = qLen = 32
-		// and cofactor = 1.
+		// and [RFC5114] (Section 2.6).
 		EC: elliptic.P256(),
+		// For this group, 2n = qLen = 32 and cofactor = 1.
+		n:        16, // EC.Params().BitSize / 8 / 2
+		qLen:     32, // (v.EC.Params().N.BitLen() + 7) / 8
+		cofactor: 1,
+		ptLen:    33,
 		// Hash
 		//    hLen - output length in octets of Hash; must be at least 2n
 		Hash: crypto.SHA256,

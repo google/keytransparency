@@ -97,9 +97,46 @@ func (v *ECVRF) Prove(sk *PrivateKey, alpha []byte) []byte {
 
 	// 8.  pi_string = point_to_string(Gamma) || int_to_string(c, n) || int_to_string(s, qLen)
 	pi := new(bytes.Buffer)
-	pi.Write(v.Point2String(v.EC, Gx, Gy))
-	pi.Write(c.Bytes())
-	pi.Write(s.Bytes())
+	pi.Write(v.Point2String(v.EC, Gx, Gy)) // ptLen
+	pi.Write(c.Bytes())                    // n
+	pi.Write(s.Bytes())                    // qLen
 
 	return pi.Bytes()
+}
+
+// Proof2Hash returns beta
+// https://tools.ietf.org/html/draft-irtf-cfrg-vrf-06#section-5.2
+//
+//   Input:
+//      pi_string - VRF proof, octet string of length ptLen+n+qLen
+//
+//   Output:
+//      "INVALID", or
+//      beta_string - VRF hash output, octet string of length hLen
+//
+//   Important note:
+//      ECVRF_proof_to_hash should be run only on pi_string that is known
+//      to have been produced by ECVRF_prove, or from within ECVRF_verify
+//      as specified in Section 5.3.
+func (v *ECVRF) Proof2Hash(pi []byte) (beta []byte, err error) {
+	// 1.  D = ECVRF_decode_proof(pi_string)
+	Gx, Gy, _, _, err := v.decodeProof(pi)
+	// 2.  If D is "INVALID", output "INVALID" and stop
+	if err != nil {
+		return nil, err
+	}
+	// 3.  (Gamma, c, s) = D
+
+	// 4.  three_string = 0x03 = int_to_string(3, 1), a single octet with value 3
+	three := []byte{0x03}
+
+	// 5.  beta_string = Hash(suite_string || three_string || point_to_string(cofactor * Gamma))
+	h := v.Hash.New()
+	h.Write(v.SuiteString)
+	h.Write(three)
+	Px, Py := v.EC.ScalarMult(Gx, Gy, big.NewInt(int64(v.cofactor)).Bytes())
+	h.Write(v.Point2String(v.EC, Px, Py))
+
+	// 6.  Output beta_string
+	return h.Sum(nil), nil
 }
