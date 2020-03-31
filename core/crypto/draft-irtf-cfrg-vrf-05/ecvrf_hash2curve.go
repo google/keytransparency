@@ -24,7 +24,7 @@ var zero big.Int
 // Output:
 // - `H` - hashed value, a finite EC point in G
 // - `ctr` - integer, number of suite byte, attempts to find a valid curve point
-func HashToCurveTryAndIncrement(v *ECVRFSuite, Y *PublicKey, alpha []byte) (Hx, Hy *big.Int, ctr uint) {
+func HashToCurveTryAndIncrement(v *ECVRF, suite []byte, Y *PublicKey, alpha []byte) (Hx, Hy *big.Int, ctr uint) {
 	// 1.  ctr = 0
 	ctr = 0
 	// 2.  PK_string = point_to_string(Y)
@@ -43,7 +43,7 @@ func HashToCurveTryAndIncrement(v *ECVRFSuite, Y *PublicKey, alpha []byte) (Hx, 
 		// B.  hash_string = Hash(suite_string || one_string ||
 		//     PK_string || alpha_string || ctr_string)
 		h.Reset()
-		h.Write(v.SuiteString)
+		h.Write(suite)
 		h.Write(one)
 		h.Write(pk)
 		h.Write(alpha)
@@ -59,7 +59,7 @@ func HashToCurveTryAndIncrement(v *ECVRFSuite, Y *PublicKey, alpha []byte) (Hx, 
 	return Hx, Hy, ctr - 1
 }
 
-func HashToCurveTAI(v *ECVRFSuite, Y *PublicKey, alpha []byte) (Hx, Hy *big.Int) {
-	Hx, Hy, _ = HashToCurveTryAndIncrement(v, Y, alpha) // Drop ctr
+func HashToCurveTAI(v *ECVRF, suite []byte, Y *PublicKey, alpha []byte) (Hx, Hy *big.Int) {
+	Hx, Hy, _ = HashToCurveTryAndIncrement(v, suite, Y, alpha) // Drop ctr
 	return
 }

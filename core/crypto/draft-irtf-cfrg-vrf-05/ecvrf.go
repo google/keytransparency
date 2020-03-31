@@ -3,6 +3,7 @@ package vrf
 import (
 	"bytes"
 	"crypto/elliptic"
+	"errors"
 	"math/big"
 )
 
@@ -74,7 +75,7 @@ func (v *ECVRF) Prove(sk *PrivateKey, alpha []byte) []byte {
 	pk := sk.Public()
 
 	// 2.  H = ECVRF_hash_to_curve(suite_string, Y, alpha_string)
-	Hx, Hy, _ := HashToCurveTryAndIncrement(&v.ECVRFSuite, pk, alpha)
+	Hx, Hy, _ := HashToCurveTryAndIncrement(v, v.SuiteString, pk, alpha)
 
 	// 3.  h_string = point_to_string(H)
 	hString := v.Point2String(v.EC, Hx, Hy)
@@ -139,4 +140,47 @@ func (v *ECVRF) Proof2Hash(pi []byte) (beta []byte, err error) {
 
 	// 6.  Output beta_string
 	return h.Sum(nil), nil
+}
+
+//Verify(PublicKey, pi_string, alpha_string)
+//
+//   Input:
+//      Y - public key, an EC point
+//      pi_string - VRF proof, octet string of length ptLen+n+qLen
+//        alpha_string - VRF input, octet string
+//
+//   Output:
+//      (beta_string, "VALID"), where beta_string is the VRF hash output,
+//      octet string of length hLen; or "INVALID"
+func (v *ECVRF) Verify(Y *PublicKey, pi, alpha []byte) (beta []byte, err error) {
+	// 1.  D = ECVRF_decode_proof(pi_string)
+	Gx, Gy, c, s, err := v.decodeProof(pi)
+	// 2.  If D is "INVALID", output "INVALID" and stop
+	if err != nil {
+		return nil, err
+	}
+	// 3.  (Gamma, c, s) = D
+
+	// 4.  H = ECVRF_hash_to_curve(suite_string, Y, alpha_string)
+	Hx, Hy := v.HashToCurve(v, v.SuiteString, Y, alpha)
+
+	// 5.  U = s*B - c*Y
+	U1x, U1y := v.EC.ScalarBaseMult(s.Bytes())
+	U2x, U2y := v.EC.ScalarMult(Y.X, Y.Y, c.Bytes())
+	Ux, Uy := v.EC.Add(U1x, U1y, U2x, new(big.Int).Neg(U2y)) // -(U2x, U2y) = (U2x, -U2y)
+
+	// 6.  V = s*H - c*Gamma
+	V1x, V1y := v.EC.ScalarMult(Hx, Hy, s.Bytes())
+	V2x, V2y := v.EC.ScalarMult(Gx, Gy, c.Bytes())
+	Vx, Vy := v.EC.Add(V1x, V1y, V2x, new(big.Int).Neg(V2y))
+
+	// 7.  c' = ECVRF_hash_points(H, Gamma, U, V)
+	cPrime := v.ECVRFHashPoints(Hx, Hy, Gx, Gy, Ux, Uy, Vx, Vy)
+
+	// 8.  If c and c' are not equal output "INVALID"
+	if c.Cmp(cPrime) != 0 {
+		return nil, errors.New("invalid")
+	}
+	// else, output (ECVRF_proof_to_hash(pi_string), "VALID")
+	return v.Proof2Hash(pi)
 }
