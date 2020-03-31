@@ -49,7 +49,7 @@ type ECVRFSuite struct {
 	EC elliptic.Curve
 	// suite is a single nonzero octet specifying the ECVRF
 	// ciphersuite, which determines the options below.
-	suite         byte
+	SuiteString   []byte
 	Hash          crypto.Hash
 	Conversions   // Type conversions
 	GenerateNonce func(hash crypto.Hash, SK *PrivateKey, h []byte) (k *big.Int)
@@ -64,7 +64,7 @@ type ECVRFSuite struct {
 // P256, SHA256, and the "Try And Increment" strategy for hashing to the curve.
 func ECVRF_P256_SHA256_TAI() *ECVRF {
 	return &ECVRF{ECVRFSuite{
-		suite: 0x01, // int_to_string(1, 1)
+		SuiteString: []byte{0x01}, // int_to_string(1, 1)
 		// E group G is the NIST P-256 elliptic curve, with curve
 		// parameters as specified in [FIPS-186-4] (Section D.1.2.3)
 		// and [RFC5114] (Section 2.6).  For this group, 2n = qLen = 32
