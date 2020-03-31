@@ -43,7 +43,7 @@ func HashToCurveTryAndIncrement(v *ECVRFSuite, Y *PublicKey, alpha []byte) (Hx, 
 		// B.  hash_string = Hash(suite_string || one_string ||
 		//     PK_string || alpha_string || ctr_string)
 		h.Reset()
-		h.Write([]byte{v.suite})
+		h.Write(v.SuiteString)
 		h.Write(one)
 		h.Write(pk)
 		h.Write(alpha)
