@@ -83,7 +83,7 @@ func TestECVRF_P256_SHA256_TAI(t *testing.T) {
 			pk := sk.Public()
 
 			// 2.  H = ECVRF_hash_to_curve(suite_string, Y, alpha_string)
-			Hx, Hy, ctr := HashToCurveTryAndIncrement(&v.ECVRFSuite, pk, tc.alpha)
+			Hx, Hy, ctr := HashToCurveTryAndIncrement(v, v.SuiteString, pk, tc.alpha)
 			if ctr != tc.wantCtr {
 				t.Fatalf("HashToCurve: ctr: %v, want %v", ctr, tc.wantCtr)
 			}
@@ -142,6 +142,14 @@ func TestECVRF_P256_SHA256_TAI(t *testing.T) {
 			}
 			if !bytes.Equal(beta, tc.beta) {
 				t.Errorf("beta: %x, want %x", beta, tc.beta)
+			}
+
+			beta2, err := v.Verify(pk, pi, tc.alpha)
+			if err != nil {
+				t.Errorf("Verify(): %v", err)
+			}
+			if !bytes.Equal(beta, beta2) {
+				t.Errorf("beta: %x, beta2: %x", beta, beta2)
 			}
 		})
 	}

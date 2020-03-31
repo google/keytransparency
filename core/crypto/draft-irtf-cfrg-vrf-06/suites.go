@@ -59,7 +59,7 @@ type ECVRFSuite struct {
 	// options described in Section 5.4.1 and specified in Section 5.5.
 	// HashToCurveTryAndIncrement takes in the VRF input alpha and converts
 	// it to H, an EC point in G.
-	HashToCurve func(v *ECVRFSuite, Y *PublicKey, alpha []byte) (x, y *big.Int)
+	HashToCurve func(v *ECVRF, suite []byte, Y *PublicKey, alpha []byte) (x, y *big.Int)
 }
 
 // ECVRF_P256_SHA256_TAI returns a elliptic curve based VRF instantiated with

@@ -2,7 +2,10 @@ package vrf
 
 import (
 	"bytes"
+	"crypto"
 	"crypto/elliptic"
+	"errors"
+	"fmt"
 	"math/big"
 	"sync"
 )
