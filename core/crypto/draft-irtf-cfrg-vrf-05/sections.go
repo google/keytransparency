@@ -1,3 +1,0 @@
-package vrf
-
-func Nonce() {}

@@ -3,23 +3,145 @@ package vrf
 import (
 	"bytes"
 	"crypto"
+	"crypto/elliptic"
 	"crypto/hmac"
+	"fmt"
 	"math/big"
+
+	_ "crypto/sha256"
 )
+
+type (
+	p256SHA256TAISuite struct{ *ECVRFParams }
+	p256SHA256TAIAux   struct{ params *ECVRFParams }
+)
+
+var p256SHA256TAI p256SHA256TAISuite
+
+func initP256SHA256TAI() {
+	// https://tools.ietf.org/html/draft-irtf-cfrg-vrf-06#section-5.5
+	p256SHA256TAI.ECVRFParams = &ECVRFParams{
+		suiteString: []byte{0x01},    // int_to_string(1, 1)
+		ec:          elliptic.P256(), // NIST P-256 elliptic curve, [FIPS-186-4] (Section D.1.2.3).
+		n:           16,              // 2n = 32, Params().BitSize
+		qLen:        32,              // qLen = 32, Params().N.BitLen
+		ptLen:       33,              // Size of encoded EC point
+		cofactor:    1,
+		hash:        crypto.SHA256,
+	}
+	p256SHA256TAI.ECVRFParams.aux = p256SHA256TAIAux{params: p256SHA256TAI.ECVRFParams}
+}
+
+func (s p256SHA256TAISuite) Params() *ECVRFParams {
+	return s.ECVRFParams
+}
+
+// HashToCurve implements the HashToCurveTryAndIncrement algorithm from section 5.4.1.1.
+func (a p256SHA256TAIAux) HashToCurve(Y *PublicKey, alpha []byte) (Hx, Hy *big.Int) {
+	Hx, Hy, _ = a.hashToCurveTryAndIncrement(Y, alpha) // Drop ctr
+	return
+}
+
+// GenerateNonce implements GenerateNonceRFC6979 // Section 5.4.2.1.
+func (a p256SHA256TAIAux) GenerateNonce(sk *PrivateKey, h []byte) (k *big.Int) {
+	return generateNonceRFC6979(a.params.hash, sk, h)
+}
+
+func (a p256SHA256TAIAux) IntToString(x, xLen uint) []byte {
+	return I2OSP(x, xLen) // RFC8017 section-4.1 (big endian representation)
+}
+
+func (a p256SHA256TAIAux) PointToString(Px, Py *big.Int) []byte {
+	return SECG1EncodeCompressed(a.params.ec, Px, Py)
+}
+
+// String2Point converts an octet string to an EC point according to the
+// encoding specified in Section 2.3.4 of [SECG1].  This function MUST output
+// INVALID if the octet string does not decode to an EC point.
+func (a p256SHA256TAIAux) StringToPoint(s []byte) (Px, Py *big.Int) {
+	return SECG1Decode(a.params.ec, s)
+}
+
+// ArbitraryString2Point returns string_to_point(0x02 || h_string)
+// Attempts to interpret an arbitrary string as a compressed elliptic code point.
+// The input h is a 32-octet string.  Returns either an EC point or "INVALID".
+func (a p256SHA256TAIAux) ArbitraryStringToPoint(s []byte) (Px, Py *big.Int, err error) {
+	if got, want := len(s), 32; got != want {
+		return nil, nil, fmt.Errorf("len(s): %v, want %v", got, want)
+	}
+	Px, Py = a.StringToPoint(append([]byte{0x02}, s...))
+	return
+}
+
+var zero big.Int
+
+// HashToCurveTryAndIncrement implements HashToCurve in a simple and generic
+// way that works for any elliptic curve.
+//
+// The running time of this algorithm depends on alpha. For the ciphersuites
+// specified in Section 5.5, this algorithm is expected to find a valid curve
+// point after approximately two attempts (i.e., when ctr=1) on average.
+//
+// However, because the running time of algorithm depends on alpha, this
+// algorithm SHOULD be avoided in applications where it is important that the
+// VRF input alpha remain secret.
+//
+// Inputs:
+// - `suite` - a single octet specifying ECVRF ciphersuite.
+// - `Y` - public key, an EC point
+// - `alpha` - value to be hashed, an octet string
+// Output:
+// - `H` - hashed value, a finite EC point in G
+// - `ctr` - integer, number of suite byte, attempts to find a valid curve point
+func (a *p256SHA256TAIAux) hashToCurveTryAndIncrement(Y *PublicKey, alpha []byte) (Hx, Hy *big.Int, ctr uint) {
+	// 1.  ctr = 0
+	ctr = 0
+	// 2.  PK_string = point_to_string(Y)
+	pk := a.PointToString(Y.X, Y.Y)
+
+	// 3.  one_string = 0x01 = int_to_string(1, 1), a single octet with value 1
+	one := []byte{0x01}
+
+	// 4.  H = "INVALID"
+	h := a.params.hash.New()
+
+	// 5.  While H is "INVALID" or H is EC point at infinity:
+	var err error
+	for Hx == nil || err != nil || (zero.Cmp(Hx) == 0 && zero.Cmp(Hy) == 0) {
+		// A.  ctr_string = int_to_string(ctr, 1)
+		ctrString := a.IntToString(ctr, 1)
+		// B.  hash_string = Hash(suite_string || one_string ||
+		//     PK_string || alpha_string || ctr_string)
+		h.Reset()
+		h.Write(a.params.suiteString)
+		h.Write(one)
+		h.Write(pk)
+		h.Write(alpha)
+		h.Write(ctrString)
+		hashString := h.Sum(nil)
+		// C.  H = arbitrary_string_to_point(hash_string)
+		Hx, Hy, err = a.ArbitraryStringToPoint(hashString)
+		// D.  If H is not "INVALID" and cofactor > 1, set H = cofactor * H
+		// Cofactor for prime ordered curves is 1.
+		ctr++
+	}
+	// 6.  Output H
+	return Hx, Hy, ctr - 1
+}
 
 // 5.4.2.  ECVRF Nonce Generation
 //
 //    The following subroutines generate the nonce value k in a deterministic
 //    pseudorandom fashion.
 
-// GenerateNonceRFC6979 from section 5.4.2.1 as defined by RFC 6979 section 3.2.
+// generateNonceRFC6979 from section 5.4.2.1 as defined by RFC 6979 section 3.2.
 //    Input:
 //       SK - an ECVRF secret key
 //       h - an octet string
 //
 //    Output:
 //       k - an integer between 1 and q-1
-func GenerateNonceRFC6979(hash crypto.Hash, SK *PrivateKey, h []byte) (k *big.Int) {
+func generateNonceRFC6979(hash crypto.Hash, SK *PrivateKey, h []byte) (k *big.Int) {
 	m := h    // Input m is set equal to h_string
 	x := SK.x // The secret key x is set equal to the VRF secret scalar x
 
