@@ -63,8 +63,12 @@ func (a p256SHA256TAIAux) PointToString(x, y *big.Int) []byte {
 // String2Point converts an octet string to an EC point according to the
 // encoding specified in Section 2.3.4 of [SECG1].  This function MUST output
 // INVALID if the octet string does not decode to an EC point.
-func (a p256SHA256TAIAux) StringToPoint(s []byte) (x, y *big.Int) {
-	return SECG1Decode(a.params.ec, s)
+func (a p256SHA256TAIAux) StringToPoint(s []byte) (x, y *big.Int, err error) {
+	x, y = SECG1Decode(a.params.ec, s)
+	if x == nil || y == nil {
+		err = fmt.Errorf("string_to_point failed")
+	}
+	return
 }
 
 // ArbitraryString2Point returns string_to_point(0x02 || h_string)
@@ -74,8 +78,7 @@ func (a p256SHA256TAIAux) ArbitraryStringToPoint(s []byte) (x, y *big.Int, err e
 	if got, want := len(s), 32; got != want {
 		return nil, nil, fmt.Errorf("len(s): %v, want %v", got, want)
 	}
-	x, y = a.StringToPoint(append([]byte{0x02}, s...))
-	return
+	return a.StringToPoint(append([]byte{0x02}, s...))
 }
 
 var zero big.Int

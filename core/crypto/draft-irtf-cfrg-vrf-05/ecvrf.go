@@ -89,8 +89,7 @@ type ECVRFAux interface {
 	// StringToPoint converts an octet string to an EC point
 	// This function MUST output INVALID if the octet string does not
 	// decode to an EC point.
-	// TODO(gbelvin): return err
-	StringToPoint(h []byte) (Px, Py *big.Int)
+	StringToPoint(h []byte) (Px, Py *big.Int, err error)
 
 	// ArbitraryStringToPoint(s) = string_to_point(0x02 || s)
 	// (where 0x02 is a single octet with value 2, 0x02=int_to_string(2, 1)).
@@ -279,10 +278,10 @@ func (v *ECVRFParams) decodeProof(pi []byte) (x, y, c, s *big.Int, err error) {
 	sStr := pi[ptLen+n : ptLen+n+qLen]
 
 	//    4.  Gamma = string_to_point(gamma_string)
-	x, y = v.aux.StringToPoint(gStr)
+	x, y, err = v.aux.StringToPoint(gStr)
 	//    5.  if Gamma = "INVALID" output "INVALID" and stop.
-	if x == nil || y == nil {
-		return nil, nil, nil, nil, fmt.Errorf("string_to_point failed")
+	if err != nil {
+		return nil, nil, nil, nil, err
 	}
 
 	//    6.  c = string_to_int(c_string)
