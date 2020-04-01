@@ -99,7 +99,6 @@ func SECG1Decode(curve elliptic.Curve, data []byte) (x, y *big.Int) {
 // Use the curve equation to calculate y² given x.
 // only applies to curves of the form y² = x³ - 3x + b.
 func y2(curve *elliptic.CurveParams, x *big.Int) *big.Int {
-
 	// y² = x³ - 3x + b
 	x3 := new(big.Int).Mul(x, x)
 	x3.Mul(x3, x)

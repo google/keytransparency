@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"math/big"
 
-	_ "crypto/sha256"
+	_ "crypto/sha256" // SHA256 Implementation
 )
 
 type (
@@ -37,8 +37,8 @@ func (s p256SHA256TAISuite) Params() *ECVRFParams {
 }
 
 // HashToCurve implements the HashToCurveTryAndIncrement algorithm from section 5.4.1.1.
-func (a p256SHA256TAIAux) HashToCurve(Y *PublicKey, alpha []byte) (Hx, Hy *big.Int) {
-	Hx, Hy, _ = a.hashToCurveTryAndIncrement(Y, alpha) // Drop ctr
+func (a p256SHA256TAIAux) HashToCurve(pub *PublicKey, alpha []byte) (x, y *big.Int) {
+	x, y, _ = a.hashToCurveTryAndIncrement(pub, alpha) // Drop ctr
 	return
 }
 
@@ -51,25 +51,25 @@ func (a p256SHA256TAIAux) IntToString(x, xLen uint) []byte {
 	return I2OSP(x, xLen) // RFC8017 section-4.1 (big endian representation)
 }
 
-func (a p256SHA256TAIAux) PointToString(Px, Py *big.Int) []byte {
-	return SECG1EncodeCompressed(a.params.ec, Px, Py)
+func (a p256SHA256TAIAux) PointToString(x, y *big.Int) []byte {
+	return SECG1EncodeCompressed(a.params.ec, x, y)
 }
 
 // String2Point converts an octet string to an EC point according to the
 // encoding specified in Section 2.3.4 of [SECG1].  This function MUST output
 // INVALID if the octet string does not decode to an EC point.
-func (a p256SHA256TAIAux) StringToPoint(s []byte) (Px, Py *big.Int) {
+func (a p256SHA256TAIAux) StringToPoint(s []byte) (x, y *big.Int) {
 	return SECG1Decode(a.params.ec, s)
 }
 
 // ArbitraryString2Point returns string_to_point(0x02 || h_string)
 // Attempts to interpret an arbitrary string as a compressed elliptic code point.
 // The input h is a 32-octet string.  Returns either an EC point or "INVALID".
-func (a p256SHA256TAIAux) ArbitraryStringToPoint(s []byte) (Px, Py *big.Int, err error) {
+func (a p256SHA256TAIAux) ArbitraryStringToPoint(s []byte) (x, y *big.Int, err error) {
 	if got, want := len(s), 32; got != want {
 		return nil, nil, fmt.Errorf("len(s): %v, want %v", got, want)
 	}
-	Px, Py = a.StringToPoint(append([]byte{0x02}, s...))
+	x, y = a.StringToPoint(append([]byte{0x02}, s...))
 	return
 }
 
@@ -93,11 +93,11 @@ var zero big.Int
 // Output:
 // - `H` - hashed value, a finite EC point in G
 // - `ctr` - integer, number of suite byte, attempts to find a valid curve point
-func (a *p256SHA256TAIAux) hashToCurveTryAndIncrement(Y *PublicKey, alpha []byte) (Hx, Hy *big.Int, ctr uint) {
+func (a *p256SHA256TAIAux) hashToCurveTryAndIncrement(pub *PublicKey, alpha []byte) (x, y *big.Int, ctr uint) {
 	// 1.  ctr = 0
 	ctr = 0
 	// 2.  PK_string = point_to_string(Y)
-	pk := a.PointToString(Y.X, Y.Y)
+	pk := a.PointToString(pub.X, pub.Y)
 
 	// 3.  one_string = 0x01 = int_to_string(1, 1), a single octet with value 1
 	one := []byte{0x01}
@@ -107,7 +107,7 @@ func (a *p256SHA256TAIAux) hashToCurveTryAndIncrement(Y *PublicKey, alpha []byte
 
 	// 5.  While H is "INVALID" or H is EC point at infinity:
 	var err error
-	for Hx == nil || err != nil || (zero.Cmp(Hx) == 0 && zero.Cmp(Hy) == 0) {
+	for x == nil || err != nil || (zero.Cmp(x) == 0 && zero.Cmp(y) == 0) {
 		// A.  ctr_string = int_to_string(ctr, 1)
 		ctrString := a.IntToString(ctr, 1)
 		// B.  hash_string = Hash(suite_string || one_string ||
@@ -120,13 +120,13 @@ func (a *p256SHA256TAIAux) hashToCurveTryAndIncrement(Y *PublicKey, alpha []byte
 		h.Write(ctrString)
 		hashString := h.Sum(nil)
 		// C.  H = arbitrary_string_to_point(hash_string)
-		Hx, Hy, err = a.ArbitraryStringToPoint(hashString)
+		x, y, err = a.ArbitraryStringToPoint(hashString)
 		// D.  If H is not "INVALID" and cofactor > 1, set H = cofactor * H
 		// Cofactor for prime ordered curves is 1.
 		ctr++
 	}
 	// 6.  Output H
-	return Hx, Hy, ctr - 1
+	return x, y, ctr - 1
 }
 
 // 5.4.2.  ECVRF Nonce Generation
@@ -141,15 +141,15 @@ func (a *p256SHA256TAIAux) hashToCurveTryAndIncrement(Y *PublicKey, alpha []byte
 //
 //    Output:
 //       k - an integer between 1 and q-1
-func generateNonceRFC6979(hash crypto.Hash, SK *PrivateKey, h []byte) (k *big.Int) {
+func generateNonceRFC6979(hash crypto.Hash, sk *PrivateKey, h []byte) (k *big.Int) {
 	m := h    // Input m is set equal to h_string
-	x := SK.x // The secret key x is set equal to the VRF secret scalar x
+	x := sk.x // The secret key x is set equal to the VRF secret scalar x
 
 	// The "suitable for DSA or ECDSA" check in step h.3 is omitted
 	// The hash function H is Hash and its output length hlen is set as hLen*8
 
 	// The prime q is the same as in this specification
-	q := SK.Params().N
+	q := sk.Params().N
 
 	// qlen is the binary length of q, i.e., the smallest integer such that 2^qlen > q
 	// All the other values and primitives as defined in [RFC6979]
@@ -315,11 +315,10 @@ func bits2int(b []byte, qlen int) *big.Int {
 		// if qlen < blen, then the qlen leftmost bits are kept, and
 		// subsequent bits are discarded;
 		v = new(big.Int).Rsh(v, uint(blen-qlen))
-	} else {
-		// otherwise, qlen-blen bits (of value zero) are added to the
-		// left of the sequence (i.e., before the input bits in the
-		// sequence order).
 	}
+	// otherwise, qlen-blen bits (of value zero) are added to the
+	// left of the sequence (i.e., before the input bits in the
+	// sequence order).
 
 	// 2.  The resulting sequence is then converted to an integer value
 	//     using the big-endian convention: if input bits are called b_0
