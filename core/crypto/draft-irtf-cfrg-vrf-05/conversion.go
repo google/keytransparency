@@ -32,8 +32,6 @@ func I2OSP(x, xLen uint) []byte {
 	return b.Bytes()[uint(b.Len())-xLen:] // The rightmost xLen bytes.
 }
 
-// func String2Int(a []byte) int {}
-
 // SECG1EncodeCompressed converts an EC point to an octet string according to
 // the encoding specified in Section 2.3.3 of [SECG1] with point compression
 // on. This implies ptLen = 2n + 1 = 33.
