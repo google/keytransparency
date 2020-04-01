@@ -58,8 +58,18 @@ func (a p256SHA256TAIAux) PointToString(Px, Py *big.Int) []byte {
 // String2Point converts an octet string to an EC point according to the
 // encoding specified in Section 2.3.4 of [SECG1].  This function MUST output
 // INVALID if the octet string does not decode to an EC point.
+<<<<<<< HEAD
 func (a p256SHA256TAIAux) StringToPoint(s []byte) (Px, Py *big.Int) {
 	return SECG1Decode(a.params.ec, s)
+=======
+// http://www.secg.org/sec1-v2.pdf
+func (a p256SHA256TAIAux) StringToPoint(s []byte) (x, y *big.Int, err error) {
+	x, y = SECG1Decode(a.params.ec, s)
+	if x == nil || y == nil {
+		err = fmt.Errorf("string_to_point failed")
+	}
+	return
+>>>>>>> aa5f64f3... SEG1Decode docs
 }
 
 // ArbitraryString2Point returns string_to_point(0x02 || h_string)
