@@ -79,16 +79,12 @@ type ECVRFAux interface {
 	IntToString(x, xLen uint) []byte
 
 	// StringToInt converts an octet string to a nonnegative integer.
-	// TODO(gbelvin): implement
-	// StringToInt(x int) int
+	StringToInt(s []byte) *big.Int
 
 	// PointToString converts an EC point to an octet string according to
 	// the encoding specified in Section 2.3.3 of [SECG1] with point
 	// compression on.  This implies ptLen = 2n + 1 = 33.
 	PointToString(Px, Py *big.Int) []byte
-
-	// StringToInt converts an octet string a_string to a nonnegative
-	// integer as specified in Section 5.5.
 
 	// StringToPoint converts an octet string to an EC point
 	// This function MUST output INVALID if the octet string does not
@@ -290,9 +286,9 @@ func (v *ECVRFParams) decodeProof(pi []byte) (x, y, c, s *big.Int, err error) {
 	}
 
 	//    6.  c = string_to_int(c_string)
-	c = new(big.Int).SetBytes(cStr)
+	c = v.aux.StringToInt(cStr)
 	//    7.  s = string_to_int(s_string)
-	s = new(big.Int).SetBytes(sStr)
+	s = v.aux.StringToInt(sStr)
 	//    8.  Output Gamma, c, and s
 	return
 }

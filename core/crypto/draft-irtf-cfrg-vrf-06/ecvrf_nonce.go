@@ -48,7 +48,12 @@ func (a p256SHA256TAIAux) GenerateNonce(sk *PrivateKey, h []byte) (k *big.Int) {
 }
 
 func (a p256SHA256TAIAux) IntToString(x, xLen uint) []byte {
-	return I2OSP(x, xLen) // RFC8017 section-4.1 (big endian representation)
+	return I2OSP(x, xLen) // RFC8017 Section 4.1 (big endian representation)
+}
+
+// StringToInt converts an octet string to a nonnegative integer  as specified in Section 5.5.
+func (a p256SHA256TAIAux) StringToInt(s []byte) *big.Int {
+	return new(big.Int).SetBytes(s) // RFC8017 Section 4.2 (big endian representation)
 }
 
 func (a p256SHA256TAIAux) PointToString(x, y *big.Int) []byte {
@@ -141,6 +146,8 @@ func (a *p256SHA256TAIAux) hashToCurveTryAndIncrement(pub *PublicKey, alpha []by
 //
 //    Output:
 //       k - an integer between 1 and q-1
+// https://tools.ietf.org/html/draft-irtf-cfrg-vrf-06#section-5.4.2.1
+// https://tools.ietf.org/html/rfc6979#section-3.2
 func generateNonceRFC6979(hash crypto.Hash, sk *PrivateKey, h []byte) (k *big.Int) {
 	m := h    // Input m is set equal to h_string
 	x := sk.x // The secret key x is set equal to the VRF secret scalar x
@@ -177,20 +184,23 @@ func generateNonceRFC6979(hash crypto.Hash, sk *PrivateKey, h []byte) (k *big.In
 	K := make([]byte, hash.Size())
 
 	// d.  Set: K = HMAC_K(V || 0x00 || int2octets(x) || bits2octets(h1))
-	//     where '||' denotes concatenation.  In other words, we compute
-	//     HMAC with key K, over the concatenation of the following, in
-	//     order: the current value of V, a sequence of eight bits of value
-	//     0, the encoding of the (EC)DSA private key x, and the hashed
-	//     message (possibly truncated and extended as specified by the
-	//     bits2octets transform).  The HMAC result is the new value of K.
+	//     In other words, we compute HMAC with key K
+	hm := hmac.New(hash.New, K)
+	//     over the concatenation of the following, in order:
+	//     the current value of V
+	hm.Write(V)
+	//     a sequence of eight bits of value 0
+	hm.Write([]byte{0x00})
+	//     the encoding of the (EC)DSA private key x,
 	//     Note that the private key x is in the [1, q-1] range, hence a
 	//     proper input for int2octets, yielding rlen bits of output, i.e.,
 	//     an integral number of octets (rlen is a multiple of 8).
-	hm := hmac.New(hash.New, K)
-	hm.Write(V)
-	hm.Write([]byte{0x00})
-	hm.Write(x.Bytes()) // int2octets
-	hm.Write(h1Digest)  // bits2octets
+	rlen := ((qlen + 7) >> 3) << 3 //
+	hm.Write(int2octets(x, rlen))
+	//     and the hashed message
+	//     (possibly truncated and extended as specified by the bits2octets transform).
+	hm.Write(bits2octets(h1Digest, q, qlen, rlen))
+	//     The HMAC result is the new value of K.
 	K = hm.Sum(nil)
 
 	// e.  Set:
@@ -205,7 +215,7 @@ func generateNonceRFC6979(hash crypto.Hash, sk *PrivateKey, h []byte) (k *big.In
 	hm = hmac.New(hash.New, K)
 	hm.Write(V)
 	hm.Write([]byte{0x01})
-	hm.Write(x.Bytes())
+	hm.Write(int2octets(x, rlen))
 	hm.Write(h1Digest)
 	K = hm.Sum(nil)
 
@@ -258,6 +268,9 @@ func generateNonceRFC6979(hash crypto.Hash, sk *PrivateKey, h []byte) (k *big.In
 // rlen is a multiple of 8
 // https://tools.ietf.org/html/rfc6979#section-2.3.3
 func int2octets(x *big.Int, rlen int) []byte {
+	if rlen%8 != 0 {
+		panic("rlen is not a multipile of 8")
+	}
 	// An integer value x less than q (and, in particular, a value that has
 	// been taken modulo q) can be converted into a sequence of rlen bits,
 	// where rlen = 8*ceil(qlen/8).  This is the sequence of bits obtained
@@ -296,7 +309,7 @@ func bits2octets(b []byte, q *big.Int, qlen, rlen int) []byte {
 	//     z2 = z1-q if that value is non-negative; otherwise, z2 = z1.
 	z2 := new(big.Int).Sub(z1, q)
 	if z2.Sign() < 0 {
-		z1 = z1
+		z2 = z1
 	}
 
 	// 3.  z2 is transformed into a sequence of octets (a sequence of rlen bits)
