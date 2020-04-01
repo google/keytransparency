@@ -57,12 +57,11 @@ func SECG1EncodeCompressed(curve elliptic.Curve, x, y *big.Int) []byte {
 // functionality would be in a standard library.  Code borrowed from:
 // https://go-review.googlesource.com/#/c/1883/2/src/crypto/elliptic/elliptic.go
 
-// SECG1Decode decodes a point, given as a 32-octet string.
-// TODO(gbelvin): This spec is inconsistent. h is 33 bytes long because it is
-// prepended with The compressed point type (0x02).
+// SECG1Decode decodes a EC point, given as a compressed string.
+// If the decoding fails x and y will be nil.
 //
+// http://www.secg.org/sec1-v2.pdf
 // https://tools.ietf.org/html/rfc8032#section-5.1.3
-// Unmarshal a compressed point in the form specified in section 4.3.6 of ANSI X9.62.
 func SECG1Decode(curve elliptic.Curve, data []byte) (x, y *big.Int) {
 	byteLen := (curve.Params().BitSize + 7) >> 3
 	if (data[0] &^ 1) != 2 {
