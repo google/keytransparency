@@ -16,9 +16,9 @@ func initAll() {
 	initP256SHA256TAI()
 }
 
-// ECVRF_P256_SHA256_TAI returns a elliptic curve based VRF instantiated with
+// ECVRFP256SHA256TAI returns a elliptic curve based VRF instantiated with
 // P256, SHA256, and the "Try And Increment" strategy for hashing to the curve.
-func ECVRF_P256_SHA256_TAI() VRF {
+func ECVRFP256SHA256TAI() VRF {
 	initonce.Do(initAll)
 	return p256SHA256TAI
 }
@@ -61,10 +61,10 @@ type ECVRFParams struct {
 	qLen     int // length of q in octets. (note that in the typical case, qLen equals 2n or is close to 2n)
 	cofactor int //number of points on E divided by q
 	hash     crypto.Hash
-	aux      ECVRFAux // Auxillary functions
+	aux      ECVRFAux // Auxiliary functions
 }
 
-// ECVRFAux contains auxillary functions nessesary for the computation of ECVRF.
+// ECVRFAux contains auxiliary functions nessesary for the computation of ECVRF.
 type ECVRFAux interface {
 	// HashToCurve is a collision resistant hash of strings to an EC point;
 	// options described in Section 5.4.1 and specified in Section 5.5.
@@ -179,17 +179,17 @@ func (v *ECVRFParams) ProofToHash(pi []byte) (beta []byte, err error) {
 	return h.Sum(nil), nil
 }
 
-//Verify(PublicKey, pi_string, alpha_string)
+//Verify(PublicKey, pi, alpha)
 //
 //   Input:
-//      Y - public key, an EC point
+//      y - public key, an EC point
 //      pi_string - VRF proof, octet string of length ptLen+n+qLen
 //        alpha_string - VRF input, octet string
 //
 //   Output:
 //      (beta_string, "VALID"), where beta_string is the VRF hash output,
 //      octet string of length hLen; or "INVALID"
-func (v *ECVRFParams) Verify(Y *PublicKey, pi, alpha []byte) (beta []byte, err error) {
+func (v *ECVRFParams) Verify(y *PublicKey, pi, alpha []byte) (beta []byte, err error) {
 	// 1.  D = ECVRF_decode_proof(pi_string)
 	Gx, Gy, c, s, err := v.decodeProof(pi)
 	// 2.  If D is "INVALID", output "INVALID" and stop
@@ -199,11 +199,11 @@ func (v *ECVRFParams) Verify(Y *PublicKey, pi, alpha []byte) (beta []byte, err e
 	// 3.  (Gamma, c, s) = D
 
 	// 4.  H = ECVRF_hash_to_curve(suite_string, Y, alpha_string)
-	Hx, Hy := v.aux.HashToCurve(Y, alpha)
+	Hx, Hy := v.aux.HashToCurve(y, alpha)
 
 	// 5.  U = s*B - c*Y
 	U1x, U1y := v.ec.ScalarBaseMult(s.Bytes())
-	U2x, U2y := v.ec.ScalarMult(Y.X, Y.Y, c.Bytes())
+	U2x, U2y := v.ec.ScalarMult(y.X, y.Y, c.Bytes())
 	Ux, Uy := v.ec.Add(U1x, U1y, U2x, new(big.Int).Neg(U2y)) // -(U2x, U2y) = (U2x, -U2y)
 
 	// 6.  V = s*H - c*Gamma
@@ -223,7 +223,7 @@ func (v *ECVRFParams) Verify(Y *PublicKey, pi, alpha []byte) (beta []byte, err e
 }
 
 //
-// Auxilary functions
+// Auxiliary functions
 //
 
 // hashPoints(P1x P1y, P2x, P2y, ..., PMx, PMy)
@@ -237,10 +237,8 @@ func (v *ECVRFParams) Verify(Y *PublicKey, pi, alpha []byte) (beta []byte, err e
 // https://tools.ietf.org/html/draft-irtf-cfrg-vrf-06#section-5.4.3
 func (v *ECVRFParams) hashPoints(pm ...*big.Int) *big.Int {
 	// 1.  two_string = 0x02 = int_to_string(2, 1), a single octet with value 2
-	two_string := byte(0x02)
-
 	// 2.  Initialize str = suite_string || two_string
-	str := append(v.suiteString, two_string)
+	str := append(v.suiteString, byte(0x02))
 
 	// 3.  for PJ in [P1, P2, ... PM]:
 	for i := 0; i < len(pm); i += 2 {
@@ -271,7 +269,7 @@ func (v *ECVRFParams) hashPoints(pm ...*big.Int) *big.Int {
 //       or "INVALID"
 //
 // https://tools.ietf.org/html/draft-irtf-cfrg-vrf-06#section-5.4.4
-func (v *ECVRFParams) decodeProof(pi []byte) (Gx, Gy, c, s *big.Int, err error) {
+func (v *ECVRFParams) decodeProof(pi []byte) (x, y, c, s *big.Int, err error) {
 	ptLen, n, qLen := v.ptLen, v.n, v.qLen
 	if got, want := len(pi), ptLen+n+qLen; got != want {
 		return nil, nil, nil, nil, fmt.Errorf("len(pi): %v, want %v", got, want)
@@ -285,9 +283,9 @@ func (v *ECVRFParams) decodeProof(pi []byte) (Gx, Gy, c, s *big.Int, err error) 
 	sStr := pi[ptLen+n : ptLen+n+qLen]
 
 	//    4.  Gamma = string_to_point(gamma_string)
-	Gx, Gy = v.aux.StringToPoint(gStr)
+	x, y = v.aux.StringToPoint(gStr)
 	//    5.  if Gamma = "INVALID" output "INVALID" and stop.
-	if Gx == nil || Gy == nil {
+	if x == nil || y == nil {
 		return nil, nil, nil, nil, fmt.Errorf("string_to_point failed")
 	}
 
