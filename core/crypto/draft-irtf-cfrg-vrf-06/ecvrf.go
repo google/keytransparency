@@ -76,7 +76,7 @@ type ECVRFAux interface {
 	GenerateNonce(sk *PrivateKey, h []byte) (k *big.Int)
 
 	// IntToString converts a nonnegative integer to an octet string of a specified length.
-	IntToString(x, xLen uint) []byte
+	IntToString(x *big.Int, xLen uint) []byte
 
 	// StringToInt converts an octet string to a nonnegative integer.
 	StringToInt(s []byte) *big.Int

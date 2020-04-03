@@ -3,12 +3,14 @@ package vrf
 import (
 	"bytes"
 	"fmt"
+	"math/big"
 	"testing"
 )
 
 func TestI2OSP(t *testing.T) {
 	for i, tc := range []struct {
-		x, xLen   uint
+		x         int64
+		xLen      uint
 		want      []byte
 		wantPanic bool
 	}{
@@ -27,7 +29,7 @@ func TestI2OSP(t *testing.T) {
 				}
 			}()
 
-			if got := I2OSP(tc.x, tc.xLen); !bytes.Equal(got, tc.want) {
+			if got := I2OSP(big.NewInt(tc.x), tc.xLen); !bytes.Equal(got, tc.want) {
 				t.Errorf("I2OSP(%v, %v): %v, want %v", tc.x, tc.xLen, got, tc.want)
 			}
 		})

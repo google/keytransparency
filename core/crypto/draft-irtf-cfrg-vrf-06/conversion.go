@@ -3,33 +3,31 @@ package vrf
 import (
 	"bytes"
 	"crypto/elliptic"
-	"encoding/binary"
 	"math/big"
 )
 
 // I2OSP converts a nonnegative integer to an octet string of a specified length.
 // RFC8017 section-4.1 (big endian representation)
-func I2OSP(x, xLen uint) []byte {
-	intLen := uint(4) // Size of uint32
-	// 1.  If x >= 256^xLen, output "integer too large" and stop.
-	if xLen < intLen && x >= 1<<(xLen*8) {
+func I2OSP(x *big.Int, rLen uint) []byte {
+	// 1.  If x >= 256^rLen, output "integer too large" and stop.
+	one := big.NewInt(1)
+	if x.Cmp(new(big.Int).Lsh(one, rLen*8)) >= 0 {
 		panic("integer too large")
 	}
-	// 2.  Write the integer x in its unique xLen-digit representation in base 256:
-	//     x = x_(xLen-1) 256^(xLen-1) + x_(xLen-2) 256^(xLen-2) + ...  + x_1 256 + x_0,
+	// 2.  Write the integer x in its unique rLen-digit representation in base 256:
+	//     x = x_(rLen-1) 256^(rLen-1) + x_(rLen-2) 256^(rLen-2) + ...  + x_1 256 + x_0,
 	//     where 0 <= x_i < 256
-	//     (note that one or more leading digits will be zero if x is less than 256^(xLen-1)).
-	// 3.  Let the octet X_i have the integer value x_(xLen-i) for 1 <= i <= xLen.
-	//     Output the octet string X = X_1 X_2 ... X_xLen.
+	//     (note that one or more leading digits will be zero if x is less than 256^(rLen-1)).
+	// 3.  Let the octet X_i have the integer value x_(rLen-i) for 1 <= i <= rLen.
+	//     Output the octet string X = X_1 X_2 ... X_rLen.
 
 	var b bytes.Buffer
-	if xLen > intLen {
-		b.Write(make([]byte, xLen-intLen)) // prepend 0s
+	xLen := (uint(x.BitLen()) + 7) >> 3
+	if rLen > xLen {
+		b.Write(make([]byte, rLen-xLen)) // prepend 0s
 	}
-	if err := binary.Write(&b, binary.BigEndian, uint32(x)); err != nil {
-		panic(err)
-	}
-	return b.Bytes()[uint(b.Len())-xLen:] // The rightmost xLen bytes.
+	b.Write(x.Bytes())
+	return b.Bytes()[uint(b.Len())-rLen:] // The rightmost rLen bytes.
 }
 
 // SECG1EncodeCompressed converts an EC point to an octet string according to
