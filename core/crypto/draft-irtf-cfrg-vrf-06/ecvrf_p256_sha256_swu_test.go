@@ -5,6 +5,7 @@ import (
 	"crypto/elliptic"
 	"fmt"
 	"math/big"
+	"sync"
 	"testing"
 )
 
@@ -174,6 +175,29 @@ func TestVectorsECVRF_P256_SHA256_SWU(t *testing.T) {
 			}
 			if !bytes.Equal(beta, beta2) {
 				t.Errorf("beta: %x, beta2: %x", beta, beta2)
+			}
+		})
+	}
+}
+
+func BenchmarkProveECVRFP256SHA256SWUU(b *testing.B) {
+	v := ECVRFP256SHA256SWU()
+	sk := NewKey(v.Params().ec,
+		hd(b, "2ca1411a41b17b24cc8c3b089cfd033f1920202a6c0de8abb97df1498d50d2c8"))
+
+	m1 := []byte("data1")
+	for _, routines := range []int{1, 2, 4, 8, 16, 32, 64, 128} {
+		b.Run(fmt.Sprintf("%d goroutines", routines), func(b *testing.B) {
+			var wg sync.WaitGroup
+			defer wg.Wait()
+			for i := 0; i < routines; i++ {
+				wg.Add(1)
+				go func() {
+					defer wg.Done()
+					for n := 0; n < b.N/routines; n++ {
+						v.Prove(sk, m1)
+					}
+				}()
 			}
 		})
 	}
