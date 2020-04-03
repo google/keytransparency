@@ -28,6 +28,7 @@ var initonce sync.Once
 
 func initAll() {
 	initP256SHA256TAI()
+	initP256SHA256SWU()
 }
 
 // ECVRFP256SHA256TAI returns a elliptic curve based VRF instantiated with
@@ -35,6 +36,13 @@ func initAll() {
 func ECVRFP256SHA256TAI() VRF {
 	initonce.Do(initAll)
 	return p256SHA256TAI
+}
+
+// ECVRFP256SHA256SWU returns a elliptic curve based VRF instantiated with
+// P256, SHA256, and the Simplified SWU strategy for hashing to the curve.
+func ECVRFP256SHA256SWU() VRF {
+	initonce.Do(initAll)
+	return p256SHA256SWU
 }
 
 // PublicKey holds a public VRF key.
@@ -70,10 +78,10 @@ type ECVRFParams struct {
 	//   G - subgroup of E of large prime order.
 	//   q - prime order of group G, ec.Params().N
 	//   B - generator of group G, ec.Params.{Gx,Gy}
-	n        int // 2n  - length, in octets, of a field element in F.
-	ptLen    int // length, in octets, of an EC point encoded as an octet string
-	qLen     int // length of q in octets. (note that in the typical case, qLen equals 2n or is close to 2n)
-	cofactor int //number of points on E divided by q
+	n        int  // 2n  - length, in octets, of a field element in F.
+	ptLen    int  // length, in octets, of an EC point encoded as an octet string
+	qLen     int  // length of q in octets. (note that in the typical case, qLen equals 2n or is close to 2n)
+	cofactor byte //number of points on E divided by q
 	hash     crypto.Hash
 	aux      ECVRFAux // Auxiliary functions
 }
