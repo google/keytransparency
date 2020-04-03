@@ -44,7 +44,7 @@ func TestVectorsECVRF_P256_SHA256_TAI(t *testing.T) {
 		SK      []byte
 		PK      []byte
 		alpha   []byte
-		wantCtr uint
+		wantCtr byte
 		H       []byte
 		k       []byte
 		U       []byte // k*B
