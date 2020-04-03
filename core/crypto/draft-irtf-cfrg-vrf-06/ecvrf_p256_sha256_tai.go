@@ -102,7 +102,7 @@ var zero big.Int
 // Output:
 // - `H` - hashed value, a finite EC point in G
 // - `ctr` - integer, number of suite byte, attempts to find a valid curve point
-func (a *p256SHA256TAIAux) hashToCurveTryAndIncrement(pub *PublicKey, alpha []byte) (x, y *big.Int, ctr uint) {
+func (a *p256SHA256TAIAux) hashToCurveTryAndIncrement(pub *PublicKey, alpha []byte) (x, y *big.Int, ctr byte) {
 	// 1.  ctr = 0
 	ctr = 0
 	// 2.  PK_string = point_to_string(Y)
@@ -118,7 +118,7 @@ func (a *p256SHA256TAIAux) hashToCurveTryAndIncrement(pub *PublicKey, alpha []by
 	var err error
 	for x == nil || err != nil || (zero.Cmp(x) == 0 && zero.Cmp(y) == 0) {
 		// A.  ctr_string = int_to_string(ctr, 1)
-		ctrString := a.IntToString(ctr, 1)
+		ctrString := []byte{ctr}
 		// B.  hash_string = Hash(suite_string || one_string ||
 		//     PK_string || alpha_string || ctr_string)
 		h.Reset()
