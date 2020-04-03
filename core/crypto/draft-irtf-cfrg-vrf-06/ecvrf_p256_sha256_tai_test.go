@@ -149,7 +149,6 @@ func TestVectorsECVRF_P256_SHA256_TAI(t *testing.T) {
 			piB := new(bytes.Buffer)
 			piB.Write(a.PointToString(Gx, Gy))
 			piB.Write(c.Bytes())
-			t.Logf("n: %v", len(c.Bytes()))
 			piB.Write(s.Bytes())
 
 			if got := piB.Bytes(); !bytes.Equal(got, tc.pi) {
@@ -176,6 +175,7 @@ func TestVectorsECVRF_P256_SHA256_TAI(t *testing.T) {
 			if !bytes.Equal(beta, beta2) {
 				t.Errorf("beta: %x, beta2: %x", beta, beta2)
 			}
+			t.Logf("Fuzz test vector: %x%x%x", tc.SK, tc.pi, tc.alpha)
 		})
 	}
 }
