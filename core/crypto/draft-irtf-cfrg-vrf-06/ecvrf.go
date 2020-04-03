@@ -152,9 +152,9 @@ func (v *ECVRFParams) Prove(sk *PrivateKey, alpha []byte) []byte {
 
 	// 8.  pi_string = point_to_string(Gamma) || int_to_string(c, n) || int_to_string(s, qLen)
 	pi := new(bytes.Buffer)
-	pi.Write(v.aux.PointToString(Gx, Gy)) // ptLen
-	pi.Write(c.Bytes())                   // n
-	pi.Write(s.Bytes())                   // qLen
+	pi.Write(v.aux.PointToString(Gx, Gy))        // ptLen
+	pi.Write(v.aux.IntToString(c, uint(v.n)))    // n
+	pi.Write(v.aux.IntToString(s, uint(v.qLen))) // qLen
 
 	return pi.Bytes()
 }
