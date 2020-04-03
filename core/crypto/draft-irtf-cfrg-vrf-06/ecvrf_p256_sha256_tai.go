@@ -47,8 +47,13 @@ func (a p256SHA256TAIAux) GenerateNonce(sk *PrivateKey, h []byte) (k *big.Int) {
 	return generateNonceRFC6979(a.params.hash, sk, h)
 }
 
+<<<<<<< HEAD
 func (a p256SHA256TAIAux) IntToString(x, xLen uint) []byte {
 	return I2OSP(x, xLen) // RFC8017 section-4.1 (big endian representation)
+=======
+func (a p256SHA256TAIAux) IntToString(x *big.Int, xLen uint) []byte {
+	return I2OSP(x, xLen) // RFC8017 Section 4.1 (big endian representation)
+>>>>>>> 975c953f... IntToString with *big.Int
 }
 
 func (a p256SHA256TAIAux) PointToString(Px, Py *big.Int) []byte {
