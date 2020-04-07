@@ -3,7 +3,21 @@ package vrf
 import (
 	"crypto/elliptic"
 	"math/big"
+	"sync"
 )
+
+var initonce sync.Once
+
+func initAll() {
+	initP256SHA256TAI()
+}
+
+// ECVRF_P256_SHA256_TAI returns a elliptic curve based VRF instantiated with
+// P256, SHA256, and the "Try And Increment" strategy for hashing to the curve.
+func ECVRF_P256_SHA256_TAI() VRF {
+	initonce.Do(initAll)
+	return p256SHA256TAI
+}
 
 // PublicKey holds a public VRF key.
 type PublicKey struct {
