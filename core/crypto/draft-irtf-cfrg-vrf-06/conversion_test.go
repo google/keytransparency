@@ -28,7 +28,7 @@ func TestI2OSP(t *testing.T) {
 					t.Errorf("Panicked: %v, wantPanic %v", r, tc.wantPanic)
 				}
 			}()
-			if got := I2OSP(big.NewInt(tc.x), tc.xLen); !bytes.Equal(got, tc.want) {
+			if got := i2osp(big.NewInt(tc.x), tc.xLen); !bytes.Equal(got, tc.want) {
 				t.Errorf("I2OSP(%v, %v): %v, want %v", tc.x, tc.xLen, got, tc.want)
 			}
 		})

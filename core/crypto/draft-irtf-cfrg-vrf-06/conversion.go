@@ -6,9 +6,9 @@ import (
 	"math/big"
 )
 
-// I2OSP converts a nonnegative integer to an octet string of a specified length.
+// i2osp converts a nonnegative integer to an octet string of a specified length.
 // RFC8017 section-4.1 (big endian representation)
-func I2OSP(x *big.Int, rLen uint) []byte {
+func i2osp(x *big.Int, rLen uint) []byte {
 	// 1.  If x >= 256^rLen, output "integer too large" and stop.
 	one := big.NewInt(1)
 	if x.Cmp(new(big.Int).Lsh(one, rLen*8)) >= 0 {
@@ -40,7 +40,7 @@ func I2OSP(x *big.Int, rLen uint) []byte {
 // elliptic curve point type and instead directly treat the EC point as an
 // octet string per above encoding.  When using such an implementation, the
 // point_to_string function can be treated as the identity function.)
-func SECG1EncodeCompressed(curve elliptic.Curve, x, y *big.Int) []byte {
+func secg1EncodeCompressed(curve elliptic.Curve, x, y *big.Int) []byte {
 	byteLen := (curve.Params().BitSize + 7) >> 3
 	ret := make([]byte, 1+byteLen)
 	ret[0] = 2 // compressed point
@@ -61,7 +61,7 @@ func SECG1EncodeCompressed(curve elliptic.Curve, x, y *big.Int) []byte {
 // http://www.secg.org/sec1-v2.pdf
 // https://tools.ietf.org/html/rfc8032#section-5.1.3
 // Section 4.3.6 of ANSI X9.62.
-func SECG1Decode(curve elliptic.Curve, data []byte) (x, y *big.Int) {
+func secg1Decode(curve elliptic.Curve, data []byte) (x, y *big.Int) {
 	byteLen := (curve.Params().BitSize + 7) >> 3
 	if (data[0] &^ 1) != 2 {
 		return // unrecognized point encoding
