@@ -44,7 +44,7 @@ require (
 	github.com/securego/gosec v0.0.0-20191119104125-df484bfa9e9f // indirect
 	github.com/spf13/cobra v0.0.7
 	github.com/spf13/pflag v1.0.5
-	github.com/spf13/viper v1.6.2
+	github.com/spf13/viper v1.6.3
 	github.com/uber/prototool v1.9.0 // indirect
 	github.com/urfave/cli v1.22.1 // indirect
 	github.com/uudashr/gocognit v1.0.0 // indirect
