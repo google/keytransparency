@@ -45,10 +45,9 @@ func TestSEG1EncodeDecode(t *testing.T) {
 	}
 
 	b := secg1EncodeCompressed(c, Ax, Ay)
-	Bx, By := secg1Decode(c, b)
-
-	if Bx == nil || By == nil {
-		t.Fatalf("SEG1Decode returned nil")
+	Bx, By, err := secg1Decode(c, b)
+	if err != nil {
+		t.Fatal(err)
 	}
 	if Bx.Cmp(Ax) != 0 {
 		t.Fatalf("Bx: %v, want %v", Bx, Ax)

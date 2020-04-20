@@ -3,6 +3,7 @@ package vrf
 import (
 	"bytes"
 	"crypto/elliptic"
+	"errors"
 	"math/big"
 )
 
@@ -10,8 +11,8 @@ import (
 // RFC8017 section-4.1 (big endian representation)
 func i2osp(x *big.Int, rLen uint) []byte {
 	// 1.  If x >= 256^rLen, output "integer too large" and stop.
-	one := big.NewInt(1)
-	if x.Cmp(new(big.Int).Lsh(one, rLen*8)) >= 0 {
+	upperBound := new(big.Int).Lsh(big.NewInt(1), rLen*8)
+	if x.Cmp(upperBound) >= 0 {
 		panic("integer too large")
 	}
 	// 2.  Write the integer x in its unique rLen-digit representation in base 256:
@@ -61,13 +62,16 @@ func secg1EncodeCompressed(curve elliptic.Curve, x, y *big.Int) []byte {
 // http://www.secg.org/sec1-v2.pdf
 // https://tools.ietf.org/html/rfc8032#section-5.1.3
 // Section 4.3.6 of ANSI X9.62.
-func secg1Decode(curve elliptic.Curve, data []byte) (x, y *big.Int) {
+
+var errInvalidPoint = errors.New("invalid point")
+
+func secg1Decode(curve elliptic.Curve, data []byte) (x, y *big.Int, err error) {
 	byteLen := (curve.Params().BitSize + 7) >> 3
 	if (data[0] &^ 1) != 2 {
-		return // unrecognized point encoding
+		return nil, nil, errors.New("unrecognized point encoding")
 	}
 	if len(data) != 1+byteLen {
-		return
+		return nil, nil, errors.New("invalid length for curve")
 	}
 
 	// Based on Routine 2.2.4 in NIST Mathematical routines paper
@@ -77,19 +81,18 @@ func secg1Decode(curve elliptic.Curve, data []byte) (x, y *big.Int) {
 	sqrt := defaultSqrt
 	ty := sqrt(y2, params.P)
 	if ty == nil {
-		return // "y^2" is not a square: invalid point
+		return nil, nil, errInvalidPoint // "y^2" is not a square
 	}
 	var y2c big.Int
 	y2c.Mul(ty, ty).Mod(&y2c, params.P)
 	if y2c.Cmp(y2) != 0 {
-		return // sqrt(y2)^2 != y2: invalid point
+		return nil, nil, errInvalidPoint // sqrt(y2)^2 != y2: invalid point
 	}
 	if ty.Bit(0) != uint(data[0]&1) {
 		ty.Sub(params.P, ty)
 	}
 
-	x, y = tx, ty // valid point: return it
-	return
+	return tx, ty, nil // valid point: return it
 }
 
 // Use the curve equation to calculate y² given x.
@@ -102,10 +105,10 @@ func y2(curve *elliptic.CurveParams, x *big.Int) *big.Int {
 	threeX := new(big.Int).Lsh(x, 1)
 	threeX.Add(threeX, x)
 
-	x3.Sub(x3, threeX)
-	x3.Add(x3, curve.B)
-	x3.Mod(x3, curve.P)
-	return x3
+	y2 := new(big.Int).Sub(x3, threeX)
+	y2.Add(y2, curve.B)
+	y2.Mod(y2, curve.P)
+	return y2
 }
 
 func defaultSqrt(x, p *big.Int) *big.Int {
