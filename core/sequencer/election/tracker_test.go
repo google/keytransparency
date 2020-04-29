@@ -20,7 +20,7 @@ import (
 	"time"
 
 	"github.com/google/keytransparency/internal/forcemaster"
-	"github.com/google/trillian/monitoring/prometheus"
+	"github.com/google/trillian/monitoring"
 )
 
 // Ensure that mastership continues to work after resignTime.
@@ -30,7 +30,7 @@ func TestForceMaster(t *testing.T) {
 	resignTime := 1 * time.Hour
 	res := "test resource"
 
-	mt := NewTracker(forcemaster.Factory{}, resignTime, prometheus.MetricFactory{})
+	mt := NewTracker(forcemaster.Factory{}, resignTime, monitoring.InertMetricFactory{})
 	go mt.Run(ctx)
 	mt.AddResource(res)
 	time.Sleep(time.Millisecond) // Wait to acquire mastership.
