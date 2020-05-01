@@ -25,9 +25,9 @@ import (
 	"github.com/google/tink/go/testutil"
 	"github.com/google/trillian/crypto/keys/pem"
 
-	commonpb "github.com/google/tink/proto/common_go_proto"
-	ecdsapb "github.com/google/tink/proto/ecdsa_go_proto"
-	tinkpb "github.com/google/tink/proto/tink_go_proto"
+	commonpb "github.com/google/tink/go/proto/common_go_proto"
+	ecdsapb "github.com/google/tink/go/proto/ecdsa_go_proto"
+	tinkpb "github.com/google/tink/go/proto/tink_go_proto"
 )
 
 const (
