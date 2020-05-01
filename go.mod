@@ -4,7 +4,7 @@ go 1.12
 
 require (
 	cloud.google.com/go v0.49.0 // indirect
-	cloud.google.com/go/spanner v1.1.0 // indirect
+	cloud.google.com/go/spanner v1.1.0
 	github.com/Masterminds/semver v1.5.0 // indirect
 	github.com/Masterminds/sprig v2.22.0+incompatible // indirect
 	github.com/VividCortex/mysqlerr v0.0.0-20170204212430-6c6b55f8796f
