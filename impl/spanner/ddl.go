@@ -14,11 +14,19 @@
 
 package spanner
 
-import "testing"
+import "cloud.google.com/go/spanner/spansql"
 
-func TestDDL(t *testing.T) {
-	_, err := ReadDDL()
+//go:generate sh gen.sh
+
+// ReadDDL returns a list of DDL statements for the KT database schema.
+func ReadDDL() ([]string, error) {
+	ddl, err := spansql.ParseDDL(ddlString)
 	if err != nil {
-		t.Fatal(err)
+		return nil, err
 	}
+	stmts := make([]string, 0, len(ddl.List))
+	for _, s := range ddl.List {
+		stmts = append(stmts, s.SQL())
+	}
+	return stmts, nil
 }
