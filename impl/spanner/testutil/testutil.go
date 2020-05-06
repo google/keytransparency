@@ -18,7 +18,7 @@ package testutil
 import (
 	"context"
 	"fmt"
-	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -31,31 +31,21 @@ import (
 	databasepb "google.golang.org/genproto/googleapis/spanner/admin/database/v1"
 )
 
-var dbCount struct {
-	sync.Mutex
-	count int
-}
+var dbCount uint32
 
 func uniqueDBName() string {
-	dbCount.Lock()
-	database := fmt.Sprintf("fake-db%d", dbCount.count)
-	dbCount.count++
-	dbCount.Unlock()
-	const instance = "fake-instance"
 	const project = "fake-proj"
+	const instance = "fake-instance"
+	database := fmt.Sprintf("fake-db-%d", atomic.AddUint32(&dbCount, 1))
 	return fmt.Sprintf("projects/%s/instances/%s/databases/%s", project, instance, database)
 }
 
+// CreateDatabse returns a connection to a 1 time use database with the given DDL schema.
 func CreateDatabase(ctx context.Context, t testing.TB, ddlStatements []string) (*spanner.Client, func()) {
-	dbName, client, adminClient, cleanup := client(ctx, t)
-	updateDDL(ctx, t, dbName, adminClient, ddlStatements...)
-	return client, cleanup
-}
-
-func client(ctx context.Context, t testing.TB) (string, *spanner.Client, *database.DatabaseAdminClient, func()) {
 	dbName := uniqueDBName()
 	client, adminClient, cleanup := inMemClient(ctx, t, dbName)
-	return dbName, client, adminClient, cleanup
+	updateDDL(ctx, t, dbName, adminClient, ddlStatements...)
+	return client, cleanup
 }
 
 func inMemClient(ctx context.Context, t testing.TB, dbName string) (*spanner.Client, *database.DatabaseAdminClient, func()) {
@@ -78,23 +68,26 @@ func inMemClient(ctx context.Context, t testing.TB, dbName string) (*spanner.Cli
 	}
 	client, err := spanner.NewClient(ctx, dbName, option.WithGRPCConn(conn))
 	if err != nil {
+		conn.Close()
 		srv.Close()
 		t.Fatalf("Connecting to in-memory fake: %v", err)
 	}
 	adminClient, err := database.NewDatabaseAdminClient(ctx, option.WithGRPCConn(conn))
 	if err != nil {
+		client.Close()
+		conn.Close()
 		srv.Close()
 		t.Fatalf("Connecting to in-memory fake DB admin: %v", err)
 	}
 	return client, adminClient, func() {
-		client.Close()
 		adminClient.Close()
+		client.Close()
 		conn.Close()
 		srv.Close()
 	}
 }
 
-func updateDDL(ctx context.Context, t testing.TB, dbName string, adminClient *database.DatabaseAdminClient, statements ...string) error {
+func updateDDL(ctx context.Context, t testing.TB, dbName string, adminClient *database.DatabaseAdminClient, statements ...string) {
 	t.Helper()
 	t.Logf("DDL update: %q", statements)
 	op, err := adminClient.UpdateDatabaseDdl(ctx, &databasepb.UpdateDatabaseDdlRequest{
@@ -104,5 +97,7 @@ func updateDDL(ctx context.Context, t testing.TB, dbName string, adminClient *da
 	if err != nil {
 		t.Fatalf("Starting DDL update: %v", err)
 	}
-	return op.Wait(ctx)
+	if err := op.Wait(ctx); err != nil {
+		t.Fatal(err)
+	}
 }
