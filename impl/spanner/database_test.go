@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package ktspanner provides functions for interacting with cloudspanner.
-package ktspanner
+// Package spanner provides functions for interacting with cloudspanner.
+package spanner
 
 import (
 	"context"
