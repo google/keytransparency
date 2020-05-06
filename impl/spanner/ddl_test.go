@@ -14,19 +14,11 @@
 
 package ktspanner
 
-import (
-	"io/ioutil"
-	"testing"
-
-	"cloud.google.com/go/spanner/spansql"
-)
+import "testing"
 
 func TestDDL(t *testing.T) {
-	s, err := ioutil.ReadFile("./keytransparency.ddl")
+	_, err := ReadDDL()
 	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := spansql.ParseDDL(string(s)); err != nil {
 		t.Fatal(err)
 	}
 }
