@@ -17,7 +17,6 @@ package testutil
 
 import (
 	"context"
-	"flag"
 	"fmt"
 	"sync"
 	"testing"
@@ -31,8 +30,6 @@ import (
 	database "cloud.google.com/go/spanner/admin/database/apiv1"
 	databasepb "google.golang.org/genproto/googleapis/spanner/admin/database/v1"
 )
-
-var testDBFlag = flag.String("test_db", "", "Fully-qualified database name to test against; empty means use an in-memory fake.")
 
 var dbCount struct {
 	sync.Mutex
@@ -56,10 +53,6 @@ func CreateDatabase(ctx context.Context, t testing.TB, ddlStatements []string) (
 }
 
 func client(ctx context.Context, t testing.TB) (string, *spanner.Client, *database.DatabaseAdminClient, func()) {
-	if dbName := *testDBFlag; dbName != "" {
-		client, adminClient, cleanup := realClient(ctx, t, dbName)
-		return dbName, client, adminClient, cleanup
-	}
 	dbName := uniqueDBName()
 	client, adminClient, cleanup := inMemClient(ctx, t, dbName)
 	return dbName, client, adminClient, cleanup
@@ -99,22 +92,6 @@ func inMemClient(ctx context.Context, t testing.TB, dbName string) (*spanner.Cli
 		conn.Close()
 		srv.Close()
 	}
-}
-
-func realClient(ctx context.Context, t testing.TB, dbName string) (*spanner.Client, *database.DatabaseAdminClient, func()) {
-	t.Logf("Using real Spanner DB: %s", dbName)
-	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-	client, err := spanner.NewClient(cctx, dbName)
-	if err != nil {
-		t.Fatalf("Connecting to %s: %v", dbName, err)
-	}
-	adminClient, err := database.NewDatabaseAdminClient(ctx)
-	if err != nil {
-		client.Close()
-		t.Fatalf("Connecting DB admin client: %v", err)
-	}
-	return client, adminClient, func() { client.Close(); adminClient.Close() }
 }
 
 func updateDDL(ctx context.Context, t testing.TB, dbName string, adminClient *database.DatabaseAdminClient, statements ...string) error {
