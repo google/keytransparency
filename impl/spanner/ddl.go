@@ -20,7 +20,7 @@ import "cloud.google.com/go/spanner/spansql"
 
 // ReadDDL returns a list of DDL statements for the KT database schema.
 func ReadDDL() ([]string, error) {
-	ddl, err := spansql.ParseDDL(ddlString)
+	ddl, err := spansql.ParseDDL("keytransparency.ddl.go", ddlString)
 	if err != nil {
 		return nil, err
 	}
