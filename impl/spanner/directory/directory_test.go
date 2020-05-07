@@ -31,6 +31,9 @@ import (
 	tpb "github.com/google/trillian"
 )
 
+// Verify that Table implements the directory.Storage interface.
+var _ directory.Storage = &Table{}
+
 func NewForTest(ctx context.Context, t *testing.T) (directory.Storage, func(context.Context)) {
 	t.Helper()
 	ddl, err := ktspanner.ReadDDL()

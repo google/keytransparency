@@ -34,9 +34,30 @@ import (
 
 const table = "Directories"
 
-var directoriesCols = []string{"DirectoryID", "Map", "Log", "VRFPublicKey", "VRFPrivateKey", "MinInterval", "MaxInterval", "Deleted"}
+// dirTable represents one row in the Directories table in Spanner.
+type dirTable struct {
+	DirectoryID   string
+	Map           []byte
+	Log           []byte
+	VRFPublicKey  []byte
+	VRFPrivateKey []byte
+	MinInterval   int64
+	MaxInterval   int64
+	Deleted       bool
+	DeleteTime    time.Time
+}
 
-var _ directory.Storage = &Table{}
+var dirColumns = []string{
+	"DirectoryID",
+	"Map",
+	"Log",
+	"VRFPublicKey",
+	"VRFPrivateKey",
+	"MinInterval",
+	"MaxInterval",
+	"Deleted",
+	"DeleteTime",
+}
 
 // Table gives access to the directory table.
 type Table struct {
@@ -48,25 +69,13 @@ func New(db *ktspanner.Database) *Table {
 	return &Table{db: db}
 }
 
-// spannerDirectory represents one row in the Directories table in spanner.
-type spannerDirectory struct {
-	DirectoryID   string
-	Map           []byte
-	Log           []byte
-	VRFPublicKey  []byte
-	VRFPrivateKey []byte
-	MinInterval   int64
-	MaxInterval   int64
-	Deleted       bool
-}
-
-func readRow(row *spanner.Row) (*directory.Directory, error) {
-	var r spannerDirectory
+func unpackRow(row *spanner.Row) (*directory.Directory, error) {
+	var r dirTable
 	if err := row.ToStruct(&r); err != nil {
 		return nil, err
 	}
 
-	vrfPriv, err := unwrapAnyProto(r.VRFPrivateKey)
+	vrfPriv, err := unmarshalAny(r.VRFPrivateKey)
 	if err != nil {
 		return nil, err
 	}
@@ -92,24 +101,26 @@ func readRow(row *spanner.Row) (*directory.Directory, error) {
 	}, nil
 }
 
-// List returns all Directories. showDeleted indicates whether deleted directories should be returned.
-func (t *Table) List(ctx context.Context, showDeleted bool) ([]*directory.Directory, error) {
+// List returns all Directories. Includes deleted directories if deleted == True.
+func (t *Table) List(ctx context.Context, deleted bool) ([]*directory.Directory, error) {
 	client, err := t.db.Get(ctx)
 	if err != nil {
 		return nil, err
 	}
-	rtx := client.Single()
-	defer rtx.Close()
+
+	stmt := spanner.NewStatement("SELECT * FROM Directories WHERE Deleted = FALSE")
+	if deleted {
+		stmt = spanner.NewStatement("SELECT * FROM Directories")
+	}
 
 	ret := []*directory.Directory{}
-	err = rtx.Read(ctx, table, spanner.AllKeys(), directoriesCols).Do(
+	rtx := client.Single()
+	defer rtx.Close()
+	err = rtx.Query(ctx, stmt).Do(
 		func(r *spanner.Row) error {
-			d, err := readRow(r)
+			d, err := unpackRow(r)
 			if err != nil {
 				return err
-			}
-			if d.Deleted && !showDeleted {
-				return nil
 			}
 			ret = append(ret, d)
 			return nil
@@ -124,11 +135,11 @@ func (t *Table) Write(ctx context.Context, dir *directory.Directory) error {
 		return err
 	}
 	// Prepare data.
-	anyPB, err := ptypes.MarshalAny(dir.VRFPriv)
+	keyPB, err := ptypes.MarshalAny(dir.VRFPriv)
 	if err != nil {
 		return err
 	}
-	anyData, err := proto.Marshal(anyPB)
+	keyData, err := proto.Marshal(keyPB)
 	if err != nil {
 		return err
 	}
@@ -142,15 +153,14 @@ func (t *Table) Write(ctx context.Context, dir *directory.Directory) error {
 		return err
 	}
 
-	m, err := spanner.InsertStruct(table, spannerDirectory{
+	m, err := spanner.InsertStruct(table, dirTable{
 		DirectoryID:   dir.DirectoryID,
 		Map:           tmap,
 		Log:           tlog,
 		VRFPublicKey:  dir.VRF.GetDer(),
-		VRFPrivateKey: anyData,
+		VRFPrivateKey: keyData,
 		MinInterval:   dir.MinInterval.Nanoseconds(),
 		MaxInterval:   dir.MaxInterval.Nanoseconds(),
-		Deleted:       false,
 	})
 	if err != nil {
 		return err
@@ -160,7 +170,7 @@ func (t *Table) Write(ctx context.Context, dir *directory.Directory) error {
 	return err
 }
 
-// Read retriaves a directory from storage. Returns status.NotFound if the row is deleted.
+// Read retrieves a directory from storage. Returns status.NotFound if the row is deleted.
 func (t *Table) Read(ctx context.Context, directoryID string, showDeleted bool) (*directory.Directory, error) {
 	client, err := t.db.Get(ctx)
 	if err != nil {
@@ -168,11 +178,11 @@ func (t *Table) Read(ctx context.Context, directoryID string, showDeleted bool) 
 	}
 	rtx := client.Single()
 	defer rtx.Close()
-	row, err := rtx.ReadRow(ctx, table, spanner.Key{directoryID}, directoriesCols)
+	row, err := rtx.ReadRow(ctx, table, spanner.Key{directoryID}, dirColumns)
 	if err != nil {
 		return nil, err
 	}
-	dir, err := readRow(row)
+	dir, err := unpackRow(row)
 	if err != nil {
 		return nil, err
 	}
@@ -182,17 +192,17 @@ func (t *Table) Read(ctx context.Context, directoryID string, showDeleted bool) 
 	return dir, nil
 }
 
-// unwrapAnyProto returns the proto object seralized inside a serialized any.Any
-func unwrapAnyProto(anyData []byte) (proto.Message, error) {
+// unmarshalAny returns the proto object seralized inside a serialized any.Any
+func unmarshalAny(anyData []byte) (proto.Message, error) {
 	var anyPB any.Any
 	if err := proto.Unmarshal(anyData, &anyPB); err != nil {
 		return nil, err
 	}
-	var privKey ptypes.DynamicAny
-	if err := ptypes.UnmarshalAny(&anyPB, &privKey); err != nil {
+	var dynamicAny ptypes.DynamicAny
+	if err := ptypes.UnmarshalAny(&anyPB, &dynamicAny); err != nil {
 		return nil, err
 	}
-	return privKey.Message, nil
+	return dynamicAny.Message, nil
 }
 
 // SetDelete deletes or undeletes a directory.
