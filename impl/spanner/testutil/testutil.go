@@ -81,7 +81,7 @@ func inMemClient(ctx context.Context, t testing.TB, dbName string) (*spanner.Cli
 
 func updateDDL(ctx context.Context, t testing.TB, dbName string, adminClient *database.DatabaseAdminClient, statements ...string) {
 	t.Helper()
-	t.Logf("DDL update: %q", statements)
+	t.Logf("DDL update: %s", statements)
 	op, err := adminClient.UpdateDatabaseDdl(ctx, &databasepb.UpdateDatabaseDdlRequest{
 		Database:   dbName,
 		Statements: statements,

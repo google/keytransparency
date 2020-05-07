@@ -18,7 +18,7 @@ CREATE TABLE Directories (
 ) PRIMARY KEY (DirectoryID);
 
 -- Sharded Logs
-CREATE TABLE MutationLogs(
+CREATE TABLE LogStatus(
   DirectoryID          STRING(100) NOT NULL,
   LogID                INT64 NOT NULL,
   WriteToLog           BOOL NOT NULL,
@@ -33,11 +33,11 @@ CREATE TABLE Batches(
 ) PRIMARY KEY (DirectoryID, Revision),
   INTERLEAVE IN PARENT Directories ON DELETE CASCADE;
 
--- UnsequencedMutations
-CREATE TABLE UnsequencedMutations (
+-- Mutations
+CREATE TABLE Mutations (
   DirectoryID           STRING(100) NOT NULL,
   LogID                 INT64 NOT NULL,
-  Timestamp             INT64 NOT NULL,
+  Timestamp             TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp=true),
   LocalID               INT64 NOT NULL,
   Mutation              BYTES(MAX) NOT NULL,
 ) PRIMARY KEY(DirectoryID, LogID, Timestamp, LocalID),
