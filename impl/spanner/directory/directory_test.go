@@ -16,6 +16,7 @@ package directory
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -38,12 +39,10 @@ func NewForTest(ctx context.Context, t *testing.T) (directory.Storage, func(cont
 	t.Helper()
 	ddl, err := ktspanner.ReadDDL()
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("ReadDDL: %v", err)
 	}
 	client, cleanup := testutil.CreateDatabase(ctx, t, ddl)
-	s := New(client)
-	done := func(_ context.Context) { cleanup() }
-	return s, done
+	return New(client), func(_ context.Context) { cleanup() }
 }
 
 func TestList(t *testing.T) {
@@ -75,41 +74,33 @@ func TestList(t *testing.T) {
 	for _, d := range directories {
 		if err := admin.Write(ctx, d); err != nil {
 			t.Errorf("Write(): %v", err)
-			continue
 		}
 		if err := admin.SetDelete(ctx, d.DirectoryID, d.Deleted); err != nil {
 			t.Errorf("SetDelete(%v, %v): %v", d.DirectoryID, d.Deleted, err)
-			continue
 		}
 	}
 
-	for _, tc := range []struct {
+	for i, tc := range []struct {
 		readDeleted bool
 		want        []*directory.Directory
 	}{
-		{
-			readDeleted: true,
-			want:        directories,
-		},
-		{
-			readDeleted: false,
-			want:        []*directory.Directory{directories[0]},
-		},
+		{readDeleted: true, want: directories},
+		{readDeleted: false, want: directories[:1]},
 	} {
-		directories, err := admin.List(ctx, tc.readDeleted)
-		if err != nil {
-			t.Errorf("List(): %v", err)
-			continue
-		}
-
-		if got, want := len(directories), len(tc.want); got != want {
-			t.Errorf("Got %v directories, want %v", got, want)
-		}
-		for i, d := range directories {
-			if got, want := d, tc.want[i]; !cmp.Equal(got, want, cmp.Comparer(proto.Equal)) {
-				t.Errorf("Directory[%v]: %v, want %v. Diff: %v", i, got, want, cmp.Diff(want, got))
+		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
+			directories, err := admin.List(ctx, tc.readDeleted)
+			if err != nil {
+				t.Fatalf("List(): %v", err)
 			}
-		}
+			if got, want := len(directories), len(tc.want); got != want {
+				t.Fatalf("Got %v directories, want %v", got, want)
+			}
+			for i, d := range directories {
+				if got, want := d, tc.want[i]; !cmp.Equal(got, want, cmp.Comparer(proto.Equal)) {
+					t.Errorf("Directory[%v]: %v, want %v. Diff: %v", i, got, want, cmp.Diff(want, got))
+				}
+			}
+		})
 	}
 }
 
@@ -129,52 +120,26 @@ func TestWriteReadDelete(t *testing.T) {
 	}
 
 	for _, tc := range []struct {
-		desc                 string
-		write                bool
-		wantWriteErr         bool
-		setDelete, isDeleted bool
-		readDeleted          bool
-		wantReadCode         codes.Code
+		desc         string
+		write        bool
+		wantWriteErr bool
+		setDelete    bool
+		isDeleted    bool
+		readDeleted  bool
+		wantReadCode codes.Code
 	}{
-		{
-			desc:         "NotFound",
-			wantReadCode: codes.NotFound,
-		},
-		{
-			desc:  "Success",
-			write: true,
-		},
-		{
-			desc:         "Duplicate DirectoryID",
-			write:        true,
-			wantWriteErr: true,
-		},
-		{
-			desc:         "Delete",
-			setDelete:    true,
-			isDeleted:    true,
-			readDeleted:  false,
-			wantReadCode: codes.NotFound,
-		},
-		{
-			desc:        "Read deleted",
-			setDelete:   true,
-			isDeleted:   true,
-			readDeleted: true,
-		},
-		{
-			desc:        "Undelete",
-			setDelete:   true,
-			isDeleted:   false,
-			readDeleted: false,
-		},
+		{desc: "NotFound", wantReadCode: codes.NotFound},
+		{desc: "Success", write: true},
+		{desc: "Duplicate DirectoryID", write: true, wantWriteErr: true},
+		{desc: "Delete", setDelete: true, isDeleted: true, readDeleted: false, wantReadCode: codes.NotFound},
+		{desc: "Read deleted", setDelete: true, isDeleted: true, readDeleted: true},
+		{desc: "Undelete", setDelete: true, isDeleted: false, readDeleted: false},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
 			if tc.write {
 				err := admin.Write(ctx, d)
 				if got, want := err != nil, tc.wantWriteErr; got != want {
-					t.Errorf("Write(): %v, want err: %v", err, want)
-					return
+					t.Fatalf("Write(): %v, want err: %v", err, want)
 				}
 				if err != nil {
 					return
@@ -182,14 +147,13 @@ func TestWriteReadDelete(t *testing.T) {
 			}
 			if tc.setDelete {
 				if err := admin.SetDelete(ctx, d.DirectoryID, tc.isDeleted); err != nil {
-					t.Errorf("SetDelete(%v, %v): %v", d.DirectoryID, tc.isDeleted, err)
-					return
+					t.Fatalf("SetDelete(%v, %v): %v", d.DirectoryID, tc.isDeleted, err)
 				}
 			}
 
 			directory, err := admin.Read(ctx, d.DirectoryID, tc.readDeleted)
 			if got, want := status.Code(err), tc.wantReadCode; got != want {
-				t.Errorf("Read(): %v, want err: %v", err, want)
+				t.Errorf("Read(): %v, want code: %v", err, want)
 			}
 			if err != nil {
 				return
@@ -207,14 +171,9 @@ func TestDelete(t *testing.T) {
 	s, cleanup := NewForTest(ctx, t)
 	defer cleanup(ctx)
 
-	for _, tc := range []struct {
-		directoryID string
-	}{
-		{directoryID: "test"},
-		{directoryID: ""},
-	} {
+	for _, dirID := range []string{"test", ""} {
 		d := &directory.Directory{
-			DirectoryID: tc.directoryID,
+			DirectoryID: dirID,
 			Map:         &tpb.Tree{TreeId: 1},
 			Log:         &tpb.Tree{TreeId: 2},
 			VRF:         &keyspb.PublicKey{Der: []byte("pubkeybytes")},
@@ -225,14 +184,14 @@ func TestDelete(t *testing.T) {
 		if err := s.Write(ctx, d); err != nil {
 			t.Errorf("Write(): %v", err)
 		}
-		if err := s.Delete(ctx, tc.directoryID); err != nil {
+		if err := s.Delete(ctx, dirID); err != nil {
 			t.Errorf("Delete(): %v", err)
 		}
-		_, err := s.Read(ctx, tc.directoryID, true)
+		_, err := s.Read(ctx, dirID, true)
 		if got, want := status.Code(err), codes.NotFound; got != want {
 			t.Errorf("Read(): %v, wanted %v", got, want)
 		}
-		_, err = s.Read(ctx, tc.directoryID, false)
+		_, err = s.Read(ctx, dirID, false)
 		if got, want := status.Code(err), codes.NotFound; got != want {
 			t.Errorf("Read(): %v, wanted %v", got, want)
 		}

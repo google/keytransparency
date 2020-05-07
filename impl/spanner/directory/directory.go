@@ -33,8 +33,8 @@ import (
 
 const table = "Directories"
 
-// dirTable represents one row in the Directories table in Spanner.
-type dirTable struct {
+// dirRow represents one row in the Directories table in Spanner.
+type dirRow struct {
 	DirectoryID   string
 	Map           []byte
 	Log           []byte
@@ -69,7 +69,7 @@ func New(client *spanner.Client) *Table {
 }
 
 func unpackRow(row *spanner.Row) (*directory.Directory, error) {
-	var r dirTable
+	var r dirRow
 	if err := row.ToStruct(&r); err != nil {
 		return nil, err
 	}
@@ -100,7 +100,7 @@ func unpackRow(row *spanner.Row) (*directory.Directory, error) {
 	}, nil
 }
 
-// List returns all Directories. Includes deleted directories if deleted == True.
+// List returns all Directories. Includes deleted directories if deleted == true.
 func (t *Table) List(ctx context.Context, deleted bool) ([]*directory.Directory, error) {
 	stmt := spanner.NewStatement("SELECT * FROM Directories WHERE Deleted = FALSE")
 	if deleted {
@@ -143,7 +143,7 @@ func (t *Table) Write(ctx context.Context, dir *directory.Directory) error {
 		return err
 	}
 
-	m, err := spanner.InsertStruct(table, dirTable{
+	m, err := spanner.InsertStruct(table, dirRow{
 		DirectoryID:   dir.DirectoryID,
 		Map:           tmap,
 		Log:           tlog,
@@ -178,7 +178,7 @@ func (t *Table) Read(ctx context.Context, directoryID string, showDeleted bool) 
 	return dir, nil
 }
 
-// unmarshalAny returns the proto object seralized inside a serialized any.Any
+// unmarshalAny returns the proto object seralized inside a serialized any.Any.
 func unmarshalAny(anyData []byte) (proto.Message, error) {
 	var anyPB any.Any
 	if err := proto.Unmarshal(anyData, &anyPB); err != nil {
@@ -202,6 +202,8 @@ func (t *Table) SetDelete(ctx context.Context, directoryID string, isDeleted boo
 
 // Delete permanently deletes a directory.
 func (t *Table) Delete(ctx context.Context, directoryID string) error {
+	// This can be an extremely large call due to table interleaving.
+	// TODO: Find a different schema that allows incremental deletes.
 	_, err := t.client.Apply(ctx, []*spanner.Mutation{
 		spanner.Delete(table, spanner.Key{directoryID}),
 	})
