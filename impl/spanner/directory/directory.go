@@ -28,7 +28,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	ktspanner "github.com/google/keytransparency/impl/spanner"
 	tpb "github.com/google/trillian"
 )
 
@@ -61,12 +60,12 @@ var dirColumns = []string{
 
 // Table gives access to the directory table.
 type Table struct {
-	db *ktspanner.Database
+	client *spanner.Client
 }
 
 // New returns a directory.Storage client backed by Spanner.
-func New(db *ktspanner.Database) *Table {
-	return &Table{db: db}
+func New(client *spanner.Client) *Table {
+	return &Table{client: client}
 }
 
 func unpackRow(row *spanner.Row) (*directory.Directory, error) {
@@ -103,20 +102,15 @@ func unpackRow(row *spanner.Row) (*directory.Directory, error) {
 
 // List returns all Directories. Includes deleted directories if deleted == True.
 func (t *Table) List(ctx context.Context, deleted bool) ([]*directory.Directory, error) {
-	client, err := t.db.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-
 	stmt := spanner.NewStatement("SELECT * FROM Directories WHERE Deleted = FALSE")
 	if deleted {
 		stmt = spanner.NewStatement("SELECT * FROM Directories")
 	}
 
 	ret := []*directory.Directory{}
-	rtx := client.Single()
+	rtx := t.client.Single()
 	defer rtx.Close()
-	err = rtx.Query(ctx, stmt).Do(
+	err := rtx.Query(ctx, stmt).Do(
 		func(r *spanner.Row) error {
 			d, err := unpackRow(r)
 			if err != nil {
@@ -130,10 +124,6 @@ func (t *Table) List(ctx context.Context, deleted bool) ([]*directory.Directory,
 
 // Write creates a new Directory.
 func (t *Table) Write(ctx context.Context, dir *directory.Directory) error {
-	client, err := t.db.Get(ctx)
-	if err != nil {
-		return err
-	}
 	// Prepare data.
 	keyPB, err := ptypes.MarshalAny(dir.VRFPriv)
 	if err != nil {
@@ -166,17 +156,13 @@ func (t *Table) Write(ctx context.Context, dir *directory.Directory) error {
 		return err
 	}
 
-	_, err = client.Apply(ctx, []*spanner.Mutation{m})
+	_, err = t.client.Apply(ctx, []*spanner.Mutation{m})
 	return err
 }
 
 // Read retrieves a directory from storage. Returns status.NotFound if the row is deleted.
 func (t *Table) Read(ctx context.Context, directoryID string, showDeleted bool) (*directory.Directory, error) {
-	client, err := t.db.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	rtx := client.Single()
+	rtx := t.client.Single()
 	defer rtx.Close()
 	row, err := rtx.ReadRow(ctx, table, spanner.Key{directoryID}, dirColumns)
 	if err != nil {
@@ -207,11 +193,7 @@ func unmarshalAny(anyData []byte) (proto.Message, error) {
 
 // SetDelete deletes or undeletes a directory.
 func (t *Table) SetDelete(ctx context.Context, directoryID string, isDeleted bool) error {
-	client, err := t.db.Get(ctx)
-	if err != nil {
-		return err
-	}
-	_, err = client.Apply(ctx, []*spanner.Mutation{
+	_, err := t.client.Apply(ctx, []*spanner.Mutation{
 		spanner.Update(table, []string{"DirectoryID", "Deleted", "DeleteTime"},
 			[]interface{}{directoryID, isDeleted, time.Now()}),
 	})
@@ -220,11 +202,7 @@ func (t *Table) SetDelete(ctx context.Context, directoryID string, isDeleted boo
 
 // Delete permanently deletes a directory.
 func (t *Table) Delete(ctx context.Context, directoryID string) error {
-	client, err := t.db.Get(ctx)
-	if err != nil {
-		return err
-	}
-	_, err = client.Apply(ctx, []*spanner.Mutation{
+	_, err := t.client.Apply(ctx, []*spanner.Mutation{
 		spanner.Delete(table, spanner.Key{directoryID}),
 	})
 	return err

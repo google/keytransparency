@@ -41,7 +41,7 @@ func NewForTest(ctx context.Context, t *testing.T) (directory.Storage, func(cont
 		t.Fatal(err)
 	}
 	client, cleanup := testutil.CreateDatabase(ctx, t, ddl)
-	s := New(ktspanner.NewForTest(client))
+	s := New(client)
 	done := func(_ context.Context) { cleanup() }
 	return s, done
 }
