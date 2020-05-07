@@ -20,16 +20,13 @@ import (
 	"testing"
 )
 
-func TestGet(t *testing.T) {
+func TestNew(t *testing.T) {
 	ctx := context.Background()
 	dbName := "projects/your-project-id/instances/your-instance-id/databases/your-database-id"
 	db, err := New(ctx, dbName)
 	if err != nil {
 		t.Fatal(err)
 	}
-	client, err := db.Get(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
+	client := db.Get()
 	defer client.Close()
 }

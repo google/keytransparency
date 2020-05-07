@@ -18,7 +18,6 @@ package spanner
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	"cloud.google.com/go/spanner"
 )
@@ -26,43 +25,24 @@ import (
 var ErrNotInitializedYet = errors.New("not initialized yet")
 
 type Database struct {
-	name     string
-	client   *spanner.Client
-	initChan chan struct{}
+	client *spanner.Client
 }
 
 // New returns a non-blocking database handle
 func New(ctx context.Context, name string) (*Database, error) {
-	d := &Database{name: name, initChan: make(chan struct{})}
-	return d, d.initialize(ctx)
+	client, err := spanner.NewClient(ctx, name)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Database{client: client}, nil
 }
 
 func NewForTest(client *spanner.Client) *Database {
-	d := &Database{client: client, initChan: make(chan struct{})}
-	close(d.initChan)
+	d := &Database{client: client}
 	return d
 }
 
-func (d *Database) initialize(ctx context.Context) error {
-	client, err := spanner.NewClient(ctx, d.name)
-	if err != nil {
-		return err
-	}
-	d.client = client
-	close(d.initChan)
-	return nil
-}
-
-func (d *Database) Get(ctx context.Context) (*spanner.Client, error) {
-	select {
-	case <-d.initChan:
-		return d.client, nil
-	case <-ctx.Done():
-		return nil, ErrNotInitializedYet
-	}
-}
-
-// String describes the Database handle.
-func (d *Database) String() string {
-	return fmt.Sprintf("spanner.Database(name: %q)", d.name)
+func (d *Database) Get() *spanner.Client {
+	return d.client
 }
