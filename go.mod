@@ -3,7 +3,7 @@ module github.com/google/keytransparency
 go 1.12
 
 require (
-	cloud.google.com/go/spanner v1.2.0
+	cloud.google.com/go/spanner v1.5.1
 	github.com/Masterminds/semver v1.5.0 // indirect
 	github.com/Masterminds/sprig v2.22.0+incompatible // indirect
 	github.com/VividCortex/mysqlerr v0.0.0-20170204212430-6c6b55f8796f
