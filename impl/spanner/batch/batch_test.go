@@ -18,18 +18,13 @@ import (
 	"context"
 	"testing"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/google/go-cmp/cmp"
 	"github.com/google/keytransparency/core/integration/storagetest"
 	"github.com/google/keytransparency/core/sequencer"
 	"github.com/google/keytransparency/impl/spanner/directory"
 	"github.com/google/keytransparency/impl/spanner/testutil"
 	"github.com/google/trillian/crypto/keyspb"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 
 	dtype "github.com/google/keytransparency/core/directory"
-	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 	ktspanner "github.com/google/keytransparency/impl/spanner"
 	tpb "github.com/google/trillian"
 )
@@ -70,98 +65,4 @@ func TestBatchIntegration(t *testing.T) {
 		}
 
 	storagetest.RunBatchStorageTests(t, storageFactory)
-}
-
-func TestWriteBatch(t *testing.T) {
-	ctx := context.Background()
-	directoryID := "writebatch"
-	m, done := NewForTest(ctx, t, directoryID)
-	defer done()
-	for _, tc := range []struct {
-		rev     int64
-		wantErr bool
-		sources []*spb.MapMetadata_SourceSlice
-	}{
-		// Tests are cumulative.
-		{rev: 0, sources: []*spb.MapMetadata_SourceSlice{{LogId: 1, HighestExclusive: 10}}},
-		{rev: 0, sources: []*spb.MapMetadata_SourceSlice{{LogId: 1, HighestExclusive: 11}}, wantErr: true},
-		{rev: 0, sources: []*spb.MapMetadata_SourceSlice{{LogId: 2, HighestExclusive: 20}}, wantErr: true},
-		{rev: 0, sources: []*spb.MapMetadata_SourceSlice{}, wantErr: true},
-		{rev: 1, sources: []*spb.MapMetadata_SourceSlice{}},
-		{rev: 1, sources: []*spb.MapMetadata_SourceSlice{{LogId: 1, HighestExclusive: 10}}, wantErr: true},
-	} {
-		err := m.WriteBatchSources(ctx, directoryID, tc.rev, &spb.MapMetadata{Sources: tc.sources})
-		if got, want := err != nil, tc.wantErr; got != want {
-			t.Errorf("WriteBatchSources(%v, %v): err: %v. code: %v, want %v",
-				tc.rev, tc.sources, err, got, want)
-		}
-	}
-}
-
-func TestReadBatch(t *testing.T) {
-	ctx := context.Background()
-	directoryID := "readbatch"
-	m, done := NewForTest(ctx, t, directoryID)
-	defer done()
-
-	for _, tc := range []struct {
-		rev  int64
-		want *spb.MapMetadata
-	}{
-		{rev: 0, want: &spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
-			{LogId: 1, HighestExclusive: 10},
-			{LogId: 2, HighestExclusive: 20},
-		}}},
-		{rev: 1, want: &spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
-			{LogId: 1, HighestExclusive: 11},
-			{LogId: 2, HighestExclusive: 22},
-		}}},
-	} {
-		if err := m.WriteBatchSources(ctx, directoryID, tc.rev, tc.want); err != nil {
-			t.Fatalf("WriteBatch(%v): %v", tc.rev, err)
-		}
-		got, err := m.ReadBatch(ctx, directoryID, tc.rev)
-		if err != nil {
-			t.Fatalf("ReadBatch(%v): %v", tc.rev, err)
-		}
-		if !cmp.Equal(got, tc.want, cmp.Comparer(proto.Equal)) {
-			t.Errorf("ReadBatch(%v): %v, want %v", tc.rev, got, tc.want)
-		}
-	}
-	// Read batch that doesn't exist
-	_, err := m.ReadBatch(ctx, directoryID, 2)
-	if got, want := status.Code(err), codes.NotFound; got != want {
-		t.Fatalf("ReadBatch(%v): %v", got, want)
-	}
-}
-
-func TestHighestRev(t *testing.T) {
-	ctx := context.Background()
-	directoryID := "highestrev"
-	m, done := NewForTest(ctx, t, directoryID)
-	defer done()
-
-	for _, tc := range []struct {
-		desc    string
-		rev     int64
-		sources []*spb.MapMetadata_SourceSlice
-	}{
-		// Tests are cumulative.
-		{desc: "rev0", rev: 0, sources: []*spb.MapMetadata_SourceSlice{{LogId: 1, HighestExclusive: 10}}},
-		{desc: "rev1", rev: 1, sources: []*spb.MapMetadata_SourceSlice{}},
-	} {
-		t.Run(tc.desc, func(t *testing.T) {
-			err := m.WriteBatchSources(ctx, directoryID, tc.rev, &spb.MapMetadata{Sources: tc.sources})
-			if err != nil {
-				t.Errorf("WriteBatchSources(%v, %v): err: %v", tc.rev, tc.sources, err)
-			}
-			got, err := m.HighestRev(ctx, directoryID)
-			if err != nil {
-				t.Errorf("HighestRev(): %v", err)
-			}
-			if got != tc.rev {
-				t.Errorf("HighestRev(): %v, want %v", got, tc.rev)
-			}
-		})
-	}
 }

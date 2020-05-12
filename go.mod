@@ -21,7 +21,6 @@ require (
 	github.com/google/go-cmp v0.4.0
 	github.com/google/tink v1.3.0
 	github.com/google/trillian v1.3.3
-	github.com/gorilla/websocket v1.4.1 // indirect
 	github.com/gostaticanalysis/analysisutil v0.0.3 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware v1.2.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
