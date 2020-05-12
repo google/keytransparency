@@ -37,7 +37,8 @@ func New(client *spanner.Client) *Table {
 	return &Table{client: client}
 }
 
-// WriteBatchSources saves the (low, high] boundaries used for each log in making this revision.
+// WriteBatchSources saves the the source metadata used to make this revision.
+// It is the caller's responsibility to ensure that rev is sequential.
 func (t *Table) WriteBatchSources(ctx context.Context, dirID string, rev int64, sources *spb.MapMetadata) error {
 	metaBytes, err := proto.Marshal(sources)
 	if err != nil {

@@ -25,6 +25,8 @@ import (
 	"github.com/google/keytransparency/impl/spanner/directory"
 	"github.com/google/keytransparency/impl/spanner/testutil"
 	"github.com/google/trillian/crypto/keyspb"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	dtype "github.com/google/keytransparency/core/directory"
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
@@ -126,9 +128,14 @@ func TestReadBatch(t *testing.T) {
 			t.Errorf("ReadBatch(%v): %v, want %v", tc.rev, got, tc.want)
 		}
 	}
+	// Read batch that doesn't exist
+	_, err := m.ReadBatch(ctx, directoryID, 2)
+	if got, want := status.Code(err), codes.NotFound; got != want {
+		t.Fatalf("ReadBatch(%v): %v", got, want)
+	}
 }
 
-func TestHightestRev(t *testing.T) {
+func TestHighestRev(t *testing.T) {
 	ctx := context.Background()
 	directoryID := "highestrev"
 	m, done := NewForTest(ctx, t, directoryID)
