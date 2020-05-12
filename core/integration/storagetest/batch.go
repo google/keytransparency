@@ -114,6 +114,11 @@ func (*BatchTests) TestReadBatch(ctx context.Context, t *testing.T, f batchStora
 			t.Errorf("ReadBatch(%v): %v, want %v", tc.rev, got, tc.want)
 		}
 	}
+	// Read batch that doesn't exist
+	_, err := b.ReadBatch(ctx, domainID, 2)
+	if got, want := status.Code(err), codes.NotFound; got != want {
+		t.Fatalf("ReadBatch(%v): %v", got, want)
+	}
 }
 
 func (*BatchTests) TestHighestRev(ctx context.Context, t *testing.T, f batchStorageFactory) {
