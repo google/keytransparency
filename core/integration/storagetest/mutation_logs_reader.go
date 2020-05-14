@@ -37,7 +37,7 @@ type LogsReadWriter interface {
 }
 
 // logsRWFactory returns a new database object, and a function for cleaning it up.
-type logsRWFactory func(ctx context.Context, t *testing.T, dirID string, logIDs ...int64) (LogsReadWriter, func(context.Context))
+type logsRWFactory func(ctx context.Context, t *testing.T, dirID string, logIDs ...int64) LogsReadWriter
 
 // RunMutationLogsReaderTests runs all the tests against the provided storage implementation.
 func RunMutationLogsReaderTests(t *testing.T, factory logsRWFactory) {
@@ -84,8 +84,7 @@ func setupWatermarks(ctx context.Context, t *testing.T, m LogsReadWriter, dirID 
 func (mutationLogsReaderTests) TestHighWatermarkPreserve(ctx context.Context, t *testing.T, newForTest logsRWFactory) {
 	directoryID := "TestHighWatermarkPreserve"
 	logID := int64(1)
-	m, done := newForTest(ctx, t, directoryID, logID)
-	defer done(ctx)
+	m := newForTest(ctx, t, directoryID, logID)
 	maxIndex := 9
 	sent, _ := setupWatermarks(ctx, t, m, directoryID, logID, maxIndex)
 
@@ -124,8 +123,7 @@ func (mutationLogsReaderTests) TestHighWatermarkPreserve(ctx context.Context, t 
 func (mutationLogsReaderTests) TestHighWatermarkRead(ctx context.Context, t *testing.T, newForTest logsRWFactory) {
 	directoryID := "TestHighWatermarkRead"
 	logID := int64(1)
-	m, done := newForTest(ctx, t, directoryID, logID)
-	defer done(ctx)
+	m := newForTest(ctx, t, directoryID, logID)
 	maxIndex := 9
 	_, hwm := setupWatermarks(ctx, t, m, directoryID, logID, maxIndex)
 	for _, tc := range []struct {
@@ -160,8 +158,7 @@ func (mutationLogsReaderTests) TestHighWatermarkRead(ctx context.Context, t *tes
 func (mutationLogsReaderTests) TestHighWatermarkBatch(ctx context.Context, t *testing.T, newForTest logsRWFactory) {
 	directoryID := "TestHighWatermarkBatch"
 	logID := int64(1)
-	m, done := newForTest(ctx, t, directoryID, logID)
-	defer done(ctx)
+	m := newForTest(ctx, t, directoryID, logID)
 	maxIndex := 9
 	sent, _ := setupWatermarks(ctx, t, m, directoryID, logID, maxIndex)
 	for _, tc := range []struct {

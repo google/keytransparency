@@ -29,13 +29,13 @@ import (
 	tpb "github.com/google/trillian"
 )
 
-func NewForTest(ctx context.Context, t *testing.T, dirID string) (*Table, func()) {
+func NewForTest(ctx context.Context, t *testing.T, dirID string) sequencer.Batcher {
 	t.Helper()
 	ddl, err := ktspanner.ReadDDL()
 	if err != nil {
 		t.Fatal(err)
 	}
-	client, cleanup := testutil.CreateDatabase(ctx, t, ddl)
+	client := testutil.CreateDatabase(ctx, t, ddl)
 	b := New(client)
 
 	if err := directory.New(client).Write(ctx, &dtype.Directory{
@@ -47,22 +47,15 @@ func NewForTest(ctx context.Context, t *testing.T, dirID string) (*Table, func()
 		t.Fatalf("directories.Write(%v): %v", dirID, err)
 	}
 
-	return b, cleanup
+	return b
 }
 
 func TestNewForTest(t *testing.T) {
 	ctx := context.Background()
 	directoryID := "new"
-	_, done := NewForTest(ctx, t, directoryID)
-	defer done()
+	NewForTest(ctx, t, directoryID)
 }
 
 func TestBatchIntegration(t *testing.T) {
-	storageFactory :=
-		func(ctx context.Context, t *testing.T, dirID string) (sequencer.Batcher, func(context.Context)) {
-			b, done := NewForTest(ctx, t, dirID)
-			return b, func(_ context.Context) { done() }
-		}
-
-	storagetest.RunBatchStorageTests(t, storageFactory)
+	storagetest.RunBatchStorageTests(t, NewForTest)
 }
