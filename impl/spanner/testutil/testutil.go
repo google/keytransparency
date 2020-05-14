@@ -41,14 +41,14 @@ func uniqueDBName() string {
 }
 
 // CreateDatabse returns a connection to a 1 time use database with the given DDL schema.
-func CreateDatabase(ctx context.Context, t testing.TB, ddlStatements []string) (*spanner.Client, func()) {
+func CreateDatabase(ctx context.Context, t testing.TB, ddlStatements []string) *spanner.Client {
 	dbName := uniqueDBName()
-	client, adminClient, cleanup := inMemClient(ctx, t, dbName)
+	client, adminClient := inMemClient(ctx, t, dbName)
 	updateDDL(ctx, t, dbName, adminClient, ddlStatements...)
-	return client, cleanup
+	return client
 }
 
-func inMemClient(ctx context.Context, t testing.TB, dbName string) (*spanner.Client, *database.DatabaseAdminClient, func()) {
+func inMemClient(ctx context.Context, t testing.TB, dbName string) (*spanner.Client, *database.DatabaseAdminClient) {
 	t.Helper()
 	// Don't use SPANNER_EMULATOR_HOST because we need the raw connection for
 	// the database admin client anyway.
@@ -58,33 +58,27 @@ func inMemClient(ctx context.Context, t testing.TB, dbName string) (*spanner.Cli
 	if err != nil {
 		t.Fatalf("Starting in-memory fake: %v", err)
 	}
+	t.Cleanup(srv.Close)
 	srv.SetLogger(t.Logf)
 	dialCtx, cancel := context.WithTimeout(ctx, 1*time.Second)
 	defer cancel()
 	conn, err := grpc.DialContext(dialCtx, srv.Addr, grpc.WithInsecure())
 	if err != nil {
-		srv.Close()
 		t.Fatalf("Dialing in-memory fake: %v", err)
 	}
+	t.Cleanup(func() { conn.Close() })
 	client, err := spanner.NewClient(ctx, dbName, option.WithGRPCConn(conn))
 	if err != nil {
-		conn.Close()
-		srv.Close()
 		t.Fatalf("Connecting to in-memory fake: %v", err)
 	}
+	t.Cleanup(client.Close)
 	adminClient, err := database.NewDatabaseAdminClient(ctx, option.WithGRPCConn(conn))
 	if err != nil {
-		client.Close()
-		conn.Close()
-		srv.Close()
 		t.Fatalf("Connecting to in-memory fake DB admin: %v", err)
 	}
-	return client, adminClient, func() {
-		adminClient.Close()
-		client.Close()
-		conn.Close()
-		srv.Close()
-	}
+	t.Cleanup(func() { adminClient.Close() })
+
+	return client, adminClient
 }
 
 func updateDDL(ctx context.Context, t testing.TB, dbName string, adminClient *database.DatabaseAdminClient, statements ...string) {

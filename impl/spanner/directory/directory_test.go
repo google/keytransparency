@@ -35,20 +35,19 @@ import (
 // Verify that Table implements the directory.Storage interface.
 var _ directory.Storage = &Table{}
 
-func NewForTest(ctx context.Context, t *testing.T) (directory.Storage, func()) {
+func NewForTest(ctx context.Context, t *testing.T) directory.Storage {
 	t.Helper()
 	ddl, err := ktspanner.ReadDDL()
 	if err != nil {
 		t.Fatalf("ReadDDL: %v", err)
 	}
-	client, cleanup := testutil.CreateDatabase(ctx, t, ddl)
-	return New(client), cleanup
+	client := testutil.CreateDatabase(ctx, t, ddl)
+	return New(client)
 }
 
 func TestList(t *testing.T) {
 	ctx := context.Background()
-	admin, cleanup := NewForTest(ctx, t)
-	defer cleanup()
+	admin := NewForTest(ctx, t)
 
 	directories := []*directory.Directory{
 		{
@@ -106,8 +105,7 @@ func TestList(t *testing.T) {
 
 func TestWriteReadDelete(t *testing.T) {
 	ctx := context.Background()
-	admin, cleanup := NewForTest(ctx, t)
-	defer cleanup()
+	admin := NewForTest(ctx, t)
 
 	d := &directory.Directory{
 		DirectoryID: "testdirectory",
@@ -168,8 +166,7 @@ func TestWriteReadDelete(t *testing.T) {
 
 func TestDelete(t *testing.T) {
 	ctx := context.Background()
-	s, cleanup := NewForTest(ctx, t)
-	defer cleanup()
+	s := NewForTest(ctx, t)
 
 	for _, dirID := range []string{"test", ""} {
 		d := &directory.Directory{

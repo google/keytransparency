@@ -97,7 +97,6 @@ type Env struct {
 	admin      *adminserver.Server
 	grpcServer *grpc.Server
 	grpcCC     *grpc.ClientConn
-	dbDone     func(context.Context)
 	db         *sql.DB
 }
 
@@ -121,7 +120,7 @@ func NewEnv(ctx context.Context, t testing.TB) *Env {
 	timeout := 6 * time.Second
 	directoryID := "integration"
 
-	db, dbDone := testdb.NewForTest(ctx, t)
+	db := testdb.NewForTest(ctx, t)
 
 	// Map server
 	mapEnv, err := ttest.NewMapEnv(ctx, false)
@@ -224,7 +223,6 @@ func NewEnv(ctx context.Context, t testing.TB) *Env {
 		admin:      adminSvr,
 		grpcServer: gsvr,
 		grpcCC:     cc,
-		dbDone:     dbDone,
 		db:         db,
 	}
 }
@@ -241,6 +239,5 @@ func (env *Env) Close() {
 	env.grpcServer.Stop()
 	env.mapEnv.Close()
 	env.logEnv.Close()
-	env.dbDone(ctx)
 	env.db.Close()
 }

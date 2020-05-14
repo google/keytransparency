@@ -25,7 +25,7 @@ import (
 )
 
 // logAdminFactory returns a new database object, and a function for cleaning it up.
-type logAdminFactory func(ctx context.Context, t *testing.T, dirID string, logIDs ...int64) (adminserver.LogsAdmin, func(context.Context))
+type logAdminFactory func(ctx context.Context, t *testing.T, dirID string, logIDs ...int64) adminserver.LogsAdmin
 
 // RunLogsAdminTests runs all the admin tests against the provided storage implementation.
 func RunLogsAdminTests(t *testing.T, factory logAdminFactory) {
@@ -44,8 +44,7 @@ type logsAdminTests struct{}
 
 func (logsAdminTests) TestSetWritable(ctx context.Context, t *testing.T, f logAdminFactory) {
 	directoryID := "TestSetWritable"
-	m, done := f(ctx, t, directoryID, 1)
-	defer done(ctx)
+	m := f(ctx, t, directoryID, 1)
 	if st := status.Convert(m.SetWritable(ctx, directoryID, 2, true)); st.Code() != codes.NotFound {
 		t.Errorf("SetWritable(non-existent logid): %v, want %v", st, codes.NotFound)
 	}
@@ -66,8 +65,7 @@ func (logsAdminTests) TestListLogs(ctx context.Context, t *testing.T, f logAdmin
 		{desc: "multi", logIDs: []int64{1, 2, 3}, setWritable: map[int64]bool{1: true, 2: false}, wantLogIDs: []int64{1, 3}},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
-			m, done := f(ctx, t, directoryID, tc.logIDs...)
-			defer done(ctx)
+			m := f(ctx, t, directoryID, tc.logIDs...)
 			wantLogs := make(map[int64]bool)
 			for _, logID := range tc.wantLogIDs {
 				wantLogs[logID] = true

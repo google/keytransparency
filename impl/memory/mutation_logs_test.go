@@ -25,22 +25,22 @@ import (
 // Tests for the tests!
 func TestMutationLogsIntegration(t *testing.T) {
 	storagetest.RunMutationLogsTests(t,
-		func(ctx context.Context, t *testing.T, dirID string, logIDs ...int64) (keyserver.MutationLogs, func(context.Context)) {
+		func(ctx context.Context, t *testing.T, dirID string, logIDs ...int64) keyserver.MutationLogs {
 			m := NewMutationLogs()
 			if err := m.AddLogs(ctx, dirID, logIDs...); err != nil {
 				t.Fatal(err)
 			}
-			return m, func(context.Context) {}
+			return m
 		})
 }
 
 func TestMutationLogsReaderIntegration(t *testing.T) {
 	storagetest.RunMutationLogsReaderTests(t,
-		func(ctx context.Context, t *testing.T, dirID string, logIDs ...int64) (storagetest.LogsReadWriter, func(context.Context)) {
+		func(ctx context.Context, t *testing.T, dirID string, logIDs ...int64) storagetest.LogsReadWriter {
 			m := NewMutationLogs()
 			if err := m.AddLogs(ctx, dirID, logIDs...); err != nil {
 				t.Fatal(err)
 			}
-			return m, func(context.Context) {}
+			return m
 		})
 }

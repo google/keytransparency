@@ -30,21 +30,19 @@ import (
 	tpb "github.com/google/trillian"
 )
 
-func newStorage(ctx context.Context, t *testing.T) (directory.Storage, func(context.Context)) {
+func newStorage(ctx context.Context, t *testing.T) directory.Storage {
 	t.Helper()
-	db, done := testdb.NewForTest(ctx, t)
+	db := testdb.NewForTest(ctx, t)
 	s, err := NewStorage(db)
 	if err != nil {
-		done(ctx)
 		t.Fatalf("Failed to create adminstorage: %v", err)
 	}
-	return s, done
+	return s
 }
 
 func TestList(t *testing.T) {
 	ctx := context.Background()
-	s, done := newStorage(ctx, t)
-	defer done(ctx)
+	s := newStorage(ctx, t)
 	for _, tc := range []struct {
 		directories []*directory.Directory
 		readDeleted bool
@@ -100,8 +98,7 @@ func TestList(t *testing.T) {
 
 func TestWriteReadDelete(t *testing.T) {
 	ctx := context.Background()
-	s, done := newStorage(ctx, t)
-	defer done(ctx)
+	s := newStorage(ctx, t)
 	for _, tc := range []struct {
 		desc                 string
 		d                    directory.Directory
@@ -244,8 +241,7 @@ func TestWriteReadDelete(t *testing.T) {
 
 func TestDelete(t *testing.T) {
 	ctx := context.Background()
-	s, done := newStorage(ctx, t)
-	defer done(ctx)
+	s := newStorage(ctx, t)
 	for _, tc := range []struct {
 		directoryID string
 	}{

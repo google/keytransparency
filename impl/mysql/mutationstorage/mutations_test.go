@@ -23,13 +23,13 @@ import (
 )
 
 func TestBatchIntegration(t *testing.T) {
-	storageFactory := func(ctx context.Context, t *testing.T, _ string) (sequencer.Batcher, func(context.Context)) {
-		db, done := testdb.NewForTest(ctx, t)
+	storageFactory := func(ctx context.Context, t *testing.T, _ string) sequencer.Batcher {
+		db := testdb.NewForTest(ctx, t)
 		m, err := New(db)
 		if err != nil {
 			t.Fatalf("Failed to create mutations: %v", err)
 		}
-		return m, done
+		return m
 	}
 
 	storagetest.RunBatchStorageTests(t, storageFactory)

@@ -31,7 +31,7 @@ var dataSourceURI = flag.String("kt_test_mysql_uri", "root@tcp(127.0.0.1)/", "Th
 
 // NewForTest creates a temporary database.
 // Returns a function for deleting the database.
-func NewForTest(ctx context.Context, t testing.TB) (*sql.DB, func(context.Context)) {
+func NewForTest(ctx context.Context, t testing.TB) *sql.DB {
 	t.Helper()
 	db, err := ktsql.Open(*dataSourceURI)
 	if err != nil {
@@ -50,11 +50,12 @@ func NewForTest(ctx context.Context, t testing.TB) (*sql.DB, func(context.Contex
 		t.Fatal(err)
 	}
 
-	done := func(ctx context.Context) {
+	t.Cleanup(func() {
+		ctx := context.Background()
 		defer db.Close()
 		if _, err := db.ExecContext(ctx, fmt.Sprintf("DROP DATABASE `%s`", dbName)); err != nil {
 			log.Printf("Failed to drop test database %q: %v", dbName, err)
 		}
-	}
-	return db, done
+	})
+	return db
 }
