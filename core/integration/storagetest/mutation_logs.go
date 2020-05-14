@@ -31,7 +31,7 @@ import (
 )
 
 // mutationLogsFactory returns a new database object, and a function for cleaning it up.
-type mutationLogsFactory func(ctx context.Context, t *testing.T, dirID string, logIDs ...int64) (keyserver.MutationLogs, func(context.Context))
+type mutationLogsFactory func(ctx context.Context, t *testing.T, dirID string, logIDs ...int64) keyserver.MutationLogs
 
 // RunMutationLogsTests runs all the tests against the provided storage implementation.
 func RunMutationLogsTests(t *testing.T, factory mutationLogsFactory) {
@@ -61,8 +61,7 @@ func mustMarshal(t *testing.T, p proto.Message) []byte {
 func (mutationLogsTests) TestReadLog(ctx context.Context, t *testing.T, newForTest mutationLogsFactory) {
 	directoryID := "TestReadLog"
 	logID := int64(5) // Any log ID.
-	m, done := newForTest(ctx, t, directoryID, logID)
-	defer done(ctx)
+	m := newForTest(ctx, t, directoryID, logID)
 
 	type entryID struct {
 		logID   int64
@@ -117,8 +116,7 @@ func (mutationLogsTests) TestReadLog(ctx context.Context, t *testing.T, newForTe
 func (mutationLogsTests) TestReadLogExact(ctx context.Context, t *testing.T, newForTest mutationLogsFactory) {
 	directoryID := "TestReadLogExact"
 	logID := int64(5) // Any log ID.
-	m, done := newForTest(ctx, t, directoryID, logID)
-	defer done(ctx)
+	m := newForTest(ctx, t, directoryID, logID)
 	// Write ten batches.
 	idx := make([]water.Mark, 0, 10)
 	for i := byte(0); i < 10; i++ {
@@ -162,8 +160,7 @@ func (mutationLogsTests) TestReadLogExact(ctx context.Context, t *testing.T, new
 func (mutationLogsTests) TestConcurrentWrites(ctx context.Context, t *testing.T, newForTest mutationLogsFactory) {
 	directoryID := "TestConcurrentWrites"
 	logID := int64(5)
-	m, done := newForTest(ctx, t, directoryID, logID)
-	defer done(ctx)
+	m := newForTest(ctx, t, directoryID, logID)
 	for i, concurrency := range []int{1, 2, 4, 8, 16, 32, 64} {
 		var g errgroup.Group
 		entry := &pb.EntryUpdate{Mutation: &pb.SignedEntry{Entry: mustMarshal(t, &pb.Entry{Index: []byte{byte(i)}})}}

@@ -31,8 +31,8 @@ import (
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 )
 
-func newForTest(ctx context.Context, t testing.TB, dirID string, logIDs ...int64) (*Mutations, func(context.Context)) {
-	db, done := testdb.NewForTest(ctx, t)
+func newForTest(ctx context.Context, t testing.TB, dirID string, logIDs ...int64) *Mutations {
+	db := testdb.NewForTest(ctx, t)
 	m, err := New(db)
 	if err != nil {
 		t.Fatalf("Failed to create mutation storage: %v", err)
@@ -40,26 +40,26 @@ func newForTest(ctx context.Context, t testing.TB, dirID string, logIDs ...int64
 	if err := m.AddLogs(ctx, dirID, logIDs...); err != nil {
 		t.Fatalf("AddLogs(): %v", err)
 	}
-	return m, done
+	return m
 }
 
 func TestMutationLogsIntegration(t *testing.T) {
 	storagetest.RunMutationLogsTests(t,
-		func(ctx context.Context, t *testing.T, dirID string, logIDs ...int64) (keyserver.MutationLogs, func(context.Context)) {
+		func(ctx context.Context, t *testing.T, dirID string, logIDs ...int64) keyserver.MutationLogs {
 			return newForTest(ctx, t, dirID, logIDs...)
 		})
 }
 
 func TestLogsAdminIntegration(t *testing.T) {
 	storagetest.RunLogsAdminTests(t,
-		func(ctx context.Context, t *testing.T, dirID string, logIDs ...int64) (adminserver.LogsAdmin, func(context.Context)) {
+		func(ctx context.Context, t *testing.T, dirID string, logIDs ...int64) adminserver.LogsAdmin {
 			return newForTest(ctx, t, dirID, logIDs...)
 		})
 }
 
 func TestMutationLogsReaderIntegration(t *testing.T) {
 	storagetest.RunMutationLogsReaderTests(t,
-		func(ctx context.Context, t *testing.T, dirID string, logIDs ...int64) (storagetest.LogsReadWriter, func(context.Context)) {
+		func(ctx context.Context, t *testing.T, dirID string, logIDs ...int64) storagetest.LogsReadWriter {
 			return newForTest(ctx, t, dirID, logIDs...)
 		})
 }
@@ -68,8 +68,7 @@ func BenchmarkSend(b *testing.B) {
 	ctx := context.Background()
 	directoryID := "BenchmarkSend"
 	logID := int64(1)
-	m, done := newForTest(ctx, b, directoryID, logID)
-	defer done(ctx)
+	m := newForTest(ctx, b, directoryID, logID)
 
 	update := &pb.EntryUpdate{Mutation: &pb.SignedEntry{Entry: []byte("xxxxxxxxxxxxxxxxxx")}}
 	for _, tc := range []struct {
@@ -103,8 +102,7 @@ func TestSend(t *testing.T) {
 	ctx := context.Background()
 
 	directoryID := "TestSend"
-	m, done := newForTest(ctx, t, directoryID, 1, 2)
-	defer done(ctx)
+	m := newForTest(ctx, t, directoryID, 1, 2)
 	update := []byte("bar")
 	wm1 := water.NewMark(uint64(time.Duration(time.Now().UnixNano()) * time.Nanosecond / time.Microsecond))
 	wm2 := wm1.Add(1000)
