@@ -19,7 +19,7 @@ require (
 	github.com/golangci/golangci-lint v1.21.0 // indirect
 	github.com/google/certificate-transparency-go v1.1.0 // indirect
 	github.com/google/go-cmp v0.4.0
-	github.com/google/tink v1.3.0
+	github.com/google/tink/go v1.4.0-rc2
 	github.com/google/trillian v1.3.3
 	github.com/gostaticanalysis/analysisutil v0.0.3 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware v1.2.0

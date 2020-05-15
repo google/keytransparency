@@ -25,7 +25,7 @@ import (
 
 	"github.com/google/keytransparency/core/crypto/tinkio"
 
-	tinkpb "github.com/google/tink/proto/tink_go_proto"
+	tinkpb "github.com/google/tink/go/proto/tink_go_proto"
 )
 
 const defaultKeysetFile = ".keyset"

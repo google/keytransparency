@@ -5,7 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	"github.com/google/tink/go/subtle/aead"
+	"github.com/google/tink/go/aead/subtle"
 	"github.com/google/tink/go/tink"
 	"golang.org/x/crypto/pbkdf2"
 )
@@ -28,5 +28,5 @@ func MasterPBKDF(masterPassword string) (tink.AEAD, error) {
 	}
 	dk := pbkdf2.Key([]byte(masterPassword), salt,
 		masterKeyIterations, masterKeyLen, masterKeyHashFunc)
-	return aead.NewAESGCM(dk)
+	return subtle.NewAESGCM(dk)
 }
