@@ -35,3 +35,5 @@ require (
 	google.golang.org/grpc v1.29.1
 	gopkg.in/yaml.v2 v2.2.8 // indirect
 )
+
+replace go.etcd.io/etcd => go.etcd.io/etcd v0.0.0-20200513171258-e048e166ab9c
