@@ -17,7 +17,7 @@ package runner
 import (
 	"testing"
 
-	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/proto" //nolint:staticcheck
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/keytransparency/core/mutator/entry"
 

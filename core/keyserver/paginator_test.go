@@ -17,7 +17,7 @@ package keyserver
 import (
 	"testing"
 
-	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/proto" //nolint:staticcheck
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/sequencer/metadata"
 	"github.com/google/keytransparency/core/water"
