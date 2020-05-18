@@ -19,7 +19,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/proto" //nolint:staticcheck
 	tpb "github.com/google/trillian"
 	"github.com/google/trillian/crypto/keyspb"
 )

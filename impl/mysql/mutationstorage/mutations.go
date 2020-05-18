@@ -21,7 +21,7 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/proto" //nolint:staticcheck
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
