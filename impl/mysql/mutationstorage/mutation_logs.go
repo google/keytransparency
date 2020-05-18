@@ -21,7 +21,7 @@ import (
 	"time"
 
 	"github.com/golang/glog"
-	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/proto" //nolint:staticcheck
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/water"
 	"github.com/google/keytransparency/internal/backoff"

@@ -16,7 +16,7 @@ package metadata
 import (
 	"testing"
 
-	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/proto" //nolint:staticcheck
 	"github.com/google/keytransparency/core/water"
 
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"

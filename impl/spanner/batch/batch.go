@@ -20,7 +20,7 @@ import (
 	"context"
 
 	"cloud.google.com/go/spanner"
-	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/proto" //nolint:staticcheck
 
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
 )

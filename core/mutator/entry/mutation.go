@@ -19,7 +19,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 
-	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/proto" //nolint:staticcheck
 	"github.com/google/keytransparency/core/crypto/commitments"
 	"github.com/google/tink/go/keyset"
 	"github.com/google/tink/go/tink"

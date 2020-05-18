@@ -21,7 +21,7 @@ import (
 	"sort"
 
 	"github.com/golang/glog"
-	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/proto" //nolint:staticcheck
 	"github.com/google/tink/go/keyset"
 	"github.com/google/tink/go/signature"
 	"google.golang.org/grpc/codes"

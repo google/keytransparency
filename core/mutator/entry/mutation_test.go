@@ -17,7 +17,7 @@ package entry
 import (
 	"testing"
 
-	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/proto" //nolint:staticcheck
 	"github.com/google/tink/go/keyset"
 	"github.com/google/tink/go/tink"
 	"google.golang.org/grpc/codes"
