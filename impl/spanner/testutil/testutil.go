@@ -66,9 +66,9 @@ func inMemClient(ctx context.Context, t testing.TB, dbName string) (*spanner.Cli
 	if err != nil {
 		t.Fatalf("Dialing in-memory fake: %v", err)
 	}
-	t.Cleanup(func() { conn.Close() /* May already be closed by adminClient */ })
 	client, err := spanner.NewClient(ctx, dbName, option.WithGRPCConn(conn))
 	if err != nil {
+		conn.Close()
 		t.Fatalf("Connecting to in-memory fake: %v", err)
 	}
 	t.Cleanup(client.Close)
@@ -76,12 +76,6 @@ func inMemClient(ctx context.Context, t testing.TB, dbName string) (*spanner.Cli
 	if err != nil {
 		t.Fatalf("Connecting to in-memory fake DB admin: %v", err)
 	}
-	t.Cleanup(func() {
-		if err := adminClient.Close(); err != nil {
-			t.Error(err)
-		}
-	})
-
 	return client, adminClient
 }
 
