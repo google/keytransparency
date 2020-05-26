@@ -139,7 +139,7 @@ func TestDefiningRevisions(t *testing.T) {
 	for _, tc := range []struct {
 		desc       string
 		highestRev int64
-		meta       spb.MapMetadata
+		meta       *spb.MapMetadata
 		maxGap     int32
 		wantNew    int64
 	}{
@@ -149,13 +149,13 @@ func TestDefiningRevisions(t *testing.T) {
 		{desc: "lagging", highestRev: mapRev + 3, wantNew: mapRev + 3},
 		{desc: "skewed", highestRev: mapRev - 1, wantNew: mapRev - 1},
 		{desc: "almost_drained", highestRev: mapRev,
-			meta: spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
+			meta: &spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
 				newSource(0, zero, water.NewMark(9)),
 				newSource(1, zero, water.NewMark(20)),
 			}},
 			wantNew: mapRev + 1},
 		{desc: "drained", highestRev: mapRev,
-			meta: spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
+			meta: &spb.MapMetadata{Sources: []*spb.MapMetadata_SourceSlice{
 				newSource(0, zero, idx[0][9].Add(1)),
 				newSource(1, zero, idx[1][19].Add(1)),
 			}},
@@ -163,7 +163,7 @@ func TestDefiningRevisions(t *testing.T) {
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
 			s.batcher = &fakeBatcher{highestRev: tc.highestRev, batches: make(map[int64]*spb.MapMetadata)}
-			s.batcher.WriteBatchSources(ctx, directoryID, tc.highestRev, &tc.meta)
+			s.batcher.WriteBatchSources(ctx, directoryID, tc.highestRev, tc.meta)
 
 			gdrResp, err := s.GetDefinedRevisions(ctx,
 				&spb.GetDefinedRevisionsRequest{DirectoryId: directoryID})
