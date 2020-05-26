@@ -20,7 +20,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/google/keytransparency/core/adminserver"
 	"github.com/google/keytransparency/core/integration/storagetest"
 	"github.com/google/keytransparency/core/keyserver"
@@ -28,6 +27,7 @@ import (
 	"github.com/google/keytransparency/impl/spanner/directory"
 	"github.com/google/keytransparency/impl/spanner/testutil"
 	"github.com/google/trillian/crypto/keyspb"
+	"google.golang.org/protobuf/proto"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	dtype "github.com/google/keytransparency/core/directory"
@@ -97,9 +97,9 @@ func TestReadBatch(t *testing.T) {
 	var err error
 	for i := byte(0); i < 10; i++ {
 		entry := &pb.EntryUpdate{Mutation: &pb.SignedEntry{Entry: mustMarshal(t, &pb.Entry{Index: []byte{i}})}}
-		lastTS, err = m.send(ctx, dirID, logID, entry, entry, entry)
+		lastTS, err = m.Send(ctx, dirID, logID, entry, entry, entry)
 		if err != nil {
-			t.Fatalf("send(): %v", err)
+			t.Fatalf("Send(): %v", err)
 		}
 	}
 
@@ -128,9 +128,9 @@ func TestReadLog(t *testing.T) {
 	logID := int64(1)
 	q := NewForTest(ctx, t, dirID, logID)
 
-	ts1, err := q.send(ctx, dirID, logID, &pb.EntryUpdate{})
+	ts1, err := q.Send(ctx, dirID, logID, &pb.EntryUpdate{})
 	if err != nil {
-		t.Fatalf("send(): %v", err)
+		t.Fatalf("Send(): %v", err)
 	}
 	for _, tc := range []struct {
 		desc      string
@@ -150,7 +150,7 @@ func TestReadLog(t *testing.T) {
 				t.Fatalf("ReadLog(): %v", err)
 			}
 			if got := len(rows); got != tc.want {
-				t.Logf("send(): %v", ts1)
+				t.Logf("Send(): %v", ts1)
 				t.Errorf("ReadLog(%v, %v): len: %v, want %v", tc.low, tc.high, got, tc.want)
 			}
 		})
@@ -167,9 +167,9 @@ func TestWatermark(t *testing.T) {
 	for _, logID := range logIDs {
 		marks[logID] = []water.Mark{}
 		for i := 0; i < 10; i++ {
-			ts, err := m.send(ctx, dirID, logID, &pb.EntryUpdate{})
+			ts, err := m.Send(ctx, dirID, logID, &pb.EntryUpdate{})
 			if err != nil {
-				t.Fatalf("m.send(%v): %v", logID, err)
+				t.Fatalf("m.Send(%v): %v", logID, err)
 			}
 			marks[logID] = append(marks[logID], ts)
 		}

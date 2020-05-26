@@ -20,11 +20,11 @@ import (
 	"time"
 
 	"cloud.google.com/go/spanner"
-	"github.com/golang/protobuf/proto"
 	"github.com/google/keytransparency/core/mutator"
 	"github.com/google/keytransparency/core/water"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 )
@@ -110,14 +110,6 @@ func (t *Table) AddLogs(ctx context.Context, directoryID string, logIDs ...int64
 	return err
 }
 
-// Send submits an item to the queue.
-func (t *Table) Send(ctx context.Context, dirID string, logID int64, mutations ...*pb.EntryUpdate) (water.Mark, error) {
-	if len(mutations) == 0 {
-		return water.Mark{}, nil
-	}
-	return t.send(ctx, dirID, logID, mutations...)
-}
-
 func (t *Table) ListLogs(ctx context.Context, directoryID string, writable bool) ([]int64, error) {
 	var stmt spanner.Statement
 	if writable {
@@ -129,8 +121,7 @@ func (t *Table) ListLogs(ctx context.Context, directoryID string, writable bool)
 	}
 	stmt.Params["directory_id"] = directoryID
 	var logIDs []int64
-	rtx := t.client.Single().
-		WithTimestampBound(spanner.MaxStaleness(1 * time.Minute))
+	rtx := t.client.Single().WithTimestampBound(spanner.MaxStaleness(readStaleness))
 	defer rtx.Close()
 	if err := rtx.Query(ctx, stmt).Do(
 		func(row *spanner.Row) error {
@@ -149,8 +140,11 @@ func (t *Table) ListLogs(ctx context.Context, directoryID string, writable bool)
 	return logIDs, nil
 }
 
-// send puts an item in the queue and returns the commit timestamp
-func (t *Table) send(ctx context.Context, directoryID string, logID int64, entries ...*pb.EntryUpdate) (water.Mark, error) {
+// Send submits an item to the queue and returns the commit timestamp.
+func (t *Table) Send(ctx context.Context, directoryID string, logID int64, entries ...*pb.EntryUpdate) (water.Mark, error) {
+	if len(entries) == 0 {
+		return water.Mark{}, nil
+	}
 	type Cols struct {
 		DirectoryID string
 		LogID       int64
@@ -202,9 +196,9 @@ func (t *Table) HighWatermark(ctx context.Context, directoryID string, logID int
 
 	var cnt int64
 	var max time.Time
-	if err := t.client.Single().
-		WithTimestampBound(spanner.MaxStaleness(readStaleness)).
-		Query(ctx, stmt).Do(
+	rtx := t.client.Single().WithTimestampBound(spanner.MaxStaleness(readStaleness))
+	defer rtx.Close()
+	if err := rtx.Query(ctx, stmt).Do(
 		func(row *spanner.Row) error {
 			cnt++
 			var watermark time.Time
@@ -245,7 +239,7 @@ func (t *Table) ReadLog(ctx context.Context, directoryID string, logID int64, lo
 		[]string{"Timestamp", "LocalID", "Mutation"},
 		&spanner.ReadOptions{Limit: int(limit)},
 	).Do(func(r *spanner.Row) error {
-		msg, err := readRow(r, logID)
+		msg, err := unmarshalRow(r, logID)
 		if err != nil {
 			return err
 		}
@@ -276,7 +270,7 @@ func (t *Table) ReadLog(ctx context.Context, directoryID string, logID int64, lo
 			},
 			[]string{"Timestamp", "LocalID", "Mutation"},
 		).Do(func(r *spanner.Row) error {
-			msg, err := readRow(r, logID)
+			msg, err := unmarshalRow(r, logID)
 			if err != nil {
 				return err
 			}
@@ -289,7 +283,7 @@ func (t *Table) ReadLog(ctx context.Context, directoryID string, logID int64, lo
 	return msgs, nil
 }
 
-func readRow(r *spanner.Row, logID int64) (*mutator.LogMessage, error) {
+func unmarshalRow(r *spanner.Row, logID int64) (*mutator.LogMessage, error) {
 	type Cols struct {
 		Timestamp time.Time
 		LocalID   int64
