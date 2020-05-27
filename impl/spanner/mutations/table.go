@@ -17,6 +17,7 @@ package mutations
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"cloud.google.com/go/spanner"
@@ -29,7 +30,7 @@ import (
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 )
 
-// readStaleness is the maximum staleness of HighWatermarks.
+// readStaleness should be large enough for spanner to read from replicas.
 const readStaleness = 1 * time.Second
 const mutTable = "Mutations"
 const logTable = "LogStatus"
@@ -45,18 +46,13 @@ func timeToMark(t time.Time) water.Mark {
 	return water.NewMark(v)
 }
 
-// Table implements a rough queue of mutations.
-// Time ordering in the queue is NOT preserved.
-//
-// Enqueued mutations are hashed and randomly distributed under directoryID/hash.
-// Each receiver periodically scans the UnsequencedMutations table for its directoryID.
-//
+// Table implements a queue of mutations.
 type Table struct {
 	client *spanner.Client
 }
 
-// LogTableCols are the colums in the LogTable.
-type LogTableCols struct {
+// LogStatusCols are the columns in the LogStatus table.
+type LogStatusCols struct {
 	DirectoryID string
 	LogID       int64
 	WriteToLog  bool
@@ -72,7 +68,7 @@ func (t *Table) SetWritable(ctx context.Context, directoryID string, logID int64
 	rtx := t.client.Single()
 	defer rtx.Close()
 
-	m, err := spanner.UpdateStruct(logTable, LogTableCols{
+	m, err := spanner.UpdateStruct(logTable, LogStatusCols{
 		DirectoryID: directoryID,
 		LogID:       logID,
 		WriteToLog:  enabled,
@@ -85,9 +81,10 @@ func (t *Table) SetWritable(ctx context.Context, directoryID string, logID int64
 }
 
 // AddLogs adds the logIDs to the list of active logs to send mutations to, and read mutations from.
+// If directoryID and logID already exist, they will be marked as writable.
 func (t *Table) AddLogs(ctx context.Context, directoryID string, logIDs ...int64) error {
 	if len(logIDs) == 0 {
-		return nil
+		return fmt.Errorf("no logs to add")
 	}
 
 	rtx := t.client.Single()
@@ -96,7 +93,7 @@ func (t *Table) AddLogs(ctx context.Context, directoryID string, logIDs ...int64
 	mutations := make([]*spanner.Mutation, 0, len(logIDs))
 	for _, logID := range logIDs {
 		// Ignore already exists errors so this method can be retried.
-		m, err := spanner.InsertOrUpdateStruct(logTable, LogTableCols{
+		m, err := spanner.InsertOrUpdateStruct(logTable, LogStatusCols{
 			DirectoryID: directoryID,
 			LogID:       logID,
 			WriteToLog:  true,
@@ -110,6 +107,9 @@ func (t *Table) AddLogs(ctx context.Context, directoryID string, logIDs ...int64
 	return err
 }
 
+// ListLogs returns the mutation logIDs assocciated with directoryID.
+// If writable is true, the list is filtered to only contain writable logs.
+// Returns codes.NotFound if the list is empty.
 func (t *Table) ListLogs(ctx context.Context, directoryID string, writable bool) ([]int64, error) {
 	var stmt spanner.Statement
 	if writable {
@@ -143,7 +143,7 @@ func (t *Table) ListLogs(ctx context.Context, directoryID string, writable bool)
 // Send submits an item to the queue and returns the commit timestamp.
 func (t *Table) Send(ctx context.Context, directoryID string, logID int64, entries ...*pb.EntryUpdate) (water.Mark, error) {
 	if len(entries) == 0 {
-		return water.Mark{}, nil
+		return water.Mark{}, fmt.Errorf("no entries to send")
 	}
 	type Cols struct {
 		DirectoryID string
@@ -175,18 +175,26 @@ func (t *Table) Send(ctx context.Context, directoryID string, logID int64, entri
 		func(_ context.Context, txn *spanner.ReadWriteTransaction) error {
 			return txn.BufferWrite(ms)
 		})
-	return timeToMark(commitTimestamp), err
+	if err != nil {
+		return water.Mark{}, err
+	}
+	return timeToMark(commitTimestamp), nil
 }
 
-// HighWatermark returns the number of items and the highest primary
-// key (exclusive) up to batchSize items after start (inclusive).
+// HighWatermark returns the number of items and the highest timestamp
+// (exclusive) up to batchSize items after start (inclusive).
+// Because timestamps can group more than one item, count may slightly exceed batchSize.
 func (t *Table) HighWatermark(ctx context.Context, directoryID string, logID int64, start water.Mark, batchSize int32) (count int32, high water.Mark, err error) {
-	// TODO: Replace with MAX(Revision) when spansql supports aggregate operators.
+	// TODO: Replace with MAX(Timestamp) when spansql supports aggregate operators.
 	stmt := spanner.NewStatement(`
-	SELECT Timestamp FROM Mutations WHERE
-		DirectoryID = @directoryID AND
-		LogID = @logID AND
-		Timestamp >= @start
+	SELECT
+	   Timestamp
+	FROM
+	   Mutations
+	WHERE
+	   DirectoryID = @directoryID AND
+	   LogID = @logID AND
+	   Timestamp >= @start
 	ORDER BY Timestamp
 	LIMIT @limit`)
 	stmt.Params["directoryID"] = directoryID
@@ -220,13 +228,14 @@ func (t *Table) HighWatermark(ctx context.Context, directoryID string, logID int
 }
 
 // ReadLog reads all mutations between [low, high).
+// If limit is used, ReadLog ensures that complete batches are returned, which could slightly exceed limit.
 func (t *Table) ReadLog(ctx context.Context, directoryID string, logID int64, low, high water.Mark,
 	limit int32) ([]*mutator.LogMessage, error) {
 	if high.Value() == 0 || limit == 0 {
 		return []*mutator.LogMessage{}, nil
 	}
 
-	msgs := make([]*mutator.LogMessage, 0)
+	msgs := make([]*mutator.LogMessage, 0, limit)
 	rtx := t.client.ReadOnlyTransaction().
 		WithTimestampBound(spanner.MinReadTimestamp(markToTime(high)))
 	defer rtx.Close()

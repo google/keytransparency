@@ -1,8 +1,8 @@
 -- Schema hierarchy:
 -- + Directories (top-level table)
---   + MutationLogs (top-level child table)
---   + Batches (top-level child table)
---   + UnsequencedMutations (top-level child table)
+--   + LogStatus (top-level child table)
+--   + Batches   (top-level child table)
+--   + Mutations (top-level child table)
 
 -- Multi-Tenant
 CREATE TABLE Directories (
@@ -17,7 +17,6 @@ CREATE TABLE Directories (
   DeleteTime               TIMESTAMP,
 ) PRIMARY KEY (DirectoryID);
 
--- Sharded Logs
 CREATE TABLE LogStatus(
   DirectoryID          STRING(100) NOT NULL,
   LogID                INT64 NOT NULL,
@@ -25,7 +24,6 @@ CREATE TABLE LogStatus(
 ) PRIMARY KEY (DirectoryID, LogID),
   INTERLEAVE IN PARENT Directories ON DELETE CASCADE;
 
--- Batches
 CREATE TABLE Batches(
   DirectoryID          STRING(100) NOT NULL,
   Revision             INT64 NOT NULL,
@@ -33,7 +31,6 @@ CREATE TABLE Batches(
 ) PRIMARY KEY (DirectoryID, Revision),
   INTERLEAVE IN PARENT Directories ON DELETE CASCADE;
 
--- Mutations
 CREATE TABLE Mutations (
   DirectoryID           STRING(100) NOT NULL,
   LogID                 INT64 NOT NULL,
