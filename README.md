@@ -178,7 +178,9 @@ Create or fetch the public key for your specific application.
 go get github.com/google/keytransparency/...
 go get github.com/google/trillian/...
 cd $(go env GOPATH)/src/github.com/google/keytransparency
-./scripts/prepare_server.sh -f
+pushd genfiles
+go run "$(go env GOROOT)/src/crypto/tls/generate_cert.go" --host localhost,127.0.0.1,::
+popd
 docker-compose -f docker-compose.yml docker-compose.prod.yml up
 ```
 
