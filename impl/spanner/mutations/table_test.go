@@ -71,7 +71,7 @@ func NewForTest(ctx context.Context, t testing.TB, dirID string, logIDs ...int64
 
 func TestNewForTest(t *testing.T) {
 	ctx := context.Background()
-	NewForTest(ctx, t, "NewForTest", 1)
+	NewForTest(ctx, t, "newfortest", 1)
 }
 
 func TestMutationLogsIntegration(t *testing.T) {
@@ -97,7 +97,8 @@ func TestReadBatch(t *testing.T) {
 	var err error
 	for i := byte(0); i < 10; i++ {
 		entry := &pb.EntryUpdate{Mutation: &pb.SignedEntry{Entry: mustMarshal(t, &pb.Entry{Index: []byte{i}})}}
-		lastTS, err = m.Send(ctx, dirID, logID, entry, entry, entry)
+		batch := []*pb.EntryUpdate{entry, entry, entry}
+		lastTS, err = m.Send(ctx, dirID, logID, batch...)
 		if err != nil {
 			t.Fatalf("Send(): %v", err)
 		}
@@ -109,6 +110,7 @@ func TestReadBatch(t *testing.T) {
 	}{
 		{batchSize: 0, count: 0},
 		{batchSize: 1, count: 3},
+		{batchSize: 3, count: 3},
 		{batchSize: 4, count: 6}, // A partial read into the next timestamp returns all rows in the timestamp.
 		{batchSize: 100, count: 30},
 	} {

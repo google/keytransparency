@@ -140,9 +140,10 @@ func (t *Table) ListLogs(ctx context.Context, directoryID string, writable bool)
 	return logIDs, nil
 }
 
-// Send submits an item to the queue and returns the commit timestamp.
-func (t *Table) Send(ctx context.Context, directoryID string, logID int64, entries ...*pb.EntryUpdate) (water.Mark, error) {
-	if len(entries) == 0 {
+// Send submits a batch of items to the queue and returns the commit timestamp.
+// TODO: change batch param to []*pb.EntryUpdate
+func (t *Table) Send(ctx context.Context, directoryID string, logID int64, batch ...*pb.EntryUpdate) (water.Mark, error) {
+	if len(batch) == 0 {
 		return water.Mark{}, fmt.Errorf("no entries to send")
 	}
 	type Cols struct {
@@ -152,8 +153,8 @@ func (t *Table) Send(ctx context.Context, directoryID string, logID int64, entri
 		LocalID     int64
 		Mutation    []byte
 	}
-	ms := make([]*spanner.Mutation, 0, len(entries))
-	for i, e := range entries {
+	ms := make([]*spanner.Mutation, 0, len(batch))
+	for i, e := range batch {
 		mBytes, err := proto.Marshal(e)
 		if err != nil {
 			return water.Mark{}, err
@@ -182,9 +183,9 @@ func (t *Table) Send(ctx context.Context, directoryID string, logID int64, entri
 }
 
 // HighWatermark returns the number of items and the highest timestamp
-// (exclusive) up to batchSize items after start (inclusive).
-// Because timestamps can group more than one item, count may slightly exceed batchSize.
-func (t *Table) HighWatermark(ctx context.Context, directoryID string, logID int64, start water.Mark, batchSize int32) (count int32, high water.Mark, err error) {
+// (exclusive) up to limit items after start (inclusive).
+// Because batches (items that have the same timestamp) can contain more than one item, count may exceed limit.
+func (t *Table) HighWatermark(ctx context.Context, directoryID string, logID int64, start water.Mark, limit int32) (count int32, high water.Mark, err error) {
 	// TODO: Replace with MAX(Timestamp) when spansql supports aggregate operators.
 	stmt := spanner.NewStatement(`
 	SELECT
@@ -200,7 +201,7 @@ func (t *Table) HighWatermark(ctx context.Context, directoryID string, logID int
 	stmt.Params["directoryID"] = directoryID
 	stmt.Params["logID"] = logID
 	stmt.Params["start"] = markToTime(start)
-	stmt.Params["limit"] = int64(batchSize)
+	stmt.Params["limit"] = int64(limit)
 
 	var cnt int64
 	var max time.Time
@@ -259,18 +260,18 @@ func (t *Table) ReadLog(ctx context.Context, directoryID string, logID int64, lo
 	}
 	var maxTs water.Mark
 	var maxLocal int64
-	for _, m := range msgs {
-		if m.ID.Value() > maxTs.Value() {
-			maxTs = m.ID
-			maxLocal = 0
-		}
-		if m.ID.Value() == maxTs.Value() &&
-			m.LocalID > maxLocal {
-			maxLocal = m.LocalID
-		}
-	}
 	if len(msgs) == int(limit) {
 		// There might be more messages in this batch to read.
+		for _, m := range msgs {
+			if m.ID.Value() > maxTs.Value() {
+				maxTs = m.ID
+				maxLocal = 0
+			}
+			if m.ID.Value() == maxTs.Value() &&
+				m.LocalID > maxLocal {
+				maxLocal = m.LocalID
+			}
+		}
 		if err := rtx.Read(ctx, mutTable,
 			spanner.KeyRange{
 				Kind:  spanner.OpenOpen,
