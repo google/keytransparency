@@ -3,7 +3,7 @@ module github.com/google/keytransparency
 go 1.12
 
 require (
-	cloud.google.com/go/spanner v1.2.0
+	cloud.google.com/go/spanner v1.5.2-0.20200519214259-752f788f92e5
 	github.com/VividCortex/mysqlerr v0.0.0-20170204212430-6c6b55f8796f
 	github.com/coreos/go-systemd v0.0.0-20190719114852-fd7a80b32e1f // indirect
 	github.com/go-sql-driver/mysql v1.5.0
@@ -30,7 +30,7 @@ require (
 	golang.org/x/sync v0.0.0-20200317015054-43a5402ce75a
 	golang.org/x/time v0.0.0-20191024005414-555d28b269f0
 	google.golang.org/api v0.25.0
-	google.golang.org/genproto v0.0.0-20200331122359-1ee6d9798940
+	google.golang.org/genproto v0.0.0-20200515170657-fc4c6c6a6587
 	google.golang.org/grpc v1.29.1
 	google.golang.org/protobuf v1.23.0
 	gopkg.in/yaml.v2 v2.2.8 // indirect
