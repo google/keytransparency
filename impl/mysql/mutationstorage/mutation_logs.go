@@ -66,16 +66,15 @@ func (m *Mutations) AddLogs(ctx context.Context, directoryID string, logIDs ...i
 	return nil
 }
 
-// Send writes mutations to the leading edge (by sequence number) of the mutations table.
+// SendBatch writes mutations to the leading edge (by sequence number) of the mutations table.
 // Returns the logID/watermark pair that was written, or nil if nothing was written.
-// TODO(gbelvin): Make updates a slice.
-func (m *Mutations) Send(ctx context.Context, directoryID string, logID int64, updates ...*pb.EntryUpdate) (water.Mark, error) {
-	glog.Infof("mutationstorage: Send(%v, <mutation>)", directoryID)
-	if len(updates) == 0 {
+func (m *Mutations) SendBatch(ctx context.Context, directoryID string, logID int64, batch []*pb.EntryUpdate) (water.Mark, error) {
+	glog.Infof("mutationstorage: SendBatch(%v, <mutation>)", directoryID)
+	if len(batch) == 0 {
 		return water.Mark{}, nil
 	}
-	updateData := make([][]byte, 0, len(updates))
-	for _, u := range updates {
+	updateData := make([][]byte, 0, len(batch))
+	for _, u := range batch {
 		data, err := proto.Marshal(u)
 		if err != nil {
 			return water.Mark{}, err

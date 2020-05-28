@@ -109,7 +109,7 @@ func setupLogs(ctx context.Context, t *testing.T, dirID string, logLengths map[i
 			t.Fatal(err)
 		}
 		for i := 0; i < msgs; i++ {
-			wm, err := fakeLogs.Send(ctx, dirID, logID, &pb.EntryUpdate{})
+			wm, err := fakeLogs.SendBatch(ctx, dirID, logID, []*pb.EntryUpdate{{}})
 			if err != nil {
 				t.Fatal(err)
 			}

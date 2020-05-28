@@ -29,11 +29,11 @@ import (
 type LogsReadWriter interface {
 	sequencer.LogsReader
 
-	// Send submits the whole group of mutations atomically to a given log.
+	// SendBatch submits the whole group of mutations atomically to a given log.
 	// Returns the watermark key that the mutation batch got written at. This
 	// watermark can be used as a lower bound argument of a ReadLog call. To
 	// acquire a watermark to use for the upper bound, use HighWatermark.
-	Send(ctx context.Context, directoryID string, logID int64, mutation ...*pb.EntryUpdate) (water.Mark, error)
+	SendBatch(ctx context.Context, directoryID string, logID int64, batch []*pb.EntryUpdate) (water.Mark, error)
 }
 
 // logsRWFactory returns a new database object, and a function for cleaning it up.
@@ -63,9 +63,9 @@ func setupWatermarks(ctx context.Context, t *testing.T, m LogsReadWriter, dirID 
 	sent := []water.Mark{} // Watermarks that Send reported.
 	hwm := []water.Mark{}  // High water marks collected after each Send.
 	for i := 0; i <= maxIndex; i++ {
-		ts, err := m.Send(ctx, dirID, logID, &pb.EntryUpdate{Mutation: &pb.SignedEntry{Entry: []byte{byte(i)}}})
+		ts, err := m.SendBatch(ctx, dirID, logID, []*pb.EntryUpdate{{Mutation: &pb.SignedEntry{Entry: []byte{byte(i)}}}})
 		if err != nil {
-			t.Fatalf("Send(%v): %v", logID, err)
+			t.Fatalf("SendBatch(%v): %v", logID, err)
 		}
 		count, wm, err := m.HighWatermark(ctx, dirID, logID, water.Mark{}, 100 /*batchSize*/)
 		if err != nil {

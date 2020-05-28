@@ -63,13 +63,13 @@ func (m MutationLogs) ListLogs(_ context.Context, _ string, writable bool) ([]in
 	return logIDs, nil
 }
 
-// Send stores a batch of mutations in a given logID.
-func (m MutationLogs) Send(_ context.Context, _ string, logID int64, mutation ...*pb.EntryUpdate) (water.Mark, error) {
+// SendBatch stores a batch of mutations in a given logID.
+func (m MutationLogs) SendBatch(_ context.Context, _ string, logID int64, mutations []*pb.EntryUpdate) (water.Mark, error) {
 	wm := water.NewMark(clock)
 	clock++
 	// Only save the Merkle tree bits.
-	entries := make([]*pb.SignedEntry, 0, len(mutation))
-	for _, i := range mutation {
+	entries := make([]*pb.SignedEntry, 0, len(mutations))
+	for _, i := range mutations {
 		entries = append(entries, i.Mutation)
 	}
 
