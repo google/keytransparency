@@ -17,7 +17,12 @@ package testutil
 
 import (
 	"context"
+	"flag"
 	"fmt"
+	"os"
+	"path"
+	"regexp"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -26,24 +31,53 @@ import (
 	"cloud.google.com/go/spanner/spannertest"
 	"google.golang.org/api/option"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	database "cloud.google.com/go/spanner/admin/database/apiv1"
+	instance "cloud.google.com/go/spanner/admin/instance/apiv1"
 	databasepb "google.golang.org/genproto/googleapis/spanner/admin/database/v1"
+	instancepb "google.golang.org/genproto/googleapis/spanner/admin/instance/v1"
 )
 
-var dbCount uint32
+var testDBFlag = flag.String("test_db", "", "Fully-qualified database name to test against; empty means use an in-memory fake.")
 
-func uniqueDBName() string {
+// Unique per test binary invocation
+var timestamp = time.Now().UTC().Format("jan-02-15-04-05")
+var testBinary = strings.ToLower(strings.Replace(path.Base(os.Args[0]), ".test", "", 1))
+var invocationID = fmt.Sprintf("%s-%s", timestamp, testBinary)
+var dbCount uint32 // Unique per test invocation
+
+func uniqueDBName(t testing.TB) string {
 	const project = "fake-proj"
-	const instance = "fake-instance"
-	database := fmt.Sprintf("fake-db-%d", atomic.AddUint32(&dbCount, 1))
+	const instance = "fake-instance" //strings.ToLower(strings.Replace(t.Name(), "/", "-", -1))
+	database := fmt.Sprintf("%s-%d", invocationID, atomic.AddUint32(&dbCount, 1))
 	return fmt.Sprintf("projects/%s/instances/%s/databases/%s", project, instance, database)
 }
 
 // CreateDatabse returns a connection to a 1 time use database with the given DDL schema.
 func CreateDatabase(ctx context.Context, t testing.TB, ddlStatements []string) *spanner.Client {
-	dbName := uniqueDBName()
-	client, adminClient := inMemClient(ctx, t, dbName)
+	var client *spanner.Client
+	var adminClient *database.DatabaseAdminClient
+
+	dbName := *testDBFlag
+	emulatorAddr := os.Getenv("SPANNER_EMULATOR_HOST")
+	switch {
+	case dbName != "" && emulatorAddr == "": // Real
+		t.Logf("Using real Spanner DB: %q", dbName)
+		client, adminClient = realClient(ctx, t, dbName)
+	case dbName == "" && emulatorAddr != "": // Emulator
+		dbName = uniqueDBName(t)
+		t.Logf("Using Spanner Emulator DB: %q", dbName)
+		client, adminClient = realClient(ctx, t, dbName)
+		createInstance(ctx, t, dbName)
+		createDatabase(ctx, t, dbName, adminClient)
+	case dbName == "" && emulatorAddr == "": // In-Mem
+		dbName = uniqueDBName(t)
+		client, adminClient = inMemClient(ctx, t, dbName)
+	default:
+		t.Fatalf("")
+	}
 	updateDDL(ctx, t, dbName, adminClient, ddlStatements...)
 	return client
 }
@@ -77,6 +111,88 @@ func inMemClient(ctx context.Context, t testing.TB, dbName string) (*spanner.Cli
 		t.Fatalf("Connecting to in-memory fake DB admin: %v", err)
 	}
 	return client, adminClient
+
+}
+
+func realClient(ctx context.Context, t testing.TB, dbName string) (*spanner.Client, *database.DatabaseAdminClient) {
+	t.Helper()
+	dialCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	client, err := spanner.NewClient(dialCtx, dbName)
+	if err != nil {
+		t.Fatalf("Connecting to %s: %v", dbName, err)
+	}
+	t.Cleanup(client.Close)
+	adminClient, err := database.NewDatabaseAdminClient(dialCtx)
+	if err != nil {
+		t.Fatalf("Connecting DB admin client: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := adminClient.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	return client, adminClient
+}
+
+var dbRE = regexp.MustCompile(`projects/([a-z][-a-z0-9]*[a-z0-9])/instances/([a-z][-a-z0-9]*[a-z0-9])/databases/([a-z][-_a-z0-9]*[a-z0-9])`)
+
+func parseDBName(t testing.TB, dbName string) (projectID, instanceID, databaseID string) {
+	args := dbRE.FindStringSubmatch(dbName)
+	if got := len(args); got != 4 {
+		t.Fatalf("dbName %q did not match regex", dbName)
+	}
+	projectID = args[1]
+	instanceID = args[2]
+	databaseID = args[3]
+	return
+}
+
+func createInstance(ctx context.Context, t testing.TB, dbName string) {
+	projectID, instanceID, _ := parseDBName(t, dbName)
+
+	client, err := instance.NewInstanceAdminClient(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer client.Close()
+
+	op, err := client.CreateInstance(ctx, &instancepb.CreateInstanceRequest{
+		Parent:     fmt.Sprintf("projects/%s", projectID),
+		InstanceId: instanceID,
+	})
+	if status.Code(err) == codes.AlreadyExists {
+		return
+	}
+	if err != nil {
+		t.Fatalf("CreateInstance: %v", err)
+	}
+	if _, err := op.Wait(ctx); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func createDatabase(ctx context.Context, t testing.TB, dbName string, client *database.DatabaseAdminClient) {
+	projectID, instanceID, databaseID := parseDBName(t, dbName)
+
+	op, err := client.CreateDatabase(ctx, &databasepb.CreateDatabaseRequest{
+		Parent:          fmt.Sprintf("projects/%s/instances/%s", projectID, instanceID),
+		CreateStatement: fmt.Sprintf("CREATE DATABASE `%s`", databaseID),
+	})
+	if err != nil {
+		t.Fatalf("CreateDatabase: %v", err)
+	}
+	if _, err := op.Wait(ctx); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Cleanup(func() {
+		if err := client.DropDatabase(ctx, &databasepb.DropDatabaseRequest{
+			Database: fmt.Sprintf("projects/%s/instances/%s/databases/%s", projectID, instanceID, databaseID),
+		}); err != nil {
+			t.Errorf("DropDatabase(): %v", err)
+		}
+	})
 }
 
 func updateDDL(ctx context.Context, t testing.TB, dbName string, adminClient *database.DatabaseAdminClient, statements ...string) {
