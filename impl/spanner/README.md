@@ -26,3 +26,18 @@ gcloud config configurations activate emulator
 gcloud spanner instances list
 gcloud spanner databases list --instance fake-instance
 ```
+
+## [Cloud Spanner](https://cloud.google.com/spanner)
+
+To test against an instance of spanner hosted in Google Cloud:
+
+1. Create a Spanner instance using the [Google Cloud Console](https://console.cloud.google.com/spanner/instances/new).
+1. Switch the `gcloud` configuration to `default` and authenticate.
+
+```
+unset SPANNER_EMULATOR_HOST
+gcloud config configurations activate default
+gcloud auth application-default login
+go test ./impl/spanner/... -count 1 -args --fake_db=false --db_project=$GCP_PROJECT --db_instance=$INSTANCE_ID
+```
+

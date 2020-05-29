@@ -40,7 +40,11 @@ import (
 	instancepb "google.golang.org/genproto/googleapis/spanner/admin/instance/v1"
 )
 
-var testDBFlag = flag.String("test_db", "", "Fully-qualified database name to test against; empty means use an in-memory fake.")
+var (
+	inmemFlag    = flag.Bool("fake_db", true, "Use an in-memory fake.")
+	projectFlag  = flag.String("db_project", "fake-proj", "GCP project to test against")
+	instanceFlag = flag.String("db_instance", "fake-instance", "Spanner instance to test against")
+)
 
 // Unique per test binary invocation
 var timestamp = time.Now().UTC().Format("jan-02-15-04-05")
@@ -48,9 +52,7 @@ var testBinary = strings.ToLower(strings.Replace(path.Base(os.Args[0]), ".test",
 var invocationID = fmt.Sprintf("%s-%s", timestamp, testBinary)
 var dbCount uint32 // Unique per test invocation
 
-func uniqueDBName(t testing.TB) string {
-	const project = "fake-proj"
-	const instance = "fake-instance" //strings.ToLower(strings.Replace(t.Name(), "/", "-", -1))
+func uniqueDBName(t testing.TB, project, instance string) string {
 	database := fmt.Sprintf("%s-%d", invocationID, atomic.AddUint32(&dbCount, 1))
 	return fmt.Sprintf("projects/%s/instances/%s/databases/%s", project, instance, database)
 }
@@ -60,23 +62,25 @@ func CreateDatabase(ctx context.Context, t testing.TB, ddlStatements []string) *
 	var client *spanner.Client
 	var adminClient *database.DatabaseAdminClient
 
-	dbName := *testDBFlag
+	project := *projectFlag
+	instance := *instanceFlag
 	emulatorAddr := os.Getenv("SPANNER_EMULATOR_HOST")
+	var dbName string
 	switch {
-	case dbName != "" && emulatorAddr == "": // Real
-		t.Logf("Using real Spanner DB: %q", dbName)
-		client, adminClient = realClient(ctx, t, dbName)
-	case dbName == "" && emulatorAddr != "": // Emulator
-		dbName = uniqueDBName(t)
+	case *inmemFlag: // In-Mem
+		dbName = uniqueDBName(t, project, instance)
+		client, adminClient = inMemClient(ctx, t, dbName)
+	case emulatorAddr != "": // Emulator
+		dbName = uniqueDBName(t, project, instance)
 		t.Logf("Using Spanner Emulator DB: %q", dbName)
 		client, adminClient = realClient(ctx, t, dbName)
 		createInstance(ctx, t, dbName)
 		createDatabase(ctx, t, dbName, adminClient)
-	case dbName == "" && emulatorAddr == "": // In-Mem
-		dbName = uniqueDBName(t)
-		client, adminClient = inMemClient(ctx, t, dbName)
-	default:
-		t.Fatalf("")
+	default: // Real
+		dbName = uniqueDBName(t, project, instance)
+		t.Logf("Using real Spanner DB: %q", dbName)
+		client, adminClient = realClient(ctx, t, dbName)
+		createDatabase(ctx, t, dbName, adminClient)
 	}
 	updateDDL(ctx, t, dbName, adminClient, ddlStatements...)
 	return client
@@ -116,14 +120,12 @@ func inMemClient(ctx context.Context, t testing.TB, dbName string) (*spanner.Cli
 
 func realClient(ctx context.Context, t testing.TB, dbName string) (*spanner.Client, *database.DatabaseAdminClient) {
 	t.Helper()
-	dialCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-	client, err := spanner.NewClient(dialCtx, dbName)
+	client, err := spanner.NewClient(ctx, dbName)
 	if err != nil {
 		t.Fatalf("Connecting to %s: %v", dbName, err)
 	}
 	t.Cleanup(client.Close)
-	adminClient, err := database.NewDatabaseAdminClient(dialCtx)
+	adminClient, err := database.NewDatabaseAdminClient(ctx)
 	if err != nil {
 		t.Fatalf("Connecting DB admin client: %v", err)
 	}
