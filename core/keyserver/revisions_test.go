@@ -110,7 +110,7 @@ func TestListMutations(t *testing.T) {
 	idx := make([]water.Mark, 0, 12)
 	for i := int64(0); i < 12; i++ {
 		// Send one entry.
-		ws, err := fakeLogs.Send(ctx, dirID, logID, genEntryUpdates(t, i, i+1)...)
+		ws, err := fakeLogs.SendBatch(ctx, dirID, logID, genEntryUpdates(t, i, i+1))
 		if err != nil {
 			t.Fatal(err)
 		}

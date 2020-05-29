@@ -64,9 +64,9 @@ func TestMutationLogsReaderIntegration(t *testing.T) {
 		})
 }
 
-func BenchmarkSend(b *testing.B) {
+func BenchmarkSendBatch(b *testing.B) {
 	ctx := context.Background()
-	directoryID := "BenchmarkSend"
+	directoryID := "BenchmarkSendBatch"
 	logID := int64(1)
 	m := newForTest(ctx, b, directoryID, logID)
 
@@ -90,18 +90,18 @@ func BenchmarkSend(b *testing.B) {
 				updates = append(updates, update)
 			}
 			for n := 0; n < b.N; n++ {
-				if _, err := m.Send(ctx, directoryID, logID, updates...); err != nil {
-					b.Errorf("Send(): %v", err)
+				if _, err := m.SendBatch(ctx, directoryID, logID, updates); err != nil {
+					b.Errorf("SendBatch(): %v", err)
 				}
 			}
 		})
 	}
 }
 
-func TestSend(t *testing.T) {
+func TestSendBatch(t *testing.T) {
 	ctx := context.Background()
 
-	directoryID := "TestSend"
+	directoryID := "TestSendBatch"
 	m := newForTest(ctx, t, directoryID, 1, 2)
 	update := []byte("bar")
 	wm1 := water.NewMark(uint64(time.Duration(time.Now().UnixNano()) * time.Nanosecond / time.Microsecond))

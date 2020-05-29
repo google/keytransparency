@@ -98,7 +98,7 @@ func TestReadBatch(t *testing.T) {
 	for i := byte(0); i < 10; i++ {
 		entry := &pb.EntryUpdate{Mutation: &pb.SignedEntry{Entry: mustMarshal(t, &pb.Entry{Index: []byte{i}})}}
 		batch := []*pb.EntryUpdate{entry, entry, entry}
-		lastTS, err = m.Send(ctx, dirID, logID, batch...)
+		lastTS, err = m.SendBatch(ctx, dirID, logID, batch)
 		if err != nil {
 			t.Fatalf("Send(): %v", err)
 		}
@@ -130,7 +130,7 @@ func TestReadLog(t *testing.T) {
 	logID := int64(1)
 	q := NewForTest(ctx, t, dirID, logID)
 
-	ts1, err := q.Send(ctx, dirID, logID, &pb.EntryUpdate{})
+	ts1, err := q.SendBatch(ctx, dirID, logID, []*pb.EntryUpdate{{}})
 	if err != nil {
 		t.Fatalf("Send(): %v", err)
 	}
@@ -169,7 +169,7 @@ func TestWatermark(t *testing.T) {
 	for _, logID := range logIDs {
 		marks[logID] = []water.Mark{}
 		for i := 0; i < 10; i++ {
-			ts, err := m.Send(ctx, dirID, logID, &pb.EntryUpdate{})
+			ts, err := m.SendBatch(ctx, dirID, logID, []*pb.EntryUpdate{{}})
 			if err != nil {
 				t.Fatalf("m.Send(%v): %v", logID, err)
 			}
@@ -213,10 +213,10 @@ func TestEnqueue(t *testing.T) {
 	const logID = int64(1)
 	ctx := context.Background()
 	q := NewForTest(ctx, t, dirID, logID)
-	if _, err := q.Send(ctx, dirID, logID, &pb.EntryUpdate{
+	if _, err := q.SendBatch(ctx, dirID, logID, []*pb.EntryUpdate{{
 		Mutation: &pb.SignedEntry{
 			Entry: mustMarshal(t, &pb.Entry{Index: []byte("index")}),
-		}}); err != nil {
+		}}}); err != nil {
 		t.Errorf("Send(): %v", err)
 	}
 }
@@ -234,7 +234,7 @@ func BenchmarkSend(b *testing.B) {
 				updates = append(updates, update)
 			}
 			for n := 0; n < b.N; n++ {
-				if _, err := m.Send(ctx, dirID, logID, updates...); err != nil {
+				if _, err := m.SendBatch(ctx, dirID, logID, updates); err != nil {
 					b.Errorf("Send(): %v", err)
 				}
 			}

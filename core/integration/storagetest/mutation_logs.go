@@ -73,7 +73,8 @@ func (mutationLogsTests) TestReadLog(ctx context.Context, t *testing.T, newForTe
 	// Write ten batches.
 	for i := byte(0); i < 10; i++ {
 		entry := &pb.EntryUpdate{Mutation: &pb.SignedEntry{Entry: mustMarshal(t, &pb.Entry{Index: []byte{i}})}}
-		wm, err := m.Send(ctx, directoryID, logID, entry, entry, entry) // Send 3 entries.
+		batch := []*pb.EntryUpdate{entry, entry, entry}
+		wm, err := m.SendBatch(ctx, directoryID, logID, batch)
 		if err != nil {
 			t.Fatalf("Send(): %v", err)
 		}
@@ -121,7 +122,7 @@ func (mutationLogsTests) TestReadLogExact(ctx context.Context, t *testing.T, new
 	idx := make([]water.Mark, 0, 10)
 	for i := byte(0); i < 10; i++ {
 		entry := &pb.EntryUpdate{Mutation: &pb.SignedEntry{Entry: []byte{i}}}
-		ts, err := m.Send(ctx, directoryID, logID, entry)
+		ts, err := m.SendBatch(ctx, directoryID, logID, []*pb.EntryUpdate{entry})
 		if err != nil {
 			t.Fatalf("Send(): %v", err)
 		}
@@ -168,7 +169,7 @@ func (mutationLogsTests) TestConcurrentWrites(ctx context.Context, t *testing.T,
 		var highMu sync.Mutex
 		for i := 0; i < concurrency; i++ {
 			g.Go(func() error {
-				wm, err := m.Send(ctx, directoryID, logID, entry)
+				wm, err := m.SendBatch(ctx, directoryID, logID, []*pb.EntryUpdate{entry})
 				highMu.Lock()
 				defer highMu.Unlock()
 				if wm.Value() > high.Value() {

@@ -141,8 +141,7 @@ func (t *Table) ListLogs(ctx context.Context, directoryID string, writable bool)
 }
 
 // Send submits a batch of items to the queue and returns the commit timestamp.
-// TODO: change batch param to []*pb.EntryUpdate
-func (t *Table) Send(ctx context.Context, directoryID string, logID int64, batch ...*pb.EntryUpdate) (water.Mark, error) {
+func (t *Table) SendBatch(ctx context.Context, directoryID string, logID int64, batch []*pb.EntryUpdate) (water.Mark, error) {
 	if len(batch) == 0 {
 		return water.Mark{}, fmt.Errorf("no entries to send")
 	}
