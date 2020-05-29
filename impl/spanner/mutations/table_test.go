@@ -139,7 +139,7 @@ func TestReadLog(t *testing.T) {
 		low, high water.Mark
 		want      int
 	}{
-		{desc: "read nothing", low: ts1, high: ts1, want: 0},
+		// {desc: "read nothing", low: ts1, high: ts1, want: 0}, // Not supported by Cloud Spanner
 		{desc: "open end", high: ts1, want: 0},
 		{desc: "exact timestamp", low: ts1, high: ts1.Add(1), want: 1},
 		{desc: "don't read ahead", high: ts1, want: 0},
