@@ -52,7 +52,7 @@ var testBinary = strings.ToLower(strings.Replace(path.Base(os.Args[0]), ".test",
 var invocationID = fmt.Sprintf("%s-%s", timestamp, testBinary)
 var dbCount uint32 // Unique per test invocation
 
-func uniqueDBName(t testing.TB, project, instance string) string {
+func uniqueDBName(project, instance string) string {
 	database := fmt.Sprintf("%s-%d", invocationID, atomic.AddUint32(&dbCount, 1))
 	return fmt.Sprintf("projects/%s/instances/%s/databases/%s", project, instance, database)
 }
@@ -68,16 +68,16 @@ func CreateDatabase(ctx context.Context, t testing.TB, ddlStatements []string) *
 	var dbName string
 	switch {
 	case *inmemFlag: // In-Mem
-		dbName = uniqueDBName(t, project, instance)
+		dbName = uniqueDBName(project, instance)
 		client, adminClient = inMemClient(ctx, t, dbName)
 	case emulatorAddr != "": // Emulator
-		dbName = uniqueDBName(t, project, instance)
+		dbName = uniqueDBName(project, instance)
 		t.Logf("Using Spanner Emulator DB: %q", dbName)
 		client, adminClient = realClient(ctx, t, dbName)
 		createInstance(ctx, t, dbName)
 		createDatabase(ctx, t, dbName, adminClient)
 	default: // Real
-		dbName = uniqueDBName(t, project, instance)
+		dbName = uniqueDBName(project, instance)
 		t.Logf("Using real Spanner DB: %q", dbName)
 		client, adminClient = realClient(ctx, t, dbName)
 		createDatabase(ctx, t, dbName, adminClient)
@@ -115,7 +115,6 @@ func inMemClient(ctx context.Context, t testing.TB, dbName string) (*spanner.Cli
 		t.Fatalf("Connecting to in-memory fake DB admin: %v", err)
 	}
 	return client, adminClient
-
 }
 
 func realClient(ctx context.Context, t testing.TB, dbName string) (*spanner.Client, *database.DatabaseAdminClient) {
