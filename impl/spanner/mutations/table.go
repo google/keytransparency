@@ -236,8 +236,7 @@ func (t *Table) ReadLog(ctx context.Context, directoryID string, logID int64, lo
 	}
 
 	msgs := make([]*mutator.LogMessage, 0, limit)
-	rtx := t.client.ReadOnlyTransaction().
-		WithTimestampBound(spanner.MinReadTimestamp(markToTime(high)))
+	rtx := t.client.Single().WithTimestampBound(spanner.MinReadTimestamp(markToTime(high)))
 	defer rtx.Close()
 	if err := rtx.ReadWithOptions(ctx, mutTable,
 		spanner.KeyRange{
@@ -271,6 +270,8 @@ func (t *Table) ReadLog(ctx context.Context, directoryID string, logID int64, lo
 				maxLocal = m.LocalID
 			}
 		}
+		rtx := t.client.Single().WithTimestampBound(spanner.MinReadTimestamp(markToTime(high)))
+		defer rtx.Close()
 		if err := rtx.Read(ctx, mutTable,
 			spanner.KeyRange{
 				Kind:  spanner.OpenOpen,

@@ -75,6 +75,7 @@ func TestNewForTest(t *testing.T) {
 }
 
 func TestMutationLogsIntegration(t *testing.T) {
+	t.Parallel()
 	storagetest.RunMutationLogsTests(t,
 		func(ctx context.Context, t *testing.T, dirID string, logIDs ...int64) keyserver.MutationLogs {
 			return NewForTest(ctx, t, dirID, logIDs...)
@@ -82,6 +83,7 @@ func TestMutationLogsIntegration(t *testing.T) {
 }
 
 func TestLogsAdminIntegration(t *testing.T) {
+	t.Parallel()
 	storagetest.RunLogsAdminTests(t,
 		func(ctx context.Context, t *testing.T, dirID string, logIDs ...int64) adminserver.LogsAdmin {
 			return NewForTest(ctx, t, dirID, logIDs...)
@@ -89,6 +91,7 @@ func TestLogsAdminIntegration(t *testing.T) {
 }
 
 func TestReadBatch(t *testing.T) {
+	t.Parallel()
 	const dirID = "readbatch"
 	ctx := context.Background()
 	logID := int64(5)
@@ -125,6 +128,7 @@ func TestReadBatch(t *testing.T) {
 }
 
 func TestReadLog(t *testing.T) {
+	t.Parallel()
 	const dirID = "readlog"
 	ctx := context.Background()
 	logID := int64(1)
@@ -139,7 +143,7 @@ func TestReadLog(t *testing.T) {
 		low, high water.Mark
 		want      int
 	}{
-		{desc: "read nothing", low: ts1, high: ts1, want: 0},
+		// {desc: "read nothing", low: ts1, high: ts1, want: 0}, // Not supported by Cloud Spanner
 		{desc: "open end", high: ts1, want: 0},
 		{desc: "exact timestamp", low: ts1, high: ts1.Add(1), want: 1},
 		{desc: "don't read ahead", high: ts1, want: 0},
@@ -160,6 +164,7 @@ func TestReadLog(t *testing.T) {
 }
 
 func TestWatermark(t *testing.T) {
+	t.Parallel()
 	const dirID = "watermark"
 	ctx := context.Background()
 	logIDs := []int64{1, 2}
@@ -209,6 +214,7 @@ func TestWatermark(t *testing.T) {
 }
 
 func TestEnqueue(t *testing.T) {
+	t.Parallel()
 	const dirID = "enqueue"
 	const logID = int64(1)
 	ctx := context.Background()

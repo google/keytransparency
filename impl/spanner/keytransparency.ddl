@@ -1,10 +1,3 @@
--- Schema hierarchy:
--- + Directories (top-level table)
---   + LogStatus (top-level child table)
---   + Batches   (top-level child table)
---   + Mutations (top-level child table)
-
--- Multi-Tenant
 CREATE TABLE Directories (
   DirectoryID              STRING(100) NOT NULL,
   Map                      BYTES(MAX),

@@ -14,7 +14,11 @@
 
 package spanner
 
-import "testing"
+import (
+	"testing"
+
+	_ "github.com/google/keytransparency/impl/spanner/testutil" // Support test flags
+)
 
 func TestDDL(t *testing.T) {
 	_, err := ReadDDL()

@@ -96,7 +96,7 @@ func TestList(t *testing.T) {
 			}
 			for i, d := range directories {
 				if got, want := d, tc.want[i]; !cmp.Equal(got, want, cmp.Comparer(proto.Equal)) {
-					t.Errorf("Directory[%v]: %v, want %v. Diff: %v", i, got, want, cmp.Diff(want, got))
+					t.Errorf("Directory[%v]: %v, want %v. Diff: %v", i, got, want, cmp.Diff(want, got, cmp.Comparer(proto.Equal)))
 				}
 			}
 		})

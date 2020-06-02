@@ -102,9 +102,9 @@ func unpackRow(row *spanner.Row) (*directory.Directory, error) {
 
 // List returns all Directories. Includes deleted directories if deleted == true.
 func (t *Table) List(ctx context.Context, deleted bool) ([]*directory.Directory, error) {
-	stmt := spanner.NewStatement("SELECT * FROM Directories WHERE Deleted = FALSE")
+	stmt := spanner.NewStatement("SELECT * FROM Directories WHERE Deleted = FALSE ORDER BY DirectoryID")
 	if deleted {
-		stmt = spanner.NewStatement("SELECT * FROM Directories")
+		stmt = spanner.NewStatement("SELECT * FROM Directories ORDER BY DirectoryID")
 	}
 
 	ret := []*directory.Directory{}
