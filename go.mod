@@ -16,7 +16,7 @@ require (
 	github.com/google/trillian v1.3.9-0.20200515134453-00fd1983ab83
 	github.com/grpc-ecosystem/go-grpc-middleware v1.2.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
-	github.com/grpc-ecosystem/grpc-gateway v1.12.1
+	github.com/grpc-ecosystem/grpc-gateway v1.14.6
 	github.com/kr/pretty v0.1.0
 	github.com/kylelemons/godebug v1.1.0
 	github.com/pelletier/go-toml v1.6.0 // indirect
@@ -30,9 +30,9 @@ require (
 	golang.org/x/sync v0.0.0-20200317015054-43a5402ce75a
 	golang.org/x/time v0.0.0-20191024005414-555d28b269f0
 	google.golang.org/api v0.25.0
-	google.golang.org/genproto v0.0.0-20200515170657-fc4c6c6a6587
+	google.golang.org/genproto v0.0.0-20200526211855-cb27e3aa2013
 	google.golang.org/grpc v1.29.1
-	google.golang.org/protobuf v1.23.0
+	google.golang.org/protobuf v1.24.0
 	gopkg.in/yaml.v2 v2.2.8 // indirect
 )
 
