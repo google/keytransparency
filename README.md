@@ -167,26 +167,38 @@ Create or fetch the public key for your specific application.
 - [Proof for foo@bar.com](https://sandbox.keytransparency.dev/v1/directories/default/users/foo@bar.com)
 - [Server configuration info](https://sandbox.keytransparency.dev/v1/directories/default)
 
-## Running the server
+## Running the server locally with Docker Compose
 
-1. [OpenSSL](https://www.openssl.org/community/binaries.html)
-1. [Docker](https://docs.docker.com/engine/installation/)
+Prerequisites
+- [GoLang](https://golang.org/doc/install)
+- [OpenSSL](https://www.openssl.org/community/binaries.html)
+- [Docker](https://docs.docker.com/engine/installation/)
    - Docker Engine 1.17.6+ `docker version -f '{{.Server.APIVersion}}'`
    - Docker Compose 1.11.0+ `docker-compose --version`
 
 ```sh
 go get github.com/google/keytransparency/...
-go get github.com/google/trillian/...
 cd $(go env GOPATH)/src/github.com/google/keytransparency
+
+# Generate Private Keys
+./scripts/gen_monitor_keys.sh -f
 pushd genfiles
 go run "$(go env GOROOT)/src/crypto/tls/generate_cert.go" --host localhost,127.0.0.1,::
 popd
+
+# Build Docker Images
+export TRAVIS_COMMIT=$(git rev-parse HEAD)
+docker-compose build --parallel
+
+# Run
 docker-compose -f docker-compose.yml docker-compose.prod.yml up
 ```
 
 2. Watch it Run
 - [Proof for foo@bar.com](https://localhost/v1/directories/default/users/foo@bar.com)
 - [Server configuration info](https://localhost/v1/directories/default)
+
+3. [Integration test](scripts/docker-compose_test.sh) for Docker Compose
 
 ## Development and Testing
 Key Transparency and its [Trillian](https://github.com/google/trillian) backend
