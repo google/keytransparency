@@ -126,8 +126,11 @@ func main() {
 	defer done()
 
 	metricsSvr := serverutil.MetricsServer(*metricsAddr, &server.Options{})
-	grpcGatewaySvr := serverutil.GRPCGatewayServer(ctx, grpcServer, conn,
+	grpcGatewaySvr, err := serverutil.GRPCGatewayServer(ctx, grpcServer, conn,
 		mopb.RegisterMonitorHandler)
+	if err != nil {
+		glog.Fatalf("GrpcGatewayServer(): %v", err)
+	}
 
 	g, _ := errgroup.WithContext(ctx)
 	g.Go(func() error { return metricsSvr.ListenAndServe(*metricsAddr) })

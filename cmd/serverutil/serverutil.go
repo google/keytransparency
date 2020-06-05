@@ -48,20 +48,22 @@ func gRPCHandlerFunc(grpcServer http.Handler, otherHandler http.Handler) http.Ha
 // RegisterServiceFromConn registers services with a grpc server's ServeMux
 type RegisterServiceFromConn func(context.Context, *runtime.ServeMux, *grpc.ClientConn) error
 
-// ServeAPIGatewayAndGRPC serves the given services over HTTP / JSON and gRPC.
+// GRPCGatewayServer returns a server for given services over HTTP / JSON and gRPC.
 func GRPCGatewayServer(ctx context.Context,
 	grpcServer *grpc.Server, conn *grpc.ClientConn,
-	services ...RegisterServiceFromConn) *http.Server {
+	services ...RegisterServiceFromConn) (*http.Server, error) {
 	// Wire up gRPC and HTTP servers.
 
 	gwmux := runtime.NewServeMux()
 	for _, s := range services {
-		s(ctx, gwmux, conn)
+		if err := s(ctx, gwmux, conn); err != nil {
+			return nil, err
+		}
 	}
 
 	mux := http.NewServeMux()
 	mux.Handle("/", RootHealthHandler(gwmux))
-	return &http.Server{Handler: gRPCHandlerFunc(grpcServer, mux)}
+	return &http.Server{Handler: gRPCHandlerFunc(grpcServer, mux)}, nil
 }
 
 // MetricsServer return server with monitoring APIs

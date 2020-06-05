@@ -166,8 +166,11 @@ func main() {
 	metricsSvr := serverutil.MetricsServer(*metricsAddr, &server.Options{
 		HealthChecks: []health.Checker{db.HealthChecker},
 	})
-	grpcGatewaySvr := serverutil.GRPCGatewayServer(ctx, grpcServer, conn,
+	grpcGatewaySvr, nil := serverutil.GRPCGatewayServer(ctx, grpcServer, conn,
 		pb.RegisterKeyTransparencyAdminHandler)
+	if err != nil {
+		glog.Fatalf("GrpcGatewayServer(): %v", err)
+	}
 
 	g, gctx := errgroup.WithContext(ctx)
 	g.Go(func() error { return metricsSvr.ListenAndServe(*metricsAddr) })
