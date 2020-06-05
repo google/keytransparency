@@ -28,13 +28,11 @@ import (
 	"github.com/google/keytransparency/cmd/serverutil"
 	"github.com/google/keytransparency/core/keyserver"
 	"github.com/google/keytransparency/core/mutator/entry"
+	"github.com/google/keytransparency/impl"
 	"github.com/google/keytransparency/impl/authentication"
 	"github.com/google/keytransparency/impl/authorization"
-	"github.com/google/keytransparency/impl/mysql/directory"
-	"github.com/google/keytransparency/impl/mysql/mutationstorage"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
-	ktsql "github.com/google/keytransparency/impl/mysql"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_auth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
@@ -43,12 +41,13 @@ import (
 )
 
 var (
-	addr         = flag.String("addr", ":8080", "The ip:port combination to listen on")
-	metricsAddr  = flag.String("metrics-addr", ":8081", "The ip:port to publish metrics on")
-	serverDBPath = flag.String("db", "test:zaphod@tcp(localhost:3306)/test", "Database connection string")
-	keyFile      = flag.String("tls-key", "genfiles/server.key", "TLS private key file")
-	certFile     = flag.String("tls-cert", "genfiles/server.crt", "TLS cert file")
-	authType     = flag.String("auth-type", "google", "Sets the type of authentication required from clients to update their entries. Accepted values are google (oauth tokens) and insecure-fake (for testing only).")
+	addr        = flag.String("addr", ":8080", "The ip:port combination to listen on")
+	metricsAddr = flag.String("metrics-addr", ":8081", "The ip:port to publish metrics on")
+	dbPath      = flag.String("db", "test:zaphod@tcp(localhost:3306)/test", "Database connection string")
+	dbEngine    = flag.String("db_engine", "mysql", "Storage implementation. One of ['mysql', 'spanner']")
+	keyFile     = flag.String("tls-key", "genfiles/server.key", "TLS private key file")
+	certFile    = flag.String("tls-cert", "genfiles/server.crt", "TLS cert file")
+	authType    = flag.String("auth-type", "google", "Sets the type of authentication required from clients to update their entries. Accepted values are google (oauth tokens) and insecure-fake (for testing only).")
 
 	mapURL           = flag.String("map-url", "", "URL of Trillian Map Server")
 	logURL           = flag.String("log-url", "", "URL of Trillian Log Server for Signed Map Heads")
@@ -60,11 +59,11 @@ func main() {
 	ctx := context.Background()
 
 	// Open Resources.
-	sqldb, err := ktsql.Open(*serverDBPath)
+	db, err := impl.NewStorage(ctx, *dbEngine, *dbPath)
 	if err != nil {
 		glog.Exit(err)
 	}
-	defer sqldb.Close()
+	defer db.Close()
 
 	authz := &authorization.AuthzPolicy{}
 	var authFunc grpc_auth.AuthFunc
@@ -84,14 +83,6 @@ func main() {
 	}
 
 	// Create database and helper objects.
-	directories, err := directory.NewStorage(sqldb)
-	if err != nil {
-		glog.Exitf("Failed to create directory storage: %v", err)
-	}
-	logs, err := mutationstorage.New(sqldb)
-	if err != nil {
-		glog.Exitf("Failed to create mutations storage: %v", err)
-	}
 
 	// Connect to log and map server.
 	tconn, err := grpc.Dial(*logURL, grpc.WithInsecure())
@@ -106,7 +97,7 @@ func main() {
 	tmap := trillian.NewTrillianMapClient(mconn)
 
 	// Create gRPC server.
-	ksvr := keyserver.New(tlog, tmap, entry.IsValidEntry, directories, logs, logs,
+	ksvr := keyserver.New(tlog, tmap, entry.IsValidEntry, db.Directories, db.Logs, db.Batches,
 		prometheus.MetricFactory{}, int32(*revisionPageSize))
 	grpcServer := grpc.NewServer(
 		grpc.StreamInterceptor(grpc_middleware.ChainStreamServer(
@@ -137,7 +128,7 @@ func main() {
 	defer done()
 
 	g, gctx := errgroup.WithContext(ctx)
-	g.Go(func() error { return serverutil.ServeHTTPMetrics(*metricsAddr, serverutil.Readyz(sqldb)) })
+	g.Go(func() error { return serverutil.ServeHTTPMetrics(*metricsAddr, serverutil.Readyz(db)) })
 	g.Go(func() error {
 		return serverutil.ServeHTTPAPIAndGRPC(gctx, lis, grpcServer, conn, pb.RegisterKeyTransparencyHandler)
 	})

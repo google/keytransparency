@@ -37,14 +37,12 @@ import (
 	"github.com/google/keytransparency/core/adminserver"
 	"github.com/google/keytransparency/core/sequencer"
 	"github.com/google/keytransparency/core/sequencer/election"
-	"github.com/google/keytransparency/impl/mysql/directory"
-	"github.com/google/keytransparency/impl/mysql/mutationstorage"
+	"github.com/google/keytransparency/impl"
 	"github.com/google/keytransparency/internal/forcemaster"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	dir "github.com/google/keytransparency/core/directory"
 	spb "github.com/google/keytransparency/core/sequencer/sequencer_go_proto"
-	ktsql "github.com/google/keytransparency/impl/mysql"
 	etcdelect "github.com/google/trillian/util/election2/etcd"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 
@@ -63,7 +61,8 @@ var (
 	etcdServers = flag.String("etcd_servers", "", "A comma-separated list of etcd servers; no etcd registration if empty")
 	lockDir     = flag.String("lock_file_path", "/keytransparency/master", "etcd lock file directory path")
 
-	serverDBPath = flag.String("db", "db", "Database connection string")
+	dbPath   = flag.String("db", "", "Database connection string")
+	dbEngine = flag.String("db_engine", "mysql", "Storage implementation. One of ['mysql', 'spanner']")
 
 	// Info to connect to the trillian map and log.
 	mapURL = flag.String("map-url", "", "URL of Trillian Map Server")
@@ -119,20 +118,11 @@ func main() {
 	}
 
 	// Database tables
-	sqldb, err := ktsql.Open(*serverDBPath)
+	db, err := impl.NewStorage(ctx, *dbEngine, *dbPath)
 	if err != nil {
 		glog.Exit(err)
 	}
-	defer sqldb.Close()
-
-	mutations, err := mutationstorage.New(sqldb)
-	if err != nil {
-		glog.Exitf("Failed to create mutations object: %v", err)
-	}
-	directoryStorage, err := directory.NewStorage(sqldb)
-	if err != nil {
-		glog.Exitf("Failed to create directory storage object: %v", err)
-	}
+	defer db.Close()
 
 	grpcServer := grpc.NewServer(
 		grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
@@ -147,11 +137,11 @@ func main() {
 	defer done()
 
 	spb.RegisterKeyTransparencySequencerServer(grpcServer, sequencer.NewServer(
-		directoryStorage,
+		db.Directories,
 		trillian.NewTrillianLogClient(lconn),
 		trillian.NewTrillianMapClient(mconn),
 		trillian.NewTrillianMapWriteClient(mconn),
-		mutations, mutations,
+		db.Batches, db.Logs,
 		spb.NewKeyTransparencySequencerClient(conn),
 		prometheus.MetricFactory{}))
 
@@ -160,9 +150,9 @@ func main() {
 		trillian.NewTrillianMapClient(mconn),
 		trillian.NewTrillianAdminClient(lconn),
 		trillian.NewTrillianAdminClient(mconn),
-		directoryStorage,
-		mutations,
-		mutations,
+		db.Directories,
+		db.Logs,
+		db.Batches,
 		func(ctx context.Context, spec *keyspb.Specification) (proto.Message, error) {
 			return der.NewProtoFromSpec(spec)
 		}))
@@ -172,12 +162,12 @@ func main() {
 	grpc_prometheus.EnableHandlingTimeHistogram()
 
 	g, gctx := errgroup.WithContext(ctx)
-	g.Go(func() error { return serverutil.ServeHTTPMetrics(*metricsAddr, serverutil.Readyz(sqldb)) })
+	g.Go(func() error { return serverutil.ServeHTTPMetrics(*metricsAddr, serverutil.Readyz(db)) })
 	g.Go(func() error {
 		return serverutil.ServeHTTPAPIAndGRPC(gctx, lis, grpcServer, conn,
 			pb.RegisterKeyTransparencyAdminHandler)
 	})
-	go runSequencer(gctx, conn, directoryStorage)
+	go runSequencer(gctx, conn, db.Directories)
 
 	glog.Errorf("Sequencer exiting: %v", g.Wait())
 }
