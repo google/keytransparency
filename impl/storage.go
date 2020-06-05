@@ -19,22 +19,22 @@ import (
 	"fmt"
 
 	"cloud.google.com/go/spanner"
+	"github.com/google/keytransparency/core/directory"
 	"github.com/google/keytransparency/core/sequencer"
 	"github.com/google/keytransparency/core/water"
-	"github.com/google/keytransparency/impl/mysql/mutationstorage"
-	"github.com/google/keytransparency/impl/spanner/batch"
-	"github.com/google/keytransparency/impl/spanner/directory"
-	"github.com/google/keytransparency/impl/spanner/mutations"
+	"github.com/google/keytransparency/impl/mysql"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
-	dinterface "github.com/google/keytransparency/core/directory"
-	ktsql "github.com/google/keytransparency/impl/mysql"
-	sqld "github.com/google/keytransparency/impl/mysql/directory"
+	mysqldir "github.com/google/keytransparency/impl/mysql/directory"
+	mysqlmutations "github.com/google/keytransparency/impl/mysql/mutationstorage"
+	spanbatch "github.com/google/keytransparency/impl/spanner/batch"
+	spandir "github.com/google/keytransparency/impl/spanner/directory"
+	spanmutations "github.com/google/keytransparency/impl/spanner/mutations"
 )
 
 // Storage holds an abstract storage implementation
 type Storage struct {
-	Directories dinterface.Storage
+	Directories directory.Storage
 	Logs        interface {
 		sequencer.LogsReader
 
@@ -77,25 +77,25 @@ func spannerStorage(ctx context.Context, db string) (*Storage, error) {
 		return nil, err
 	}
 	return &Storage{
-		Directories: directory.New(spanClient),
-		Batches:     batch.New(spanClient),
-		Logs:        mutations.New(spanClient),
+		Directories: spandir.New(spanClient),
+		Batches:     spanbatch.New(spanClient),
+		Logs:        spanmutations.New(spanClient),
 		healthCheck: func() error { return nil },
 		Close:       spanClient.Close,
 	}, nil
 }
 
 func mysqlStorage(db string) (*Storage, error) {
-	sqldb, err := ktsql.Open(db)
+	sqldb, err := mysql.Open(db)
 	if err != nil {
 		return nil, err
 	}
-	directories, err := sqld.NewStorage(sqldb)
+	directories, err := mysqldir.NewStorage(sqldb)
 	if err != nil {
 		sqldb.Close()
 		return nil, fmt.Errorf("failed to create directory storage: %w", err)
 	}
-	logs, err := mutationstorage.New(sqldb)
+	logs, err := mysqlmutations.New(sqldb)
 	if err != nil {
 		sqldb.Close()
 		return nil, fmt.Errorf("failed to create mutations storage: %w", err)
