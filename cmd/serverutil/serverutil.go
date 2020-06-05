@@ -17,8 +17,9 @@ package serverutil
 
 import (
 	"context"
-	"net"
 	"net/http"
+	"os"
+	"os/signal"
 	"strings"
 
 	"github.com/golang/glog"
@@ -48,31 +49,43 @@ func gRPCHandlerFunc(grpcServer http.Handler, otherHandler http.Handler) http.Ha
 type RegisterServiceFromConn func(context.Context, *runtime.ServeMux, *grpc.ClientConn) error
 
 // ServeAPIGatewayAndGRPC serves the given services over HTTP / JSON and gRPC.
-func ServeHTTPAPIAndGRPC(ctx context.Context, lis net.Listener,
+func GRPCGatewayServer(ctx context.Context,
 	grpcServer *grpc.Server, conn *grpc.ClientConn,
-	services ...RegisterServiceFromConn) error {
+	services ...RegisterServiceFromConn) *http.Server {
 	// Wire up gRPC and HTTP servers.
 
 	gwmux := runtime.NewServeMux()
 	for _, s := range services {
-		if err := s(ctx, gwmux, conn); err != nil {
-			return err
-		}
+		s(ctx, gwmux, conn)
 	}
 
 	mux := http.NewServeMux()
 	mux.Handle("/", RootHealthHandler(gwmux))
-
-	return http.Serve(lis, gRPCHandlerFunc(grpcServer, mux))
+	return &http.Server{Handler: gRPCHandlerFunc(grpcServer, mux)}
 }
 
-// ServeHTTPMetrics serves monitoring APIs
-func ServeHTTPMetrics(addr string, opts *server.Options) error {
+// MetricsServer return server with monitoring APIs
+func MetricsServer(addr string, opts *server.Options) *server.Server {
 	mux := http.NewServeMux()
 	mux.Handle("/metrics", promhttp.Handler())
 	mux.Handle("/", http.HandlerFunc(health.HandleLive))
 
 	glog.Infof("Hosting server status and metrics on %v", addr)
-	srv := server.New(mux, opts)
-	return srv.ListenAndServe(addr)
+	return server.New(mux, opts)
+}
+
+// ListenForCtrlC gracefully stops all the servers on an interrupt signal.
+func ListenForCtrlC(servers ...interface{ Shutdown(context.Context) error }) {
+	interrupt := make(chan os.Signal, 1)
+	signal.Notify(interrupt, os.Interrupt)
+	// Receive off the chanel in a loop, because the interrupt could be sent
+	// before ListenAndServe starts.
+	for {
+		<-interrupt
+		for _, svr := range servers {
+			if err := svr.Shutdown(context.Background()); err != nil {
+				glog.Errorf("Shutdown: %v", err)
+			}
+		}
+	}
 }

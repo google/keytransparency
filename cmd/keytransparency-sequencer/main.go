@@ -163,16 +163,16 @@ func main() {
 	grpc_prometheus.Register(grpcServer)
 	grpc_prometheus.EnableHandlingTimeHistogram()
 
+	metricsSvr := serverutil.MetricsServer(*metricsAddr, &server.Options{
+		HealthChecks: []health.Checker{db.HealthChecker},
+	})
+	grpcGatewaySvr := serverutil.GRPCGatewayServer(ctx, grpcServer, conn,
+		pb.RegisterKeyTransparencyAdminHandler)
+
 	g, gctx := errgroup.WithContext(ctx)
-	g.Go(func() error {
-		return serverutil.ServeHTTPMetrics(*metricsAddr, &server.Options{
-			HealthChecks: []health.Checker{db.HealthChecker},
-		})
-	})
-	g.Go(func() error {
-		return serverutil.ServeHTTPAPIAndGRPC(gctx, lis, grpcServer, conn,
-			pb.RegisterKeyTransparencyAdminHandler)
-	})
+	g.Go(func() error { return metricsSvr.ListenAndServe(*metricsAddr) })
+	g.Go(func() error { return grpcGatewaySvr.Serve(lis) })
+	go serverutil.ListenForCtrlC(metricsSvr, grpcGatewaySvr)
 	go runSequencer(gctx, conn, db.Directories)
 
 	glog.Errorf("Sequencer exiting: %v", g.Wait())

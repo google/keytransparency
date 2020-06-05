@@ -128,15 +128,16 @@ func main() {
 	}
 	defer done()
 
-	g, gctx := errgroup.WithContext(ctx)
-	g.Go(func() error {
-		return serverutil.ServeHTTPMetrics(*metricsAddr, &server.Options{
-			HealthChecks: []health.Checker{db.HealthChecker},
-		})
+	metricsSvr := serverutil.MetricsServer(*metricsAddr, &server.Options{
+		HealthChecks: []health.Checker{db.HealthChecker},
 	})
-	g.Go(func() error {
-		return serverutil.ServeHTTPAPIAndGRPC(gctx, lis, grpcServer, conn, pb.RegisterKeyTransparencyHandler)
-	})
+	grpcGatewaySvr := serverutil.GRPCGatewayServer(ctx, grpcServer, conn,
+		pb.RegisterKeyTransparencyHandler)
+
+	g, _ := errgroup.WithContext(ctx)
+	g.Go(func() error { return metricsSvr.ListenAndServe(*metricsAddr) })
+	g.Go(func() error { return grpcGatewaySvr.Serve(lis) })
+	go serverutil.ListenForCtrlC(metricsSvr, grpcGatewaySvr)
 
 	glog.Errorf("Key Transparency Server exiting: %v", g.Wait())
 }

@@ -125,11 +125,14 @@ func main() {
 	}
 	defer done()
 
-	g, gctx := errgroup.WithContext(ctx)
-	g.Go(func() error { return serverutil.ServeHTTPMetrics(*metricsAddr, &server.Options{}) })
-	g.Go(func() error {
-		return serverutil.ServeHTTPAPIAndGRPC(gctx, lis, grpcServer, conn, mopb.RegisterMonitorHandler)
-	})
+	metricsSvr := serverutil.MetricsServer(*metricsAddr, &server.Options{})
+	grpcGatewaySvr := serverutil.GRPCGatewayServer(ctx, grpcServer, conn,
+		mopb.RegisterMonitorHandler)
+
+	g, _ := errgroup.WithContext(ctx)
+	g.Go(func() error { return metricsSvr.ListenAndServe(*metricsAddr) })
+	g.Go(func() error { return grpcGatewaySvr.Serve(lis) })
+	go serverutil.ListenForCtrlC(metricsSvr, grpcGatewaySvr)
 	glog.Errorf("Monitor exiting: %v", g.Wait())
 }
 
