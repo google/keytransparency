@@ -13,7 +13,7 @@
 // limitations under the License.
 
 // Package sql provides functions for interacting with MySQL.
-package sql
+package mysql
 
 import (
 	"database/sql"
