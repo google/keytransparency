@@ -83,8 +83,6 @@ func main() {
 		glog.Exitf("Invalid auth-type parameter: %v.", *authType)
 	}
 
-	// Create database and helper objects.
-
 	// Connect to log and map server.
 	tconn, err := grpc.Dial(*logURL, grpc.WithInsecure())
 	if err != nil {
