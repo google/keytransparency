@@ -191,7 +191,10 @@ export TRAVIS_COMMIT=$(git rev-parse HEAD)
 docker-compose build --parallel
 
 # Run
-docker-compose -f docker-compose.yml docker-compose.prod.yml up
+docker-compose -f docker-compose.yml docker-compose.prod.yml up -d
+
+# Create directory
+docker run -t --network kt_attachable gcr.io/key-transparency/init:${TRAVIS_COMMIT} sequencer:8080 -- curl -k -X POST https://sequencer:8080/v1/directories -d'{"directory_id":"default","min_interval":"1s","max_interval":"60s"}'
 ```
 
 2. Watch it Run
