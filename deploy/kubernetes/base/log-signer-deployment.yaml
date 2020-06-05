@@ -19,6 +19,7 @@ spec:
         "--mysql_uri=$(DB_NAME)",
         "--cloudspanner_uri=$(DB_NAME)",
         "--storage_system=$(DB_ENGINE)",
+        "--quota_system=noop",
         "--http_endpoint=0.0.0.0:8091",
         "--sequencer_guard_window=0s",
         "--sequencer_interval=1s",

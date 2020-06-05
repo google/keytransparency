@@ -19,6 +19,7 @@ spec:
         "--mysql_uri=$(DB_NAME)",
         "--cloudspanner_uri=$(DB_NAME)",
         "--storage_system=$(DB_ENGINE)",
+        "--quota_system=noop",
         "--rpc_endpoint=0.0.0.0:8090",
         "--http_endpoint=0.0.0.0:8091",
         "--alsologtostderr"
