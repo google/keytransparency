@@ -3,4 +3,4 @@ apiVersion: v1
 metadata:
   name: configmap 
 data:
-  DB_HOST: 127.0.0.1
+  DB_NAME: test:zaphod@tcp(127.0.0.1:3306)/test

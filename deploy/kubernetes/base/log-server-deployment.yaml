@@ -16,7 +16,9 @@ spec:
       containers:
       - name: trillian-logserver
         args: [
-        "--mysql_uri=test:zaphod@tcp($(DB_HOST):3306)/test",
+        "--mysql_uri=$(DB_NAME)",
+        "--cloudspanner_uri=$(DB_NAME)",
+        "--storage_system=$(DB_ENGINE)",
         "--rpc_endpoint=0.0.0.0:8090",
         "--http_endpoint=0.0.0.0:8091",
         "--alsologtostderr"
