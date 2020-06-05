@@ -22,6 +22,8 @@ import (
 	"github.com/golang/glog"
 	"github.com/google/trillian"
 	"github.com/google/trillian/monitoring/prometheus"
+	"gocloud.dev/server"
+	"gocloud.dev/server/health"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
@@ -127,7 +129,11 @@ func main() {
 	defer done()
 
 	g, gctx := errgroup.WithContext(ctx)
-	g.Go(func() error { return serverutil.ServeHTTPMetrics(*metricsAddr, serverutil.Readyz(db)) })
+	g.Go(func() error {
+		return serverutil.ServeHTTPMetrics(*metricsAddr, &server.Options{
+			HealthChecks: []health.Checker{db.HealthChecker},
+		})
+	})
 	g.Go(func() error {
 		return serverutil.ServeHTTPAPIAndGRPC(gctx, lis, grpcServer, conn, pb.RegisterKeyTransparencyHandler)
 	})

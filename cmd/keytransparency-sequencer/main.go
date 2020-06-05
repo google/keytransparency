@@ -29,6 +29,8 @@ import (
 	"github.com/google/trillian/monitoring/prometheus"
 	"github.com/google/trillian/util/election2"
 	"github.com/google/trillian/util/etcd"
+	"gocloud.dev/server"
+	"gocloud.dev/server/health"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
@@ -162,7 +164,11 @@ func main() {
 	grpc_prometheus.EnableHandlingTimeHistogram()
 
 	g, gctx := errgroup.WithContext(ctx)
-	g.Go(func() error { return serverutil.ServeHTTPMetrics(*metricsAddr, serverutil.Readyz(db)) })
+	g.Go(func() error {
+		return serverutil.ServeHTTPMetrics(*metricsAddr, &server.Options{
+			HealthChecks: []health.Checker{db.HealthChecker},
+		})
+	})
 	g.Go(func() error {
 		return serverutil.ServeHTTPAPIAndGRPC(gctx, lis, grpcServer, conn,
 			pb.RegisterKeyTransparencyAdminHandler)

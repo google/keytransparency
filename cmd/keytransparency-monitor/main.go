@@ -24,6 +24,7 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/google/trillian/crypto/keys/pem"
+	"gocloud.dev/server"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -125,7 +126,7 @@ func main() {
 	defer done()
 
 	g, gctx := errgroup.WithContext(ctx)
-	g.Go(func() error { return serverutil.ServeHTTPMetrics(*metricsAddr, serverutil.Healthz()) })
+	g.Go(func() error { return serverutil.ServeHTTPMetrics(*metricsAddr, &server.Options{}) })
 	g.Go(func() error {
 		return serverutil.ServeHTTPAPIAndGRPC(gctx, lis, grpcServer, conn, mopb.RegisterMonitorHandler)
 	})
