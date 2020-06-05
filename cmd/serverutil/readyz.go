@@ -15,14 +15,13 @@
 package serverutil
 
 import (
-	"database/sql"
 	"net/http"
 )
 
 // Readyz is a readiness probe.
-func Readyz(db *sql.DB) http.HandlerFunc {
+func Readyz(db interface{ HealthCheck() error }) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if db == nil || db.PingContext(r.Context()) != nil {
+		if db == nil || db.HealthCheck() != nil {
 			http.Error(w, http.StatusText(http.StatusServiceUnavailable), http.StatusServiceUnavailable)
 			return
 		}
