@@ -56,6 +56,9 @@ type Storage struct {
 // HealthCheck reports on the health of the underlying database connection.
 func (s *Storage) HealthCheck() error { return s.healthCheck() }
 
+// StorageEngines returns a list of supported storage engines.
+func StorageEngines() []string { return []string{"mysql", "spanner"} }
+
 // NewStorage returns a Storage with the requested engine.
 func NewStorage(ctx context.Context, engine, db string) (*Storage, error) {
 	switch engine {

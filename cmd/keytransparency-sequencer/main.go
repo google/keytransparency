@@ -62,8 +62,7 @@ var (
 	lockDir     = flag.String("lock_file_path", "/keytransparency/master", "etcd lock file directory path")
 
 	dbPath   = flag.String("db", "", "Database connection string")
-	dbEngine = flag.String("db_engine", "mysql", "Storage implementation. One of ['mysql', 'spanner']")
-
+	dbEngine = flag.String("db_engine", "mysql", fmt.Sprintf("Storage engines: %v", impl.StorageEngines()))
 	// Info to connect to the trillian map and log.
 	mapURL = flag.String("map-url", "", "URL of Trillian Map Server")
 	logURL = flag.String("log-url", "", "URL of Trillian Log Server for Signed Map Heads")
@@ -141,7 +140,8 @@ func main() {
 		trillian.NewTrillianLogClient(lconn),
 		trillian.NewTrillianMapClient(mconn),
 		trillian.NewTrillianMapWriteClient(mconn),
-		db.Batches, db.Logs,
+		db.Batches,
+		db.Logs,
 		spb.NewKeyTransparencySequencerClient(conn),
 		prometheus.MetricFactory{}))
 
