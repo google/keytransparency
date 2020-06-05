@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package sql provides functions for interacting with MySQL.
-package sql
+// Package mysql provides functions for interacting with MySQL.
+package mysql
 
 import (
 	"database/sql"
