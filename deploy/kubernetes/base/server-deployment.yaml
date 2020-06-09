@@ -35,11 +35,11 @@ spec:
                name: configmap
         livenessProbe:
          httpGet:
-           path: /healthz
+           path: /healthz/liveness
            port: 8081
         readinessProbe:
          httpGet:
-           path: /readyz
+           path: /healthz/readiness
            port: 8081
         name: server
         ports:

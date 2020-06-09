@@ -23,6 +23,8 @@ import (
 	"github.com/google/keytransparency/core/sequencer"
 	"github.com/google/keytransparency/core/water"
 	"github.com/google/keytransparency/impl/mysql"
+	"gocloud.dev/server/health"
+	"gocloud.dev/server/health/sqlhealth"
 
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 	mysqldir "github.com/google/keytransparency/impl/mysql/directory"
@@ -48,13 +50,10 @@ type Storage struct {
 		// Copied methods from keyserver.MutationLogs
 		SendBatch(ctx context.Context, directoryID string, logID int64, batch []*pb.EntryUpdate) (water.Mark, error)
 	}
-	Batches     sequencer.Batcher
-	healthCheck func() error
-	Close       func()
+	Batches       sequencer.Batcher
+	HealthChecker health.Checker
+	Close         func()
 }
-
-// HealthCheck reports on the health of the underlying database connection.
-func (s *Storage) HealthCheck() error { return s.healthCheck() }
 
 // StorageEngines returns a list of supported storage engines.
 func StorageEngines() []string { return []string{"mysql", "spanner"} }
@@ -77,11 +76,11 @@ func spannerStorage(ctx context.Context, db string) (*Storage, error) {
 		return nil, err
 	}
 	return &Storage{
-		Directories: spandir.New(spanClient),
-		Batches:     spanbatch.New(spanClient),
-		Logs:        spanmutations.New(spanClient),
-		healthCheck: func() error { return nil },
-		Close:       spanClient.Close,
+		Directories:   spandir.New(spanClient),
+		Batches:       spanbatch.New(spanClient),
+		Logs:          spanmutations.New(spanClient),
+		HealthChecker: health.CheckerFunc(func() error { return nil }),
+		Close:         spanClient.Close,
 	}, nil
 }
 
@@ -101,10 +100,10 @@ func mysqlStorage(db string) (*Storage, error) {
 		return nil, fmt.Errorf("failed to create mutations storage: %w", err)
 	}
 	return &Storage{
-		Directories: directories,
-		Batches:     logs,
-		Logs:        logs,
-		healthCheck: sqldb.Ping,
-		Close:       func() { sqldb.Close() },
+		Directories:   directories,
+		Batches:       logs,
+		Logs:          logs,
+		HealthChecker: sqlhealth.New(sqldb),
+		Close:         func() { sqldb.Close() },
 	}, nil
 }

@@ -24,6 +24,7 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/google/trillian/crypto/keys/pem"
+	"gocloud.dev/server"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -124,11 +125,17 @@ func main() {
 	}
 	defer done()
 
-	g, gctx := errgroup.WithContext(ctx)
-	g.Go(func() error { return serverutil.ServeHTTPMetrics(*metricsAddr, serverutil.Healthz()) })
-	g.Go(func() error {
-		return serverutil.ServeHTTPAPIAndGRPC(gctx, lis, grpcServer, conn, mopb.RegisterMonitorHandler)
-	})
+	metricsSvr := serverutil.MetricsServer(*metricsAddr, &server.Options{})
+	grpcGatewaySvr, err := serverutil.GRPCGatewayServer(ctx, grpcServer, conn,
+		mopb.RegisterMonitorHandler)
+	if err != nil {
+		glog.Fatalf("GrpcGatewayServer(): %v", err)
+	}
+
+	g, _ := errgroup.WithContext(ctx)
+	g.Go(func() error { return metricsSvr.ListenAndServe(*metricsAddr) })
+	g.Go(func() error { return grpcGatewaySvr.Serve(lis) })
+	go serverutil.ListenForCtrlC(metricsSvr, grpcGatewaySvr)
 	glog.Errorf("Monitor exiting: %v", g.Wait())
 }
 

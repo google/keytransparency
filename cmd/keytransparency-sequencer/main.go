@@ -29,6 +29,8 @@ import (
 	"github.com/google/trillian/monitoring/prometheus"
 	"github.com/google/trillian/util/election2"
 	"github.com/google/trillian/util/etcd"
+	"gocloud.dev/server"
+	"gocloud.dev/server/health"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
@@ -161,12 +163,19 @@ func main() {
 	grpc_prometheus.Register(grpcServer)
 	grpc_prometheus.EnableHandlingTimeHistogram()
 
-	g, gctx := errgroup.WithContext(ctx)
-	g.Go(func() error { return serverutil.ServeHTTPMetrics(*metricsAddr, serverutil.Readyz(db)) })
-	g.Go(func() error {
-		return serverutil.ServeHTTPAPIAndGRPC(gctx, lis, grpcServer, conn,
-			pb.RegisterKeyTransparencyAdminHandler)
+	metricsSvr := serverutil.MetricsServer(*metricsAddr, &server.Options{
+		HealthChecks: []health.Checker{db.HealthChecker},
 	})
+	grpcGatewaySvr, nil := serverutil.GRPCGatewayServer(ctx, grpcServer, conn,
+		pb.RegisterKeyTransparencyAdminHandler)
+	if err != nil {
+		glog.Fatalf("GrpcGatewayServer(): %v", err)
+	}
+
+	g, gctx := errgroup.WithContext(ctx)
+	g.Go(func() error { return metricsSvr.ListenAndServe(*metricsAddr) })
+	g.Go(func() error { return grpcGatewaySvr.Serve(lis) })
+	go serverutil.ListenForCtrlC(metricsSvr, grpcGatewaySvr)
 	go runSequencer(gctx, conn, db.Directories)
 
 	glog.Errorf("Sequencer exiting: %v", g.Wait())

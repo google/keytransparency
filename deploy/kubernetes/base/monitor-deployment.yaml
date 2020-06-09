@@ -37,12 +37,12 @@ spec:
         image: gcr.io/key-transparency/keytransparency-monitor:latest
         livenessProbe:
          httpGet:
-           path: /healthz
+           path: /healthz/liveness
            port: 8071
            scheme: HTTP
         readinessProbe:
          httpGet:
-           path: /readyz
+           path: /healthz/readiness
            port: 8071
            scheme: HTTP
         name: monitor

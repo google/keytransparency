@@ -17,13 +17,16 @@ package serverutil
 
 import (
 	"context"
-	"net"
 	"net/http"
+	"os"
+	"os/signal"
 	"strings"
 
 	"github.com/golang/glog"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"gocloud.dev/server"
+	"gocloud.dev/server/health"
 	"google.golang.org/grpc"
 )
 
@@ -45,33 +48,46 @@ func gRPCHandlerFunc(grpcServer http.Handler, otherHandler http.Handler) http.Ha
 // RegisterServiceFromConn registers services with a grpc server's ServeMux
 type RegisterServiceFromConn func(context.Context, *runtime.ServeMux, *grpc.ClientConn) error
 
-// ServeAPIGatewayAndGRPC serves the given services over HTTP / JSON and gRPC.
-func ServeHTTPAPIAndGRPC(ctx context.Context, lis net.Listener,
+// GRPCGatewayServer returns a server for given services over HTTP / JSON and gRPC.
+func GRPCGatewayServer(ctx context.Context,
 	grpcServer *grpc.Server, conn *grpc.ClientConn,
-	services ...RegisterServiceFromConn) error {
+	services ...RegisterServiceFromConn) (*http.Server, error) {
 	// Wire up gRPC and HTTP servers.
 
 	gwmux := runtime.NewServeMux()
 	for _, s := range services {
 		if err := s(ctx, gwmux, conn); err != nil {
-			return err
+			return nil, err
 		}
 	}
 
 	mux := http.NewServeMux()
 	mux.Handle("/", RootHealthHandler(gwmux))
-
-	return http.Serve(lis, gRPCHandlerFunc(grpcServer, mux))
+	return &http.Server{Handler: gRPCHandlerFunc(grpcServer, mux)}, nil
 }
 
-// ServeHTTPMetrics serves monitoring APIs
-func ServeHTTPMetrics(addr string, ready http.HandlerFunc) error {
+// MetricsServer returns server with monitoring APIs
+func MetricsServer(addr string, opts *server.Options) *server.Server {
 	mux := http.NewServeMux()
 	mux.Handle("/metrics", promhttp.Handler())
-	mux.Handle("/healthz", Healthz())
-	mux.Handle("/readyz", ready)
-	mux.Handle("/", Healthz())
+	mux.Handle("/", http.HandlerFunc(health.HandleLive))
 
 	glog.Infof("Hosting server status and metrics on %v", addr)
-	return http.ListenAndServe(addr, mux)
+	return server.New(mux, opts)
+}
+
+// ListenForCtrlC gracefully stops all the servers on an interrupt signal.
+func ListenForCtrlC(servers ...interface{ Shutdown(context.Context) error }) {
+	interrupt := make(chan os.Signal, 1)
+	signal.Notify(interrupt, os.Interrupt)
+	// Receive off the chanel in a loop, because the interrupt could be sent
+	// before ListenAndServe starts.
+	for {
+		<-interrupt
+		for _, svr := range servers {
+			if err := svr.Shutdown(context.Background()); err != nil {
+				glog.Errorf("Shutdown: %v", err)
+			}
+		}
+	}
 }
