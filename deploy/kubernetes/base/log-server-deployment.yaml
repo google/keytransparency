@@ -13,6 +13,7 @@ spec:
       labels:
         io.kompose.service: log-server
     spec:
+      volumes: []
       containers:
       - name: trillian-logserver
         args: [
@@ -37,5 +38,6 @@ spec:
         - containerPort: 8090
         - containerPort: 8091
         resources: {}
+        volumeMounts: []
       restartPolicy: Always
 status: {}

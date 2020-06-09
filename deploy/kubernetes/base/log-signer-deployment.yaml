@@ -13,6 +13,7 @@ spec:
       labels:
         io.kompose.service: log-signer
     spec:
+      volumes: []
       containers:
       - name: trillian-logsigner
         args: [
@@ -40,5 +41,6 @@ spec:
         ports:
         - containerPort: 8091
         resources: {}
+        volumeMounts: []
       restartPolicy: Always
 status: {}

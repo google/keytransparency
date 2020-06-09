@@ -3,6 +3,9 @@ bases:
 resources:
 - managed-cert.yaml
 patches:
+- path: cloudspanner-creds.yaml
+  target:
+    kind: Deployment
 - path: cloudsql-sidecar.yaml
   target:
     kind: Deployment
