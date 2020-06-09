@@ -66,7 +66,7 @@ func GRPCGatewayServer(ctx context.Context,
 	return &http.Server{Handler: gRPCHandlerFunc(grpcServer, mux)}, nil
 }
 
-// MetricsServer return server with monitoring APIs
+// MetricsServer returns server with monitoring APIs
 func MetricsServer(addr string, opts *server.Options) *server.Server {
 	mux := http.NewServeMux()
 	mux.Handle("/metrics", promhttp.Handler())
