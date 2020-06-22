@@ -11,7 +11,7 @@ require (
 	github.com/golang/mock v1.4.3
 	github.com/golang/protobuf v1.4.2
 	github.com/google/certificate-transparency-go v1.1.0 // indirect
-	github.com/google/go-cmp v0.4.1
+	github.com/google/go-cmp v0.5.0
 	github.com/google/tink/go v1.4.0-rc2
 	github.com/google/trillian v1.3.9-0.20200515134453-00fd1983ab83
 	github.com/grpc-ecosystem/go-grpc-middleware v1.2.0
