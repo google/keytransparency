@@ -38,7 +38,7 @@ If an attacker gained access to a user’s account credentials, the attacker
 could perform an account reset in order to change the user’s end-to-end keys.
 This change would show up as a new key on all of user’s apps that are clients
 of Key Transparency. After regaining control over their account, the user
-could perform a second account-reset in order to reset the account to it’s
+could perform a second account-reset in order to reset the account to its
 previous state.
 
 #### 2. Client Compromise
@@ -116,7 +116,7 @@ recipient has installed.
 
 ## API Reference
 
-*   [Proto Definitions](../impl/proto/keytransparency_v1_service/keytransparency_v1_service.proto)
+*   [Proto Definitions](../core/api/v1/keytransparency.proto)
 *   [gRPC API](api.md)
 
 ## Multiple Apps and Keys
