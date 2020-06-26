@@ -19,6 +19,8 @@ spec:
         args: [
         "--mysql_uri=$(DB_NAME)",
         "--cloudspanner_uri=$(DB_NAME)",
+        "--cloudspanner_dequeue_bucket_fraction=1.0",
+        "--cloudspanner_readonly_staleness=1s",
         "--storage_system=$(DB_ENGINE)",
         "--quota_system=noop",
         "--http_endpoint=0.0.0.0:8091",

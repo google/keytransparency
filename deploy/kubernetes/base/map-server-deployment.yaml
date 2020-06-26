@@ -20,6 +20,8 @@ spec:
         "--mysql_uri=$(DB_NAME)",
         "--cloudspanner_uri=$(DB_NAME)",
         "--storage_system=$(DB_ENGINE)",
+        "--cloudspanner_dequeue_bucket_fraction=1.0",
+        "--cloudspanner_readonly_staleness=1s",
         "--quota_system=noop",
         "--rpc_endpoint=0.0.0.0:8090",
         "--http_endpoint=0.0.0.0:8091",
