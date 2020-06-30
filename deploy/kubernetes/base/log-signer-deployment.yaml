@@ -27,6 +27,7 @@ spec:
         "--sequencer_guard_window=0s",
         "--sequencer_interval=1s",
         "--num_sequencers=1",
+        "--master_hold_interval=1h",
         "--batch_size=50",
         "--force_master=true",
         "--alsologtostderr"
