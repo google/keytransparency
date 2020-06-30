@@ -29,7 +29,7 @@ spec:
         - --tls-cert=/run/secrets/tls.crt
         - --auth-type=insecure-fake
         - --alsologtostderr
-        - --v=5
+        - --v=3
         image: gcr.io/key-transparency/keytransparency-server:latest
         envFrom:
           - configMapRef:
