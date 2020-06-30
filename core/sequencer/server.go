@@ -526,8 +526,9 @@ func (s *Server) PublishRevisions(ctx context.Context,
 		end = batch
 	}
 	logRootTrail.Set(float64(latestMapRoot.Revision - logRoot.TreeSize))
-	for rev := logRoot.TreeSize - 1; rev <= end; rev++ {
-		rawMapRoot, mapRoot, err := mapClient.GetAndVerifyMapRootByRevision(ctx, int64(rev))
+	maxLeafIndex := logRoot.TreeSize - 1
+	for revToWrite := maxLeafIndex + 1; revToWrite <= end; revToWrite++ {
+		rawMapRoot, mapRoot, err := mapClient.GetAndVerifyMapRootByRevision(ctx, int64(revToWrite))
 		if err != nil {
 			return nil, err
 		}
