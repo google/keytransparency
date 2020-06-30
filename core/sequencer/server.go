@@ -457,7 +457,6 @@ func (s *Server) ApplyRevision(ctx context.Context, in *spb.ApplyRevisionRequest
 
 	// Apply mutations to values.
 	newIndexedLeaves := runner.DoReduceFn(entry.ReduceFn, joined, emitErrFn, incMetricFn)
-	glog.V(2).Infof("DoReduceFn reduced %v values on %v indexes", len(indexedValues), len(joined))
 
 	// Marshal new indexed values back into Trillian Map leaves.
 	newLeaves := runner.DoMarshalIndexedValues(newIndexedLeaves, emitErrFn, incMetricFn)
@@ -470,7 +469,7 @@ func (s *Server) ApplyRevision(ctx context.Context, in *spb.ApplyRevisionRequest
 	if err != nil {
 		return nil, err
 	}
-	glog.V(2).Infof("CreateRevision: WriteLeaves:{Revision: %v}", in.Revision)
+	glog.V(2).Infof("CreateRevision: WriteLeaves:{Revision: %v, MapLeaves: %v}", in.Revision, len(newLeaves))
 
 	writtenAt := time.Now()
 	for _, li := range logItems {
