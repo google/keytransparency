@@ -18,10 +18,13 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"os"
 
+	"github.com/go-kit/kit/log"
 	"github.com/golang/glog"
 	"github.com/google/trillian"
 	"github.com/google/trillian/monitoring/prometheus"
+	"github.com/grpc-ecosystem/go-grpc-middleware/logging/kit"
 	"gocloud.dev/server"
 	"gocloud.dev/server/health"
 	"golang.org/x/sync/errgroup"
@@ -100,15 +103,19 @@ func main() {
 	// Create gRPC server.
 	ksvr := keyserver.New(tlog, tmap, entry.IsValidEntry, db.Directories, db.Logs, db.Batches,
 		prometheus.MetricFactory{}, int32(*revisionPageSize))
+
+	logger := log.NewLogfmtLogger(os.Stdout)
 	grpcServer := grpc.NewServer(
 		grpc.StreamInterceptor(grpc_middleware.ChainStreamServer(
 			grpc_prometheus.StreamServerInterceptor,
+			kit.StreamServerInterceptor(logger),
 			authorization.StreamServerInterceptor(map[string]authorization.AuthPair{
 				// All streaming methods are unauthenticated for now.
 			}),
 		)),
 		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(
 			grpc_prometheus.UnaryServerInterceptor,
+			kit.UnaryServerInterceptor(logger),
 			authorization.UnaryServerInterceptor(map[string]authorization.AuthPair{
 				"/google.keytransparency.v1.KeyTransparency/UpdateEntry": {
 					AuthnFunc: authFunc,
