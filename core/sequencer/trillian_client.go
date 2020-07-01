@@ -16,6 +16,7 @@ package sequencer
 
 import (
 	"context"
+	"time"
 
 	"github.com/golang/glog"
 	"github.com/google/trillian/types"
@@ -65,8 +66,9 @@ func (t *Trillian) MapWriteClient(ctx context.Context, dirID string) (*MapWriteC
 	}
 
 	return &MapWriteClient{
-		MapID:  directory.Map.TreeId,
-		twrite: t.twrite,
+		MapID:         directory.Map.TreeId,
+		twrite:        t.twrite,
+		perRPCTimeout: 60 * time.Second,
 	}, nil
 }
 
@@ -82,7 +84,10 @@ func (t *Trillian) MapClient(ctx context.Context, dirID string) (trillianMap, er
 	if err != nil {
 		return nil, err
 	}
-	return &MapClient{MapClient: c}, nil
+	return &MapClient{
+		MapClient:     c,
+		perRPCTimeout: 60 * time.Second,
+	}, nil
 }
 
 // LogClient returns a verifying LogClient.
@@ -99,12 +104,15 @@ func (t *Trillian) LogClient(ctx context.Context, dirID string) (trillianLog, er
 }
 
 type MapWriteClient struct {
-	MapID  int64
-	twrite tpb.TrillianMapWriteClient
+	MapID         int64
+	twrite        tpb.TrillianMapWriteClient
+	perRPCTimeout time.Duration
 }
 
 func (c *MapWriteClient) GetLeavesByRevision(ctx context.Context, rev int64, indexes [][]byte) ([]*tpb.MapLeaf, error) {
-	mapLeaves, err := c.twrite.GetLeavesByRevision(ctx, &tpb.GetMapLeavesByRevisionRequest{
+	cctx, cancel := context.WithTimeout(ctx, c.perRPCTimeout)
+	defer cancel()
+	mapLeaves, err := c.twrite.GetLeavesByRevision(cctx, &tpb.GetMapLeavesByRevisionRequest{
 		MapId:    c.MapID,
 		Revision: rev,
 		Index:    indexes,
@@ -124,11 +132,14 @@ func (c *MapWriteClient) WriteLeaves(ctx context.Context, rev int64, leaves []*t
 // MapClient interacts with the Trillian Map and verifies its responses.
 type MapClient struct {
 	*tclient.MapClient
+	perRPCTimeout time.Duration
 }
 
 // GetAndVerifyLatestMapRoot verifies and returns the latest map root.
 func (c *MapClient) GetAndVerifyLatestMapRoot(ctx context.Context) (*tpb.SignedMapRoot, *types.MapRootV1, error) {
-	rootResp, err := c.Conn.GetSignedMapRoot(ctx, &tpb.GetSignedMapRootRequest{MapId: c.MapID})
+	cctx, cancel := context.WithTimeout(ctx, c.perRPCTimeout)
+	defer cancel()
+	rootResp, err := c.Conn.GetSignedMapRoot(cctx, &tpb.GetSignedMapRootRequest{MapId: c.MapID})
 	if err != nil {
 		return nil, nil, status.Errorf(status.Code(err), "GetSignedMapRoot(%v): %v", c.MapID, err)
 	}
@@ -142,11 +153,13 @@ func (c *MapClient) GetAndVerifyLatestMapRoot(ctx context.Context) (*tpb.SignedM
 // GetAndVerifyMapRootByRevision verifies and returns a specific map root.
 func (c *MapClient) GetAndVerifyMapRootByRevision(ctx context.Context,
 	rev int64) (*tpb.SignedMapRoot, *types.MapRootV1, error) {
+	cctx, cancel := context.WithTimeout(ctx, c.perRPCTimeout)
+	defer cancel()
 	req := &tpb.GetSignedMapRootByRevisionRequest{
 		MapId:    c.MapID,
 		Revision: rev,
 	}
-	resp, err := c.Conn.GetSignedMapRootByRevision(ctx, req)
+	resp, err := c.Conn.GetSignedMapRootByRevision(cctx, req)
 	if err != nil {
 		return nil, nil, status.Errorf(status.Code(err), "GetSignedMapRootByRevision(%v, %v): %v", c.MapID, rev, err)
 	}
@@ -161,7 +174,9 @@ func (c *MapClient) GetAndVerifyMapRootByRevision(ctx context.Context,
 // GetMapLeavesByRevisionNoProof returns the requested map leaves at a specific revision.
 // indexes may not contain duplicates.
 func (c *MapClient) GetMapLeavesByRevisionNoProof(ctx context.Context, revision int64, indexes [][]byte) ([]*tpb.MapLeaf, error) {
-	getResp, err := c.Conn.GetLeavesByRevisionNoProof(ctx, &tpb.GetMapLeavesByRevisionRequest{
+	cctx, cancel := context.WithTimeout(ctx, c.perRPCTimeout)
+	defer cancel()
+	getResp, err := c.Conn.GetLeavesByRevisionNoProof(cctx, &tpb.GetMapLeavesByRevisionRequest{
 		MapId:    c.MapID,
 		Index:    indexes,
 		Revision: revision,
