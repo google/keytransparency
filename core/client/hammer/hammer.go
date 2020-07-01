@@ -116,6 +116,19 @@ func (h *Hammer) Run(ctx context.Context, numWorkers int, c Config) error {
 		return err
 	}
 
+	if ok := c.TestTypes["create"]; ok {
+		// Batch Write users
+		log.Print("Batch Write")
+		args := genArgs(ctx, c.BatchWriteQPS, c.BatchWriteSize, c.BatchWriteCount, c.Duration)
+		handlers := make([]ReqHandler, 0, len(workers))
+		for i := range workers {
+			handlers = append(handlers, workers[i].createOp)
+		}
+		log.Printf("workers: %v", len(handlers))
+		executeRequests(ctx, args, handlers)
+		fmt.Print("\n")
+	}
+
 	if ok := c.TestTypes["batch"]; ok {
 		// Batch Write users
 		log.Print("Batch Write")
@@ -216,6 +229,27 @@ func (h *Hammer) newWorkers(n int) ([]worker, error) {
 		})
 	}
 	return workers, nil
+}
+
+// createOp queues many user mutations, waits, and then verifies them all.
+func (w *worker) createOp(ctx context.Context, req *reqArgs) error {
+	users := make([]*client.User, 0, len(req.UserIDs))
+	for _, userID := range req.UserIDs {
+		users = append(users, &client.User{
+			UserID:         userID,
+			PublicKeyData:  []byte("publickey"),
+			AuthorizedKeys: w.authorizedKeys,
+		})
+	}
+
+	cctx, cancel := context.WithTimeout(ctx, w.timeout)
+	defer cancel()
+	if err := w.client.BatchCreateUser(cctx, users, w.signers); err != nil {
+		return err
+	}
+
+	fmt.Print(".")
+	return nil
 }
 
 // writeOp queues many user mutations, waits, and then verifies them all.
