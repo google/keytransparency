@@ -20,6 +20,34 @@ import (
 	"testing"
 )
 
+func TestAllPairsOverlap(t *testing.T) {
+	max := uint64(100)
+	for created := uint64(1); created < max; created++ {
+		for current := created; current < max; current++ {
+			for diff := uint64(0); diff < 1; diff++ {
+				newer := NewerRevisionsToVerify(created, current, 0)
+				older := OlderRevisionsToVerify(current+diff, 0)
+				t.Logf("newer: (%v, %v):\t%v", created, current, newer)
+				t.Logf("older: (%v):\t%v", current+diff, older)
+
+				set := make(map[uint64]bool)
+				overlap := []uint64{}
+				for _, rev := range newer {
+					set[rev] = true
+				}
+				for _, rev := range older {
+					if _, ok := set[rev]; ok {
+						overlap = append(overlap, rev)
+					}
+				}
+				if got := len(overlap); got != 1 {
+					t.Fatalf("overlap: %v, want 1", got)
+				}
+			}
+		}
+	}
+}
+
 func TestMeetInTheMiddleOverlap(t *testing.T) {
 	for i, tc := range []struct {
 		created uint64
