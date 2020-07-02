@@ -16,7 +16,6 @@ package client
 
 import (
 	"fmt"
-	"math/rand"
 	"testing"
 )
 
@@ -55,16 +54,12 @@ func TestMeetInTheMiddleOverlap(t *testing.T) {
 		diff    uint64
 		fail    bool
 	}{
-		// Non converging zero situations.
-		{created: 0, current: 0, fail: true},
-		{created: 129, current: 0, fail: true},
 		// All combinations of current > 1, diff = 0 overlap.
 		{created: 1, current: 1},
 		{created: 1, current: 128},
 		{created: 127, current: 127},
 		{created: 128, current: 128},
 		{created: 129, current: 1000000},
-		{created: uint64(rand.Int63()), current: uint64(rand.Int63())},
 		// Failure when diff >= current
 		{created: 1, current: 128, diff: 127},
 		{created: 1, current: 128, diff: 128, fail: true},

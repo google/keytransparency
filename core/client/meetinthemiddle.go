@@ -33,7 +33,7 @@ func NewerRevisionsToVerify(created, current, verified uint64) []uint64 {
 		created = 1 // Revision 0 is empty.
 	}
 	if created > current {
-		created = current
+		panic("created > current")
 	}
 	for r := created; r <= current && r > 0; r = next(r) {
 		// check = created + 2ⁱ - created mod 2ⁱ
