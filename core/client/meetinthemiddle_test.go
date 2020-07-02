@@ -1,4 +1,4 @@
-// Copyright 2020 Google Inc. All Rights Reserved.
+// Copyright 2020 Google LLC. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,10 +22,10 @@ import (
 
 func TestMeetInTheMiddleOverlap(t *testing.T) {
 	for i, tc := range []struct {
-		created,
-		current int64
-		diff int64
-		fail bool
+		created uint64
+		current uint64
+		diff    uint64
+		fail    bool
 	}{
 		// Non converging zero situations.
 		{created: 0, current: 0, fail: true},
@@ -36,7 +36,7 @@ func TestMeetInTheMiddleOverlap(t *testing.T) {
 		{created: 127, current: 127},
 		{created: 128, current: 128},
 		{created: 129, current: 1000000},
-		{created: rand.Int63(), current: rand.Int63()},
+		{created: uint64(rand.Int63()), current: uint64(rand.Int63())},
 		// Failure when diff >= current
 		{created: 1, current: 128, diff: 127},
 		{created: 1, current: 128, diff: 128, fail: true},
@@ -50,8 +50,8 @@ func TestMeetInTheMiddleOverlap(t *testing.T) {
 			t.Logf("newer: %v", newer)
 			t.Logf("older: %v", older)
 
-			set := make(map[int64]bool)
-			overlap := []int64{}
+			set := make(map[uint64]bool)
+			overlap := []uint64{}
 			for _, rev := range newer {
 				set[rev] = true
 			}
