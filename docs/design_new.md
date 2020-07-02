@@ -6,7 +6,7 @@ Key Transparency currently suffers from a design-space trade-off in two dimensio
 low latency key updates and verification bandwidth; each snapshot of the
 key-value Merkle tree creates an additional point in time that clients must
 audit when inspecting their account history.
-Using Key Transparency v0.4.0 and below requires the presence of powerful
+Using Key Transparency 1.0 and below requires the presence of powerful
 auditors who can verify that no information has been lost or tampered with between all snapshots.
 
 | Update Latency | History Audit `O(T * log N)`  | Key Lookup |
@@ -17,7 +17,7 @@ auditors who can verify that no information has been lost or tampered with betwe
 
 Table: *Based on 1B users, updating 200 keys per second*
 
-Key Transparency v2.0 is a new set of algorithms that removes this fundamental trade-off by sharing
+Key Transparency 2.0 is a new set of algorithms that removes this fundamental trade-off by sharing
 the task of auditing between pairs of clients. As a result, all configurations have efficiently
 auditable data structures that do not require the presence of 3rd party auditors.
 
