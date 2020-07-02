@@ -17,6 +17,8 @@ package client
 import (
 	"fmt"
 	"testing"
+
+	"github.com/google/go-cmp/cmp"
 )
 
 func TestAllPairsOverlap(t *testing.T) {
@@ -54,7 +56,11 @@ func TestMeetInTheMiddleOverlap(t *testing.T) {
 		diff    uint64
 		fail    bool
 	}{
+		// Failure for created > current
+		{created: 0, current: 0, fail: true},
+		{created: 2, current: 1, fail: true},
 		// All combinations of current > 1, diff = 0 overlap.
+		{created: 0, current: 1},
 		{created: 1, current: 1},
 		{created: 1, current: 128},
 		{created: 127, current: 127},
@@ -87,5 +93,28 @@ func TestMeetInTheMiddleOverlap(t *testing.T) {
 				t.Errorf("overlap: %v, want no overlap: %v", overlap, tc.fail)
 			}
 		})
+	}
+}
+
+func TestVerified(t *testing.T) {
+	// Ensure that, as the revisions verified grow, we accumulate all revisions.
+	max := uint64(100)
+	for created := uint64(1); created < max; created++ {
+		for current := created; current < max; current++ {
+			want := map[uint64]bool{}
+			for _, r := range NewerRevisionsToVerify(created, current, 0) {
+				want[r] = true
+			}
+			got := map[uint64]bool{}
+			for verified := uint64(0); verified < current; verified++ {
+				for _, r := range NewerRevisionsToVerify(created, current, verified) {
+					got[r] = true
+				}
+			}
+			if !cmp.Equal(got, want) {
+				t.Fatalf("accumulated NewerRevisionsToVerify(%v, %v, all): %v, want %v",
+					created, current, got, want)
+			}
+		}
 	}
 }

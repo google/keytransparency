@@ -18,7 +18,7 @@ package client
 
 // NewerRevisionsToVerify returns a list of revisions to perform append-only verifications against.
 // The relying party / sender is assured that if there is an entity running the
-// OlderRevisionsToVerify algorithm, they will have at least on revision in
+// OlderRevisionsToVerify algorithm, they will have at least one revision in
 // common.
 //
 // `created` is the (earliest) revision a data item was found in the map.
@@ -33,11 +33,7 @@ func NewerRevisionsToVerify(created, current, verified uint64) []uint64 {
 	if created < 1 {
 		created = 1 // Revision 0 is empty.
 	}
-	if created > current {
-		panic("created > current")
-	}
-	for r := created; r <= current && r > 0; r = next(r) {
-		// check = created + 2ⁱ - created mod 2ⁱ
+	for r := created; r <= current; r = next(r) {
 		if r <= verified {
 			continue
 		}

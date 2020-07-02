@@ -17,9 +17,10 @@ auditors who can verify that no information has been lost or tampered with betwe
 
 Table: *Based on 1B users, updating 200 keys per second*
 
-Key Transparency 2.0 is a new set of algorithms that removes this fundamental trade-off by sharing
-the task of auditing between pairs of clients. As a result, all configurations have efficiently
-auditable data structures that do not require the presence of 3rd party auditors.
+Key Transparency 2.0 is a new set of algorithms that removes this fundamental
+trade-off by sharing the task of auditing between pairs of clients. As a
+result, all configurations have efficiently auditable data structures that do
+not require the presence of 3rd party auditors.
 
 We expect that many applications will want to prioritize lower latency and
 reliability by using a *trust, then verify* mode whereby clients receive key
@@ -101,7 +102,7 @@ hashes.
    that the sender and receiver used. `O(1 * 1 log N)`
 1. But the snapshots that the sender and receiver used are unknown, so we use a
    [meet-in-the-middle algorithm](meet-in-the-middle.md) to sample log
-   T of them. `O(log T * log N)`
+   O(log T) revisions in such a way that they intersect. `O(log T * log N)`
 
 
 # Work Plan
