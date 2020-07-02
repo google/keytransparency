@@ -56,14 +56,14 @@ type Storage struct {
 }
 
 // StorageEngines returns a list of supported storage engines.
-func StorageEngines() []string { return []string{"mysql", "spanner"} }
+func StorageEngines() []string { return []string{"mysql", "cloud_spanner"} }
 
 // NewStorage returns a Storage with the requested engine.
 func NewStorage(ctx context.Context, engine, db string) (*Storage, error) {
 	switch engine {
 	case "mysql":
 		return mysqlStorage(db)
-	case "spanner":
+	case "cloud_spanner":
 		return spannerStorage(ctx, db)
 	default:
 		return nil, fmt.Errorf("unknown db engine %s", engine)
