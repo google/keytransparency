@@ -22,8 +22,9 @@ package client
 // common.
 //
 // `created` is the (earliest) revision a data item was found in the map.
-//    It is OK to use the revision at which an item was fetched, but the algorithm will be more efficent
-//    if it starts with the revision at which an item was submitted to the map.
+//    It is OK to use the revision at which an item was fetched, but the
+//    algorithm will be more efficient if it starts with the revision at which
+//    an item was submitted to the map.
 // `verified` is the latest revision of a successfully verified consistency proof by this client.
 //    When verified > created, previously verified revisions are omitted from the results.
 // `current` is the current revision of the map. Selected revisions will be <= current.
