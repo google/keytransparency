@@ -21,3 +21,12 @@ resources:
 - sequencer-service.yaml
 - server-deployment.yaml
 - server-service.yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+images:
+- name: gcr.io/trillian-opensource-ci/log_server
+  newTag: v1.3.10
+- name: gcr.io/trillian-opensource-ci/log_signer
+  newTag: v1.3.10
+- name: gcr.io/trillian-opensource-ci/map_server
+  newTag: v1.3.10
