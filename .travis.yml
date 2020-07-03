@@ -3,6 +3,9 @@ language: go
 go:
 - "1.14.x"
 dist: bionic
+addons:
+snaps:
+ - google-cloud-sdk
 
 go_import_path: github.com/google/keytransparency
 
@@ -57,18 +60,6 @@ jobs:
       - ./scripts/cleanup_images.sh
 
 before_install:
-  - if [ ! -d ${HOME}/google-cloud-sdk/bin ]; then
-        # The install script errors if this directory already exists,
-        # but Travis already creates it when we mark it as cached.
-        rm -rf $HOME/google-cloud-sdk;
-        # The install script is overly verbose, which sometimes causes
-        # problems on Travis, so ignore stdout.
-        curl https://sdk.cloud.google.com | bash > /dev/null;
-    fi
-  # This line is critical. We setup the SDK to take precedence in our
-  # environment over the old SDK that is already on the machine.
-  - source $HOME/google-cloud-sdk/path.bash.inc
-  - gcloud -q components update
   - gcloud -q version
   - wget --version
   - docker --version
