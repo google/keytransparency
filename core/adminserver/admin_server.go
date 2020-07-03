@@ -202,7 +202,7 @@ func privKeyOrGen(ctx context.Context, privKey *any.Any, keygen keys.ProtoGenera
 // - with a set PrivateKey is not nil, otherwise KeySpec is set.
 // - with a tree description of "KT directory %v"
 func treeConfig(treeTemplate *tpb.CreateTreeRequest, privKey *any.Any, directoryID string) *tpb.CreateTreeRequest {
-	config := *treeTemplate
+	config := proto.Clone(treeTemplate).(*tpb.CreateTreeRequest)
 
 	if privKey != nil {
 		config.Tree.PrivateKey = privKey
@@ -215,7 +215,7 @@ func treeConfig(treeTemplate *tpb.CreateTreeRequest, privKey *any.Any, directory
 	if len(directoryID) >= maxDisplayNameLength {
 		config.Tree.DisplayName = directoryID[:maxDisplayNameLength]
 	}
-	return &config
+	return config
 }
 
 // CreateDirectory reachs out to Trillian to produce new trees.

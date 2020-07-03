@@ -24,6 +24,14 @@ resources:
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 images:
+- name: gcr.io/key-transparency/init
+  newTag: 15d6d36653d9cce064d2b94ee8d55cab0127fa8b
+- name: gcr.io/key-transparency/keytransparency-monitor
+  newTag: 15d6d36653d9cce064d2b94ee8d55cab0127fa8b
+- name: gcr.io/key-transparency/keytransparency-sequencer
+  newTag: 15d6d36653d9cce064d2b94ee8d55cab0127fa8b
+- name: gcr.io/key-transparency/keytransparency-server
+  newTag: 15d6d36653d9cce064d2b94ee8d55cab0127fa8b
 - name: gcr.io/trillian-opensource-ci/log_server
   newTag: v1.3.10
 - name: gcr.io/trillian-opensource-ci/log_signer
