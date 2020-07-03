@@ -3,6 +3,9 @@ language: go
 go:
 - "1.14.x"
 dist: bionic
+addons:
+snaps:
+ - google-cloud-sdk
 
 go_import_path: github.com/google/keytransparency
 
