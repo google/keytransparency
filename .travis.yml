@@ -57,9 +57,6 @@ jobs:
       - ./scripts/cleanup_images.sh
 
 before_install:
-  - if [ ! -d "$HOME/google-cloud-sdk/bin" ]; then rm -rf "$HOME/google-cloud-sdk"; curl https://sdk.cloud.google.com | bash > /dev/null; fi
-  - source $HOME/google-cloud-sdk/path.bash.inc
-  - gcloud -q components update
   - gcloud -q version
   - wget --version
   - docker --version
