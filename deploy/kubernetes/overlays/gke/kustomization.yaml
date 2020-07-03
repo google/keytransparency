@@ -3,9 +3,12 @@ bases:
 resources:
 - managed-cert.yaml
 patches:
-- path: cloudsql-sidecar.yaml
+- path: cloudspanner-creds.yaml
   target:
     kind: Deployment
+# - path: cloudsql-sidecar.yaml
+#   target:
+#     kind: Deployment
 patchesStrategicMerge:
 - configmap.yaml
 - ingress.yaml

@@ -13,14 +13,21 @@ spec:
       labels:
         io.kompose.service: log-signer
     spec:
+      volumes: []
       containers:
       - name: trillian-logsigner
         args: [
-        "--mysql_uri=test:zaphod@tcp($(DB_HOST):3306)/test",
+        "--mysql_uri=$(DB_NAME)",
+        "--cloudspanner_uri=$(DB_NAME)",
+        "--cloudspanner_dequeue_bucket_fraction=1.0",
+        "--cloudspanner_readonly_staleness=1s",
+        "--storage_system=$(DB_ENGINE)",
+        "--quota_system=noop",
         "--http_endpoint=0.0.0.0:8091",
         "--sequencer_guard_window=0s",
         "--sequencer_interval=1s",
         "--num_sequencers=1",
+        "--master_hold_interval=1h",
         "--batch_size=50",
         "--force_master=true",
         "--alsologtostderr"
@@ -37,5 +44,6 @@ spec:
         ports:
         - containerPort: 8091
         resources: {}
+        volumeMounts: []
       restartPolicy: Always
 status: {}

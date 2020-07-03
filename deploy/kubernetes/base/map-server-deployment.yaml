@@ -13,10 +13,16 @@ spec:
       labels:
         io.kompose.service: map-server
     spec:
+      volumes: []
       containers:
       - name: trillian-mapserver
         args: [
-        "--mysql_uri=test:zaphod@tcp($(DB_HOST):3306)/test",
+        "--mysql_uri=$(DB_NAME)",
+        "--cloudspanner_uri=$(DB_NAME)",
+        "--storage_system=$(DB_ENGINE)",
+        "--cloudspanner_dequeue_bucket_fraction=1.0",
+        "--cloudspanner_readonly_staleness=1s",
+        "--quota_system=noop",
         "--rpc_endpoint=0.0.0.0:8090",
         "--http_endpoint=0.0.0.0:8091",
         "--single_transaction",
@@ -35,5 +41,6 @@ spec:
         - containerPort: 8090
         - containerPort: 8091
         resources: {}
+        volumeMounts: []
       restartPolicy: Always
 status: {}

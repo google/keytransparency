@@ -1,0 +1,14 @@
+- op: add
+  path: /spec/template/spec/volumes/-
+  value:
+    name: secrets-cloudspanner
+    secret:
+      secretName: cloudspanner
+
+- op: add
+  path: /spec/template/spec/containers/0/volumeMounts/-
+  value:
+    name: secrets-cloudspanner
+    mountPath: /secrets/cloudspanner
+    readOnly: true
+

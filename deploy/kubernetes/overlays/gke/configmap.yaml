@@ -3,4 +3,7 @@ apiVersion: v1
 metadata:
   name: configmap 
 data:
-  DB_HOST: 127.0.0.1
+  DB_NAME: projects/key-transparency/instances/keytransparency-dev/databases/sandbox
+  DB_ENGINE: cloud_spanner
+  GOOGLE_APPLICATION_CREDENTIALS: /secrets/cloudspanner/credentials.json
+

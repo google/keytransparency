@@ -13,10 +13,16 @@ spec:
       labels:
         io.kompose.service: log-server
     spec:
+      volumes: []
       containers:
       - name: trillian-logserver
         args: [
-        "--mysql_uri=test:zaphod@tcp($(DB_HOST):3306)/test",
+        "--mysql_uri=$(DB_NAME)",
+        "--cloudspanner_uri=$(DB_NAME)",
+        "--cloudspanner_dequeue_bucket_fraction=1.0",
+        "--cloudspanner_readonly_staleness=1s",
+        "--storage_system=$(DB_ENGINE)",
+        "--quota_system=noop",
         "--rpc_endpoint=0.0.0.0:8090",
         "--http_endpoint=0.0.0.0:8091",
         "--alsologtostderr"
@@ -34,5 +40,6 @@ spec:
         - containerPort: 8090
         - containerPort: 8091
         resources: {}
+        volumeMounts: []
       restartPolicy: Always
 status: {}

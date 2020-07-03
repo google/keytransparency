@@ -21,13 +21,14 @@ spec:
       - command:
         - /keytransparency-sequencer
         - --force_master
-        - --db=test:zaphod@tcp($(DB_HOST):3306)/test
+        - --db=$(DB_NAME)
+        - --db_engine=$(DB_ENGINE)
         - --addr=0.0.0.0:8080
         - --log-url=log-server:8090
         - --map-url=map-server:8090
         - --tls-key=/run/secrets/tls.key
         - --tls-cert=/run/secrets/tls.crt
-        - --batch-size=500
+        - --batch-size=400
         - --refresh=1s
         - --alsologtostderr
         - --v=5
