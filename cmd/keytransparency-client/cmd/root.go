@@ -264,7 +264,7 @@ func readConfigFromDisk() (*pb.Directory, error) {
 	}
 	mapPubPB, err := der.ToPublicProto(mapPubKey)
 	if err != nil {
-		return nil, fmt.Errorf("error seralizeing map public key: %v", err)
+		return nil, fmt.Errorf("error serializing map public key: %v", err)
 	}
 
 	return &pb.Directory{

@@ -537,7 +537,7 @@ Leaf entry for a user.
 <a name="google.keytransparency.v1.MapRevision"></a>
 
 ### MapRevision
-MapRevision contains a map leaf at a speific revision.
+MapRevision contains a map leaf at a specific revision.
 
 
 | Field | Type | Label | Description |
@@ -938,7 +938,7 @@ The KeyTransparencyAdmin API provides the following resources:
 | Method Name | Request Type | Response Type | Description |
 | ----------- | ------------ | ------------- | ------------|
 | ListDirectories | [ListDirectoriesRequest](#google.keytransparency.v1.ListDirectoriesRequest) | [ListDirectoriesResponse](#google.keytransparency.v1.ListDirectoriesResponse) | ListDirectories returns a list of all directories this Key Transparency server operates on. |
-| GetDirectory | [GetDirectoryRequest](#google.keytransparency.v1.GetDirectoryRequest) | [Directory](#google.keytransparency.v1.Directory) | GetDirectory returns the confiuration information for a given directory. |
+| GetDirectory | [GetDirectoryRequest](#google.keytransparency.v1.GetDirectoryRequest) | [Directory](#google.keytransparency.v1.Directory) | GetDirectory returns the configuration information for a given directory. |
 | CreateDirectory | [CreateDirectoryRequest](#google.keytransparency.v1.CreateDirectoryRequest) | [Directory](#google.keytransparency.v1.Directory) | CreateDirectory creates a new Trillian log/map pair. A unique directoryId must be provided. To create a new directory with the same name as a previously deleted directory, a user must wait X days until the directory is garbage collected. |
 | DeleteDirectory | [DeleteDirectoryRequest](#google.keytransparency.v1.DeleteDirectoryRequest) | [.google.protobuf.Empty](#google.protobuf.Empty) | DeleteDirectory marks a directory as deleted. Directories will be garbage collected after X days. |
 | UndeleteDirectory | [UndeleteDirectoryRequest](#google.keytransparency.v1.UndeleteDirectoryRequest) | [.google.protobuf.Empty](#google.protobuf.Empty) | UndeleteDirectory marks a previously deleted directory as active if it has not already been garbage collected. |

@@ -157,7 +157,7 @@ func TestIsAuthorized(t *testing.T) {
 	}
 }
 
-func TestResouceLabel(t *testing.T) {
+func TestResourceLabel(t *testing.T) {
 	for _, tc := range []struct {
 		directoryID string
 		out         string

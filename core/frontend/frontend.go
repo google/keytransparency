@@ -29,7 +29,7 @@ import (
 	pb "github.com/google/keytransparency/core/api/v1/keytransparency_go_proto"
 )
 
-// PublicKeyGetter retrives a public key.
+// PublicKeyGetter retrieves a public key.
 type PublicKeyGetter interface {
 	PublicKey() *keyset.Handle
 }
