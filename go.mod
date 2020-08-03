@@ -13,7 +13,7 @@ require (
 	github.com/golang/protobuf v1.4.2
 	github.com/google/certificate-transparency-go v1.1.0 // indirect
 	github.com/google/go-cmp v0.5.0
-	github.com/google/tink/go v1.4.0-rc2
+	github.com/google/tink/go v1.4.0
 	github.com/google/trillian v1.3.10
 	github.com/grpc-ecosystem/go-grpc-middleware v1.2.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0

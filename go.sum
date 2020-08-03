@@ -312,8 +312,11 @@ github.com/google/pprof v0.0.0-20200430221834-fc25d7d30c6d/go.mod h1:ZgVRPoUq/hf
 github.com/google/pprof v0.0.0-20200507031123-427632fa3b1c/go.mod h1:ZgVRPoUq/hfqzAqh7sHMqb3I9Rq5C59dIz2SbBwJ4eM=
 github.com/google/renameio v0.1.0/go.mod h1:KWCgfxg9yswjAJkECMjeO8J8rahYeXnNhOm40UhjYkI=
 github.com/google/subcommands v1.0.1/go.mod h1:ZjhPrFU+Olkh9WazFPsl27BQ4UPiG37m3yTrtFlrHVk=
+github.com/google/tink v1.4.0 h1:cRDDzFOhu3TEtJz991OXroPXmrJJVQ5XmtUPOWZMn2k=
 github.com/google/tink/go v1.4.0-rc2 h1:QU7tW2FbEM4VjagwhxXFYuZXWLyfST2Z0EMLCCrMEmk=
 github.com/google/tink/go v1.4.0-rc2/go.mod h1:OdW+ACSIXwGiPOWJiRTdoKzStsnqo8ZOsTzchWLy2DY=
+github.com/google/tink/go v1.4.0 h1:7Ihv6n6/0zPrm2GRAeeF408P9Y00HXC2J6tvUzgb2sg=
+github.com/google/tink/go v1.4.0/go.mod h1:OdW+ACSIXwGiPOWJiRTdoKzStsnqo8ZOsTzchWLy2DY=
 github.com/google/trillian v1.2.2-0.20190612132142-05461f4df60a/go.mod h1:YPmUVn5NGwgnDUgqlVyFGMTgaWlnSvH7W5p+NdOG8UA=
 github.com/google/trillian v1.3.10 h1:Qcn4HEWdQka7ioLtJO4Umo1UwpvVZdejktNtjhnPGGk=
 github.com/google/trillian v1.3.10/go.mod h1:VmfwqXyIzUSuO0hNdtTrT57/MtixlNcdU7egfnkmhA4=
