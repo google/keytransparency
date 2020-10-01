@@ -176,32 +176,44 @@ Prerequisites
    - Docker Engine 1.17.6+ `docker version -f '{{.Server.APIVersion}}'`
    - Docker Compose 1.11.0+ `docker-compose --version`
 
-```sh
-go get github.com/google/keytransparency/...
-cd $(go env GOPATH)/src/github.com/google/keytransparency
+### Deploy the KeyTransparency service
 
-# Generate Private Keys
-./scripts/gen_monitor_keys.sh -f
-pushd genfiles
-go run "$(go env GOROOT)/src/crypto/tls/generate_cert.go" --host localhost,127.0.0.1,::
-popd
+1. Run the deployment script
+   ```sh
+   # Download the latest version of keytransparency
+   git clone https://github.com/google/keytransparency.git
+   cd keytransparency
 
-# Build Docker Images
-export TRAVIS_COMMIT=$(git rev-parse HEAD)
-docker-compose build --parallel
+   # Run the deployment script for local environment
+   ./scripts/deploy_local.sh deploy
+   ```
 
-# Run
-docker-compose -f docker-compose.yml docker-compose.prod.yml up -d
+2. Check Docker's running containers
+   ```sh
+   docker container ls
+   ```
+   You should see 8 new running containers:
+   - gcr.io/key-transparency/keytransparency-monitor
+   - gcr.io/key-transparency/keytransparency-sequencer
+   - gcr.io/trillian-opensource-ci/map_server
+   - gcr.io/trillian-opensource-ci/log_signer
+   - gcr.io/trillian-opensource-ci/log_server
+   - gcr.io/key-transparency/keytransparency-server
+   - gcr.io/trillian-opensource-ci/db_server
+   - prom/prometheus
 
-# Create directory
-docker run -t --network kt_attachable gcr.io/key-transparency/init:${TRAVIS_COMMIT} sequencer:8080 -- curl -k -X POST https://sequencer:8080/v1/directories -d'{"directory_id":"default","min_interval":"1s","max_interval":"60s"}'
-```
-
-2. Watch it Run
+3. Watch it Run
 - [Proof for foo@bar.com](https://localhost/v1/directories/default/users/foo@bar.com)
 - [Server configuration info](https://localhost/v1/directories/default)
 
-3. [Integration test](scripts/docker-compose_test.sh) for Docker Compose
+
+### Terminate the KeyTransparency service
+
+The script will remove all the containers and their networks.
+```sh
+# Run the script to undeploy
+./scripts/deploy_local.sh undeploy
+```
 
 ## Development and Testing
 Key Transparency and its [Trillian](https://github.com/google/trillian) backend
