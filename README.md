@@ -247,7 +247,7 @@ The directory structure of Key Transparency is as follows:
     * [**authentication**](impl/authentication): authentication policy grpc interceptor.
     * [**authorization**](impl/authorization): OAuth and fake auth grpc interceptor.
     * [integration](impl/integration): environment specific integration tests.
-    * [**sql**](impl/sql): mysql implementations of storage modules.
+    * [**mysql**](impl/mysql): mysql implementations of storage modules.
 * [**scripts**](scripts): scripts
     * [**deploy**](scripts/deploy.sh): deploy to Google Compute Engine.
 
