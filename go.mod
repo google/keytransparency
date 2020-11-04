@@ -15,7 +15,7 @@ require (
 	github.com/google/go-cmp v0.5.2
 	github.com/google/tink/go v1.4.0-rc2
 	github.com/google/trillian v1.3.10
-	github.com/grpc-ecosystem/go-grpc-middleware v1.2.0
+	github.com/grpc-ecosystem/go-grpc-middleware v1.2.2
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/grpc-ecosystem/grpc-gateway v1.14.6
 	github.com/kr/pretty v0.1.0
