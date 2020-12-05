@@ -143,7 +143,7 @@ func MutateFn(oldSignedEntry, newSignedEntry *pb.SignedEntry) (*pb.SignedEntry, 
 	}
 
 	if oldSignedEntry == nil {
-		// Skip verificaion checks if there is no previous oldSignedEntry.
+		// Skip verification checks if there is no previous oldSignedEntry.
 		return newSignedEntry, nil
 	}
 

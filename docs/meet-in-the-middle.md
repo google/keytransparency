@@ -8,7 +8,7 @@ revision *current* to perform append-only proofs between revisions *fetched* <=
 ### Background
 Key Transparency 1.0 allowed Bob to fetch at an unknown revision, requiring
 Alice to fetch *all* revisions in order to verify her key history, an O(n)
-amount of work where n is the number of revisonis between verifications. This
+amount of work where n is the number of revisions between verifications. This
 limited the frequency and freshness of directory updates.
 
 The meet in the middle algorithm shares the work between Alice and Bob by
@@ -18,7 +18,7 @@ verification work down to a logarithmic, regardless of directory freshness.
 
 ## Algorithm
 
-### Sender Verificatoin
+### Sender Verification
 Clients save the (earliest) revision number associated with the data they have
 fetched.  For Key Transparency, this means that *senders* will store, for each
 contact, the contact's public key, map revision number it was fetched at, and

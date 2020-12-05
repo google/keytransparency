@@ -54,7 +54,7 @@ func NewerRevisionsToVerify(created, current, verified uint64) []uint64 {
 //
 // TODO: Consier limiting the max period between checks to the expected value
 // of other party lifetimes -- the maximum amount of time this algorithm can
-// tollerate the other party being offline at an unknown point in the past.
+// tolerate the other party being offline at an unknown point in the past.
 // Currently this algorithm expects the relying party to keep its memory and
 // be online at least once every `current = 2ⁱ` revisions. See Tests.
 func OlderRevisionsToVerify(current, verified uint64) []uint64 {

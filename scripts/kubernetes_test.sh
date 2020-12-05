@@ -2,7 +2,7 @@
 set -ex
 set -o pipefail
 
-# This script assumes the existance of a local cluster
+# This script assumes the existence of a local cluster
 # go get sigs.k8s.io/kind@v0.6.1 
 # kind create cluster --config deploy/kubernetes/kind-config.yaml
 # kubectl cluster-info --context kind-kind

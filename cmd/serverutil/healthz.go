@@ -20,7 +20,7 @@ import (
 	"gocloud.dev/server/health"
 )
 
-// RootHeaalthHandler handles liveness checks at "/".
+// RootHealthHandler handles liveness checks at "/".
 // All other requests are passed through to `otherHandler`.
 func RootHealthHandler(otherHandler http.Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {

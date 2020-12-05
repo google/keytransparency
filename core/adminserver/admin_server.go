@@ -218,7 +218,7 @@ func treeConfig(treeTemplate *tpb.CreateTreeRequest, privKey *any.Any, directory
 	return config
 }
 
-// CreateDirectory reachs out to Trillian to produce new trees.
+// CreateDirectory reaches out to Trillian to produce new trees.
 func (s *Server) CreateDirectory(ctx context.Context, in *pb.CreateDirectoryRequest) (*pb.Directory, error) {
 	glog.Infof("Begin CreateDirectory(%v)", in.GetDirectoryId())
 	if _, err := s.directories.Read(ctx, in.GetDirectoryId(), true); status.Code(err) != codes.NotFound {

@@ -137,7 +137,7 @@ service KeyTransparencyAdmin {
       get: "/v1/directories"
     };
   }
-  // GetDirectory returns the confiuration information for a given directory.
+  // GetDirectory returns the configuration information for a given directory.
   rpc GetDirectory(GetDirectoryRequest) returns (Directory) {
     option (google.api.http) = {
       get: "/v1/directories/{directory_id}"

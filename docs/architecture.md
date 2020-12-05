@@ -16,7 +16,7 @@ Map.
 
 # Commitment Table
 The commitment table stores account values and the associated commitment key 
-nessesary to verify the commitment stored in the Trillian Map. 
+necessary to verify the commitment stored in the Trillian Map. 
 
 # Mutation Table
 When a user wishes to make a change to their account, they create a signed change
@@ -35,7 +35,7 @@ The Trillian Map stores the sparse merkle tree and is designed to scale to
 extremely large trees. The Trillian Map is updated in batches.
 
 # Trillian Log
-The Trillian Log stores a dense merkle tree in the style of Ceritificate 
+The Trillian Log stores a dense merkle tree in the style of Certificate 
 Transparency.  The Key Transparency Sequencer adds SignedMapRoots from the
 Trillian Map to the Trillian Log as they are created. 
 
