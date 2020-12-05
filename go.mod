@@ -18,7 +18,7 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware v1.2.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/grpc-ecosystem/grpc-gateway v1.14.6
-	github.com/kr/pretty v0.1.0
+	github.com/kr/pretty v0.2.1
 	github.com/kylelemons/godebug v1.1.0
 	github.com/pelletier/go-toml v1.6.0 // indirect
 	github.com/prometheus/client_golang v1.7.1
